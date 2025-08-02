@@ -11,7 +11,7 @@ import reactor.core.publisher.Mono;
 
 @Service
 public class PantherWatchService {
-    private static final Duration TIMEOUT = Duration.ofMillis(5000);
+    private static final Duration TIMEOUT = Duration.ofMillis(10000);
     private static final String SORT_COLUMN = "subjectDescription";
     private static final String SORT_DIRECTION = "asc";
     private final WebClient webClient;
