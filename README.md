@@ -6,27 +6,27 @@
 
 # 🐾 PantherWatch
 
-**PantherWatch** is a lightweight course availability tracker for Georgia State University (GSU) built using **Spring Boot** and **WebClient**. It automates class availability checks from the GoSolar registration system and makes that data programmatically accessible through a local backend.
+**PantherWatch** is a Spring Boot application for Georgia State University (GSU) course information built using **WebClient**. It integrates with the GSU GoSolar registration system to retrieve course data and availability in real-time through REST API endpoints.
 
 ---
 
 ## ✨ Features
 
-- 🔐 Authenticates with GSU GoSolar registration backend using session cookies and CSRF tokens
-- 🗕️ Tracks open/closed status of GSU courses in real-time
-- 📂 Session manager handles automatic cookie + token refresh
-- 🔸 REST API interface for course availability (coming soon)
-- 📊 Future plans for frontend UI and notification integration
+- 🔐 **Session Management**: Automatically handles GSU GoSolar authentication with session cookies
+- 🔍 **Course Search**: Search for courses by subject, course number, and term
+- 📊 **Real-time Data**: Retrieves live course information from GSU's registration system
+- 🌐 **REST API**: Clean HTTP endpoints for course data retrieval
+- ⚡ **WebClient**: Modern reactive HTTP client for efficient API calls
 
 ---
 
 ## 🛠️ Tech Stack
 
 - **Java 21**
-- **Spring Boot 3**
-- **WebClient (Reactor Netty)**
+- **Spring Boot 3.5.4**
+- **Spring WebFlux** (WebClient)
 - **Maven**
-- **HTML parsing (regex or Jsoup in future versions)**
+- **Lombok**
 
 ---
 
@@ -34,10 +34,15 @@
 
 ```
 pantherwatch/
-├── config/             # WebClient config and base settings
-├── controller/         # REST endpoints (WIP)
-├── service/            # Business logic
-├── session/            # Cookie + token manager
+├── api/                # Request/Response DTOs
+│   ├── CourseData.java
+│   ├── Faculty.java
+│   ├── MeetingTime.java
+│   └── RetrieveCourseInfo*.java
+├── config/             # WebClient configuration
+├── controller/         # REST API endpoints
+├── service/            # Business logic and GSU API integration
+├── scheduler/          # Background tasks (CourseWatcher)
 └── PantherWatchApplication.java
 ```
 
@@ -49,44 +54,56 @@ pantherwatch/
 
 - Java 21
 - Maven 3.x
-- Internet access (GSU GoSolar requires live session cookies)
+- Internet access to GSU GoSolar system
 
 ### Run Locally
 
 ```bash
-git clone https://github.com/yourusername/pantherwatch.git
+git clone https://github.com/OfficialEseosa/panther-watch.git
 cd pantherwatch
-mvn spring-boot:run
+./mvnw spring-boot:run
 ```
+
+The server will start on `http://localhost:8080`
 
 ---
 
-## 🔍 Example Usage
+## 🔍 API Usage
 
-Once the server is running:
+### Search for Courses
 
 ```bash
-GET http://localhost:8080/api/status       # Returns session & token status
-POST http://localhost:8080/api/query       # WIP: Returns course availability
+GET /api/courses/search?txtSubject=CSC&txtCourseNumber=1301&txtTerm=202508
 ```
+
+**Parameters:**
+- `txtSubject` - Course subject (e.g., "CSC", "MATH", "ENGL")
+- `txtCourseNumber` - Course number (e.g., "1301", "2010")  
+- `txtTerm` - Term code (e.g., "202508" for Fall 2025)
+
+**Response:** Returns course data including sections, meeting times, faculty, and availability.
 
 ---
 
-## ⚠️ Limitations
+## ⚠️ Current Status
 
-- Currently in **read-only** mode — no registration actions are performed
-- Limited to **public endpoints** of GoSolar
-- Subject to change if GoSolar or Banner backend changes structure
+✅ **REST API** - Fully functional endpoints  
+✅ **GSU Integration** - Live data from GoSolar registration system  
+✅ **Session Management** - Automatic cookie handling  
+🔄 **Frontend UI** - In development  
+❌ **Real-time Notifications** - Planned for future releases
 
 ---
 
 ## 📌 Roadmap
 
-- [x] Session cookie + token manager
-- [ ] Course lookup API
-- [ ] Frontend dashboard (React or Vue)
-- [ ] Email/text alerts on course open
-- [ ] Persistent user preferences
+- [x] **REST API** - Course search endpoints
+- [x] **GSU Integration** - Session management and data retrieval  
+- [x] **WebClient Migration** - Modern reactive HTTP client
+- [ ] **Frontend Dashboard** - In development
+- [ ] **Course Monitoring** - Track seat availability changes
+- [ ] **Notifications** - Email/SMS alerts for course openings
+- [ ] **User Accounts** - Save preferences and watchlists
 
 ---
 
@@ -94,10 +111,13 @@ POST http://localhost:8080/api/query       # WIP: Returns course availability
 
 **Raphael Omorose**  
 Georgia State University – CS Major  
-[GitHub](https://github.com/yourusername) | [LinkedIn](https://linkedin.com/in/yourprofile)
+[GitHub](https://github.com/OfficialEseosa) | [LinkedIn](https://linkedin.com/in/raphaelomorose)
 
 ---
 
-## 📄 License
+## 🔧 Technical Notes
 
-This project is licensed under the MIT License.
+- Uses Spring WebClient for reactive HTTP calls to GSU's Banner system
+- Implements proper session cookie management for GSU authentication  
+- Read-only operations - no registration actions are performed
+- Subject to changes if GSU modifies their backend API structure
