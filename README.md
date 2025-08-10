@@ -63,6 +63,7 @@ pantherwatch/
 │   ├── gradle/
 │   ├── build.gradle.kts
 │   └── settings.gradle.kts
+├── frontend-web/              # (WIP) React/Vite web interface (prototype)
 └── README.md
 ```
 
@@ -129,6 +130,7 @@ The Android app provides a native mobile interface for:
 ✅ **Session Management** - Automatic cookie handling  
 ✅ **Android App** - Native mobile application in development  
 ❌ **Real-time Notifications** - Planned for future releases
+❌ **Web Frontend** - In early scaffold cleanup (work in progress)
 
 ---
 
@@ -141,7 +143,7 @@ The Android app provides a native mobile interface for:
 - [ ] **Course Monitoring** - Track seat availability changes
 - [ ] **Push Notifications** - Real-time alerts for course openings
 - [ ] **User Accounts** - Save preferences and watchlists
-- [ ] **Web Frontend** - Browser-based interface (future consideration)
+- [ ] **Web Frontend** - Browser-based interface (in progress)
 
 ---
 
