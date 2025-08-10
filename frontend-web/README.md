@@ -1,12 +1,31 @@
-# React + Vite
+## PantherWatch Web (WIP)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This directory contains the experimental web frontend for PantherWatch. The scaffold has been stripped of create-vite sample code so you can build the real UI.
 
-Currently, two official plugins are available:
+### Tech
+- React 19
+- Vite 7
+- ESLint (basic config in `eslint.config.js`)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### Dev Scripts
+- `npm run dev`  Start local dev server
+- `npm run build`  Production build (outputs to `dist/`)
+- `npm run preview`  Preview production build
+- `npm run lint`  Run ESLint
 
-## Expanding the ESLint configuration
+### Getting Started
+```sh
+npm install
+npm run dev
+```
+Then open the displayed local URL (default: http://localhost:5173).
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Next Steps (suggested)
+- Implement authentication flow (if required) with backend
+- Add course search UI consuming `/api/courses/search`
+- Introduce a component library or minimal design system
+- Add environment-based API base URL handling
+- Add tests (e.g. Vitest + React Testing Library) once UI logic grows
+
+### License
+Follow root project licensing (see repository root README / license info).
