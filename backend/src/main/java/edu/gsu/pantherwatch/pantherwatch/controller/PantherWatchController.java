@@ -11,7 +11,7 @@ import lombok.RequiredArgsConstructor;
 import edu.gsu.pantherwatch.pantherwatch.api.RetrieveCourseInfoRequest;
 import edu.gsu.pantherwatch.pantherwatch.api.RetrieveCourseInfoResponse;
 
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/api/courses")
 @RequiredArgsConstructor
