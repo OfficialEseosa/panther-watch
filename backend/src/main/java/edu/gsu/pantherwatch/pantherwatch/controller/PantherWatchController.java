@@ -1,5 +1,6 @@
 package edu.gsu.pantherwatch.pantherwatch.controller;
 
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import edu.gsu.pantherwatch.pantherwatch.api.RetrieveCourseInfoRequest;
 import edu.gsu.pantherwatch.pantherwatch.api.RetrieveCourseInfoResponse;
 
+@CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/api/courses")
 @RequiredArgsConstructor
