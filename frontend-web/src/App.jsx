@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import './App.css'
+const API_BASE = import.meta.env.VITE_API_BASE;
 
 function App() {
   
@@ -20,7 +21,7 @@ function App() {
 
     try {
       const params = new URLSearchParams(value);
-      const res = await fetch(`http://localhost:8080/api/courses/search?${params.toString()}`, {
+      const res = await fetch(`${API_BASE}/api/courses/search?${params.toString()}`, {
         method: 'GET',
         headers: { Accept: "application/json" },
       });
