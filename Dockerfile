@@ -26,4 +26,4 @@ RUN ./mvnw package -DskipTests
 EXPOSE 8080
 
 # 8. This is the command that will run when the container starts
-CMD ["java", "-jar", "target/pantherwatch-0.0.1-SNAPSHOT.jar"]
+CMD ["sh", "-c", "java -jar target/*.jar"]
