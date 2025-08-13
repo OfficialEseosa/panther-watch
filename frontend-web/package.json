@@ -10,8 +10,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@azure/msal-browser": "^4.20.0",
+    "@azure/msal-react": "^3.0.18",
+    "@google-cloud/local-auth": "^3.0.1",
+    "googleapis": "^155.0.1",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "react-router-dom": "^7.8.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
