@@ -103,7 +103,11 @@ function Login({ onLogin }) {
       
     } catch (error) {
       console.error('Google login failed:', error)
-      setErrorMessage('Google login failed. Please try again.')
+      if (error && error.message) {
+        setErrorMessage(`Google login failed: ${error.message}`)
+      } else {
+        setErrorMessage('Google login failed. Please check your network connection or try again later.')
+      }
     }
   }
 
