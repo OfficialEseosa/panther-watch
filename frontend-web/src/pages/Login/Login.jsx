@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { initializeGoogleAuth, signInWithGoogle } from '../../config/googleAuthConfig.js'
 import './Login.css'
 
 function Login({ onLogin }) {
+  const navigate = useNavigate()
   const [isGoogleReady, setIsGoogleReady] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
-  const [showGsuEmailModal, setShowGsuEmailModal] = useState(false)
-  const [gsuEmailInput, setGsuEmailInput] = useState('')
-  const [gsuEmailError, setGsuEmailError] = useState('')
-  const [pendingGoogleUser, setPendingGoogleUser] = useState(null)
 
   // Initialize Google Auth when component mounts
   useEffect(() => {
@@ -38,11 +36,12 @@ function Login({ onLogin }) {
       const response = await signInWithGoogle()
       console.log('Google login successful:', response)
       
-      // Store the user info and show GSU email modal
-      setPendingGoogleUser(response.user)
-      setShowGsuEmailModal(true)
-      setGsuEmailInput('')
-      setGsuEmailError('')
+
+      sessionStorage.setItem('authProvider', 'google')
+      sessionStorage.setItem('googleUser', JSON.stringify(response.user))
+
+      onLogin()
+      navigate('/course-search')
       
     } catch (error) {
       console.error('Google login failed:', error)
@@ -52,43 +51,6 @@ function Login({ onLogin }) {
         setErrorMessage('Google login failed. Please check your network connection or try again later.')
       }
     }
-  }
-
-  const handleGsuEmailSubmit = () => {
-    if (!gsuEmailInput) {
-      setGsuEmailError('Please enter your GSU email address')
-      return
-    }
-    
-    // Validate GSU email format
-    if (!gsuEmailInput.endsWith('@student.gsu.edu') && !gsuEmailInput.endsWith('@gsu.edu')) {
-      setGsuEmailError('Please enter a valid GSU email address (@student.gsu.edu or @gsu.edu)')
-      return
-    }
-    
-    console.log('Google user with GSU email:', {
-      googleName: pendingGoogleUser.name,
-      googleEmail: pendingGoogleUser.email,
-      gsuEmail: gsuEmailInput,
-      picture: pendingGoogleUser.picture
-    })
-    
-    // Store both the Google account info and GSU email for the session
-    sessionStorage.setItem('authProvider', 'google')
-    sessionStorage.setItem('googleUser', JSON.stringify(pendingGoogleUser))
-    sessionStorage.setItem('gsuEmail', gsuEmailInput)
-    
-    // Close modal and proceed to main app
-    setShowGsuEmailModal(false)
-    setPendingGoogleUser(null)
-    onLogin()
-  }
-
-  const handleModalClose = () => {
-    setShowGsuEmailModal(false)
-    setPendingGoogleUser(null)
-    setGsuEmailInput('')
-    setGsuEmailError('')
   }
 
   return (
@@ -122,44 +84,8 @@ function Login({ onLogin }) {
         
         <footer className="login-footer">
           <p>Access real-time GSU course information and availability</p>
-          <p className="login-note">You'll be asked for your GSU email after signing in</p>
         </footer>
       </div>
-
-      {/* GSU Email Modal */}
-      {showGsuEmailModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3>Enter Your GSU Email</h3>
-            <p>You signed in with your personal Google account. Please provide your GSU email address to access course information.</p>
-            
-            <div className="modal-form">
-              <input
-                type="email"
-                value={gsuEmailInput}
-                onChange={(e) => setGsuEmailInput(e.target.value)}
-                placeholder="your.email@student.gsu.edu"
-                className="gsu-email-input"
-              />
-              
-              {gsuEmailError && (
-                <div className="modal-error">
-                  {gsuEmailError}
-                </div>
-              )}
-              
-              <div className="modal-buttons">
-                <button onClick={handleGsuEmailSubmit} className="modal-submit-btn">
-                  Continue
-                </button>
-                <button onClick={handleModalClose} className="modal-cancel-btn">
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   )
 }
