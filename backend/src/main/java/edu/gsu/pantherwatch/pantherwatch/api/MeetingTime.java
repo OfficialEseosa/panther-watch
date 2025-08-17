@@ -22,8 +22,26 @@ public class MeetingTime {
     @JsonProperty("endTime")
     private String endTime;
 
+    @JsonProperty("sunday")
+    private boolean sunday;
+
+    @JsonProperty("monday")
+    private boolean monday;
+
+    @JsonProperty("tuesday")
+    private boolean tuesday;
+
+    @JsonProperty("wednesday")
+    private boolean wednesday;
+
+    @JsonProperty("thursday")
+    private boolean thursday;
+
     @JsonProperty("friday")
     private boolean friday;
+
+    @JsonProperty("saturday")
+    private boolean saturday;
 
     @JsonProperty("hoursWeek")
     private int hoursWeek;
@@ -31,27 +49,9 @@ public class MeetingTime {
     @JsonProperty("meetingTypeDescription")
     private String meetingTypeDescription;
 
-    @JsonProperty("monday")
-    private boolean monday;
-
     @JsonProperty("room")
     private String room;
 
-    @JsonProperty("saturday")
-    private boolean saturday;
-
     @JsonProperty("startDate")
     private String startDate;
-
-    @JsonProperty("sunday")
-    private boolean sunday;
-
-    @JsonProperty("thursday")
-    private boolean thursday;
-
-    @JsonProperty("tuesday")
-    private boolean tuesday;
-
-    @JsonProperty("wednesday")
-    private boolean wednesday;
 }
