@@ -18,6 +18,7 @@ public class PantherWatchService {
     private static final String SEARCH_PATH = "/term/search";
     private static final String RETRIEVE_INFO_PATH = "/searchResults/searchResults";
     private static final String RESET_PATH = "/classSearch/resetDataForm";
+    private static final String TERMS_PATH = "/classSearch/getTerms";
 
     public PantherWatchService(WebClient webClient) {
         this.webClient = webClient;
@@ -97,6 +98,27 @@ public class PantherWatchService {
                         return response.createException()
                                 .flatMap(exception -> Mono.error(
                                     new RuntimeException("HTTP error: " + response.statusCode().value())
+                                ));
+                    }
+                })
+                .block(TIMEOUT);
+    }
+
+    public String fetchAvailableTerms() {
+        return webClient
+                .get()
+                .uri(uriBuilder -> uriBuilder
+                    .path(TERMS_PATH)
+                    .queryParam("offset", 1)
+                    .queryParam("max", 10)
+                    .build())
+                .exchangeToMono(response -> {
+                    if (response.statusCode().is2xxSuccessful()) {
+                        return response.bodyToMono(String.class);
+                    } else {
+                        return response.createException()
+                                .flatMap(exception -> Mono.error(
+                                    new RuntimeException("HTTP error fetching terms: " + response.statusCode().value())
                                 ));
                     }
                 })

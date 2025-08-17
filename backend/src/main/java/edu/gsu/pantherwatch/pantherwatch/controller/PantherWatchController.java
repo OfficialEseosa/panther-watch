@@ -25,4 +25,9 @@ public class PantherWatchController {
         pantherWatchService.resetRequestForm();
         return response;
     }
+
+    @GetMapping("/terms")
+    public String getTerms() {
+        return pantherWatchService.fetchAvailableTerms();
+    }
 }
