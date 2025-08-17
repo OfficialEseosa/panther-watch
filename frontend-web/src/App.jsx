@@ -1,18 +1,10 @@
-import { useState, useEffect } from 'react'
-import { useMsal } from '@azure/msal-react'
-import Login from './Login.jsx'
-import CourseSearch from './CourseSearch.jsx'
+import { useState } from 'react'
+import Login from './pages/Login'
+import CourseSearch from './pages/CourseSearch'
 import './App.css'
 
 function App() {
-  const { accounts } = useMsal()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-
-  useEffect(() => {
-    if (accounts.length > 0) {
-      setIsLoggedIn(true)
-    }
-  }, [accounts])
 
   const handleLogin = () => {
     setIsLoggedIn(true)

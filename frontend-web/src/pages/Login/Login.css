@@ -19,23 +19,28 @@
 
 .login-header h1 {
   color: white;
-  font-size: 2.5rem;
+  font-size: 3rem;
   margin: 0 0 0.5rem;
   font-weight: 700;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .login-header p {
-  color: rgba(255, 255, 255, 0.9);
-  margin: 0 0 2rem;
-  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.login-subtitle {
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-size: 0.9rem !important;
+  margin-bottom: 2rem !important;
 }
 
 /* OAuth Buttons */
 .oauth-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
 }
 
 .oauth-btn {
@@ -44,18 +49,19 @@
   justify-content: center;
   gap: 0.75rem;
   width: 100%;
-  padding: 0.875rem 1rem;
+  padding: 1rem 1.5rem;
   border: none;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  font-weight: 600;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: transform 0.1s, box-shadow 0.2s;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
 .oauth-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
 }
 
 .oauth-btn:active {
@@ -67,110 +73,34 @@
   height: 20px;
 }
 
-.microsoft-btn {
-  background-color: #000000;
-  color: white;
-  border: 1px solid #333;
-}
-
-.microsoft-btn:hover {
-  background-color: #1a1a1a;
-  border-color: #555;
-}
-
 .google-btn {
   background-color: white;
   color: #333;
-  border: 1px solid #dadce0;
+  border: 2px solid #e0e0e0;
 }
 
 .google-btn:hover {
   background-color: #f8f9fa;
 }
 
-/* Divider */
-.login-divider {
-  display: flex;
-  align-items: center;
-  margin: 1.5rem 0;
+/* Footer */
+.login-footer {
+  margin-top: 2rem;
   text-align: center;
 }
 
-.login-divider::before,
-.login-divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.login-divider span {
-  padding: 0 1rem;
+.login-footer p {
   color: rgba(255, 255, 255, 0.8);
   font-size: 0.875rem;
-  font-weight: 500;
+  margin: 0.5rem 0 0;
 }
 
-.login-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+.login-note {
+  font-size: 0.8rem !important;
+  opacity: 0.7;
 }
 
-.field-group {
-  text-align: left;
-}
-
-.field-group label {
-  display: block;
-  color: white;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-  font-size: 0.95rem;
-}
-
-.field-group input {
-  width: 100%;
-  padding: 0.875rem 1rem;
-  border: 2px solid #0039a6;
-  border-radius: 8px;
-  font-size: 1rem;
-  background: white;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.field-group input:focus {
-  outline: none;
-  border-color: #0056d3;
-  box-shadow: 0 0 0 3px rgba(0, 86, 211, 0.1);
-}
-
-.field-group input::placeholder {
-  color: #999;
-}
-
-.login-btn {
-  background-color: #0039a6;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 1rem 2rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s, transform 0.1s;
-  margin-top: 0.5rem;
-}
-
-.login-btn:hover {
-  background-color: #001f4d;
-  transform: translateY(-1px);
-}
-
-.login-btn:active {
-  transform: translateY(0);
-}
-
+/* Footer */
 .login-footer {
   margin-top: 2rem;
   padding-top: 1.5rem;
@@ -180,7 +110,7 @@
 .login-footer p {
   color: rgba(255, 255, 255, 0.8);
   font-size: 0.875rem;
-  margin: 0;
+  margin: 0.5rem 0 0;
 }
 
 /* Error Message */

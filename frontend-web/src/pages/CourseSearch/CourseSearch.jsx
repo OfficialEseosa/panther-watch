@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import './App.css'
+import '../../App.css'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080';
 
