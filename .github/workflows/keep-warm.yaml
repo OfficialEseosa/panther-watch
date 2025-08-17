@@ -14,17 +14,17 @@ jobs:
     timeout-minutes: 2
     concurrency:
       group: keep-warm
-      cancel-in-progress: false
+      cancel-in-progress: true
+    env:
+      HEALTH_URL: "https://api.pantherwatch.app/actuator/health"
     steps:
       - name: Ping health endpoint (HEAD)
         run: |
-          URL="https://api.pantherwatch.app/actuator/health"
-          echo "Pinging $URL at $(date -u)"
+          echo "Pinging $HEALTH_URL at $(date -u)"
           # Try fast HEAD first
-          curl -I --silent --show-error --max-time 20 --retry 2 --retry-delay 2 "$URL"
+          curl -I --silent --show-error --max-time 20 --retry 2 --retry-delay 2 "$HEALTH_URL"
 
       - name: Fallback GET if HEAD failed
         if: failure()
         run: |
-          URL="https://api.pantherwatch.app/actuator/health"
-          curl --silent --show-error --max-time 25 --retry 2 --retry-delay 2 "$URL"
+          curl --silent --show-error --max-time 25 --retry 2 --retry-delay 2 "$HEALTH_URL"
