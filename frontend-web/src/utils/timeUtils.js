@@ -13,7 +13,7 @@ export const formatTime = (time) => {
   const hours = parseInt(time.substring(0, 2));
   const minutes = time.substring(2, 4);
   const ampm = hours >= 12 ? 'PM' : 'AM';
-  const displayHours = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
+  const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
   
   return `${displayHours}:${minutes} ${ampm}`;
 };
@@ -26,7 +26,26 @@ export const DAYS_OF_WEEK = [
   { key: 'monday', label: 'M' },
   { key: 'tuesday', label: 'T' },
   { key: 'wednesday', label: 'W' },
-  { key: 'thursday', label: 'T' },
+  { key: 'thursday', label: 'R' },
   { key: 'friday', label: 'F' },
   { key: 'saturday', label: 'S' }
 ];
+
+/**
+ * Maps term codes to human-readable names
+ * @param {string} termCode - Term code (e.g., "202508")
+ * @returns {string} Human-readable term name
+ */
+export const getTermName = (termCode) => {
+  const termMap = {
+    '202508': 'Fall Semester 2025',
+    '202501': 'Spring Semester 2025',
+    '202505': 'Summer Semester 2025',
+    '202408': 'Fall Semester 2024',
+    '202401': 'Spring Semester 2024',
+    '202405': 'Summer Semester 2024',
+    // Add more terms as needed
+  };
+  
+  return termMap[termCode] || termCode;
+};

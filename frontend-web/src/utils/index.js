@@ -3,7 +3,7 @@
  */
 
 // Time utilities
-export { formatTime, DAYS_OF_WEEK } from './timeUtils';
+export { formatTime, DAYS_OF_WEEK, getTermName } from './timeUtils';
 
 // Enrollment utilities
 export { 

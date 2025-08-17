@@ -46,7 +46,7 @@ export const getEnrollmentMessage = (available, total) => {
  */
 export const formatCreditHours = (creditHourLow, creditHourHigh) => {
   // If creditHourHigh is 0 or same as low, show only the low value
-  if (!creditHourHigh || creditHourHigh === 0 || creditHourLow === creditHourHigh) {
+  if (creditHourHigh === 0 || creditHourLow === creditHourHigh) {
     return creditHourLow.toString();
   }
   // Otherwise show the range

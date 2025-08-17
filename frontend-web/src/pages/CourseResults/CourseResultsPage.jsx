@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import '../../App.css'
 import CourseResults from '../../components/CourseResults'
+import { getTermName } from '../../utils'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080';
 
@@ -122,7 +123,7 @@ function CourseResultsPage() {
                 marginBottom: '10px',
                 fontWeight: '500'
               }}>
-                Search: {searchParams.txtSubject} {searchParams.txtCourseNumber} - {searchParams.txtTerm === '202508' ? 'Fall Semester 2025' : searchParams.txtTerm}
+                Search: {searchParams.txtSubject} {searchParams.txtCourseNumber} - {getTermName(searchParams.txtTerm)}
               </div>
             )}
           </div>
