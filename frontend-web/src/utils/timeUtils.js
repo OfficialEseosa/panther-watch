@@ -22,13 +22,13 @@ export const formatTime = (time) => {
  * Days of the week configuration for schedule display
  */
 export const DAYS_OF_WEEK = [
-  { key: 'sunday', label: 'S' },
-  { key: 'monday', label: 'M' },
-  { key: 'tuesday', label: 'T' },
-  { key: 'wednesday', label: 'W' },
-  { key: 'thursday', label: 'R' },
-  { key: 'friday', label: 'F' },
-  { key: 'saturday', label: 'S' }
+  { key: 'sunday', label: 'Sun' },
+  { key: 'monday', label: 'Mon' },
+  { key: 'tuesday', label: 'Tue' },
+  { key: 'wednesday', label: 'Wed' },
+  { key: 'thursday', label: 'Th' },
+  { key: 'friday', label: 'Fr' },
+  { key: 'saturday', label: 'Sat' }
 ];
 
 /**
@@ -44,7 +44,6 @@ export const getTermName = (termCode) => {
     '202408': 'Fall Semester 2024',
     '202401': 'Spring Semester 2024',
     '202405': 'Summer Semester 2024',
-    // Add more terms as needed
   };
   
   return termMap[termCode] || termCode;

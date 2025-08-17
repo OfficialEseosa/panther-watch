@@ -47,7 +47,7 @@ function CourseResultsPage() {
     setSearchParams(searchData)
 
     // If no search parameters, redirect back to search
-    if (!searchData.txtSubject || !searchData.txtTerm || !searchData.txtCourseNumber) {
+    if (!searchData.txtSubject || !searchData.txtTerm || !searchData.txtCourseNumber || !searchData.txtLevel) {
       navigate('/course-search')
       return
     }
