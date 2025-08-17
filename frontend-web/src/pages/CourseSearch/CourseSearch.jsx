@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import '../../App.css'
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080';
+import './CourseSearch.css'
 
 function CourseSearch() {
+  const navigate = useNavigate()
   const [value, setValue] = useState({
     txtLevel: '',
     txtSubject: '',
@@ -18,12 +19,10 @@ function CourseSearch() {
     
     if (authProvider === 'google') {
       const googleUser = JSON.parse(sessionStorage.getItem('googleUser') || '{}')
-      const gsuEmail = sessionStorage.getItem('gsuEmail')
       setUserInfo({
         provider: 'Google',
         name: googleUser.name,
         email: googleUser.email,
-        gsuEmail: gsuEmail,
         picture: googleUser.picture
       })
     } else {
@@ -43,31 +42,15 @@ function CourseSearch() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     console.log('Form submitted with values:', value);
-
-    try {
-      const params = new URLSearchParams(value);
-      const res = await fetch(`${API_BASE}/api/courses/search?${params.toString()}`, {
-        method: 'GET',
-        headers: { Accept: "application/json" },
-      });
-
-      if (!res.ok) {
-        throw new Error(`Request failed with status: ${res.status}`);
-      }
-
-      const json = await res.json();
-      console.log("Response data:", json);
-    } catch (err) {
-      console.error("An error occurred:", err);
-    } finally {
-    }
+    
+    const params = new URLSearchParams(value);
+    navigate(`/course-results?${params.toString()}`);
   }
 
   const handleLogout = () => {
     // Clear session storage
     sessionStorage.removeItem('authProvider')
     sessionStorage.removeItem('googleUser')
-    sessionStorage.removeItem('gsuEmail')
     
     // Reload to go back to login
     window.location.reload()
@@ -81,9 +64,6 @@ function CourseSearch() {
           {userInfo && (
             <div className="user-info">
               <span>Welcome, {userInfo.name}</span>
-              {userInfo.gsuEmail && (
-                <span className="gsu-email">({userInfo.gsuEmail})</span>
-              )}
               <button onClick={handleLogout} className="logout-btn">Logout</button>
             </div>
           )}
