@@ -6,7 +6,6 @@ import org.springframework.http.HttpHeaders;
 import java.time.Duration;
 import java.util.List;
 import java.util.Arrays;
-import java.util.Collections;
 
 import edu.gsu.pantherwatch.pantherwatch.api.RetrieveCourseInfoRequest;
 import edu.gsu.pantherwatch.pantherwatch.api.RetrieveCourseInfoResponse;
