@@ -4,9 +4,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.http.HttpHeaders;
 import java.time.Duration;
+import java.util.List;
+import java.util.Arrays;
+import java.util.Collections;
 
 import edu.gsu.pantherwatch.pantherwatch.api.RetrieveCourseInfoRequest;
 import edu.gsu.pantherwatch.pantherwatch.api.RetrieveCourseInfoResponse;
+import edu.gsu.pantherwatch.pantherwatch.api.Terms;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -14,6 +18,8 @@ public class PantherWatchService {
     private static final Duration TIMEOUT = Duration.ofMillis(10000);
     private static final String SORT_COLUMN = "subjectDescription";
     private static final String SORT_DIRECTION = "asc";
+    private static final int DEFAULT_OFFSET = 1;
+    private static final int DEFAULT_MAX = 10;
     private final WebClient webClient;
     private static final String SEARCH_PATH = "/term/search";
     private static final String RETRIEVE_INFO_PATH = "/searchResults/searchResults";
@@ -104,24 +110,30 @@ public class PantherWatchService {
                 .block(TIMEOUT);
     }
 
-    public String fetchAvailableTerms() {
-        return webClient
-                .get()
-                .uri(uriBuilder -> uriBuilder
-                    .path(TERMS_PATH)
-                    .queryParam("offset", 1)
-                    .queryParam("max", 10)
-                    .build())
-                .exchangeToMono(response -> {
-                    if (response.statusCode().is2xxSuccessful()) {
-                        return response.bodyToMono(String.class);
-                    } else {
-                        return response.createException()
-                                .flatMap(exception -> Mono.error(
-                                    new RuntimeException("HTTP error fetching terms: " + response.statusCode().value())
-                                ));
-                    }
-                })
-                .block(TIMEOUT);
+    public List<Terms> fetchAvailableTerms() {
+        try {
+            Terms[] termsArray = webClient
+                    .get()
+                    .uri(uriBuilder -> uriBuilder
+                        .path(TERMS_PATH)
+                        .queryParam("offset", DEFAULT_OFFSET)
+                        .queryParam("max", DEFAULT_MAX)
+                        .build())
+                    .exchangeToMono(response -> {
+                        if (response.statusCode().is2xxSuccessful()) {
+                            return response.bodyToMono(Terms[].class);
+                        } else {
+                            return response.createException()
+                                    .flatMap(exception -> Mono.error(
+                                        new RuntimeException("HTTP error fetching terms: " + response.statusCode().value())
+                                    ));
+                        }
+                    })
+                    .block(TIMEOUT);
+            
+            return Arrays.asList(termsArray);
+        } catch (Exception e) {
+            return Collections.emptyList();
+        }
     }
 }

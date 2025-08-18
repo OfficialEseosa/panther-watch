@@ -10,8 +10,10 @@ import edu.gsu.pantherwatch.pantherwatch.service.PantherWatchService;
 import lombok.RequiredArgsConstructor;
 import edu.gsu.pantherwatch.pantherwatch.api.RetrieveCourseInfoRequest;
 import edu.gsu.pantherwatch.pantherwatch.api.RetrieveCourseInfoResponse;
+import edu.gsu.pantherwatch.pantherwatch.api.Terms;
+import java.util.List;
 
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = {"http://localhost:5173", "https://pantherwatch.app"})
 @RestController
 @RequestMapping("/api/courses")
 @RequiredArgsConstructor
@@ -27,7 +29,7 @@ public class PantherWatchController {
     }
 
     @GetMapping("/terms")
-    public String getTerms() {
+    public List<Terms> getTerms() {
         return pantherWatchService.fetchAvailableTerms();
     }
 }
