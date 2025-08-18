@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { buildApiUrl } from '../../config'
 import '../../App.css'
+import './CourseResultsPage.css'
 import CourseResults from '../../components/CourseResults'
 import { getTermName } from '../../utils'
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080';
 
 function CourseResultsPage() {
   const location = useLocation()
@@ -62,7 +62,7 @@ function CourseResultsPage() {
 
     try {
       const params = new URLSearchParams(searchData)
-      const res = await fetch(`${API_BASE}/api/courses/search?${params.toString()}`, {
+      const res = await fetch(`${buildApiUrl('/courses/search')}?${params.toString()}`, {
         method: 'GET',
         headers: { Accept: "application/json" },
       })
@@ -112,17 +112,12 @@ function CourseResultsPage() {
       </header>
       <main>
         <div className="container">
-          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-            <button onClick={handleNewSearch} style={{ marginBottom: '20px' }}>
+          <div className="course-results-container">
+            <button onClick={handleNewSearch} className="new-search-button">
               ← New Search
             </button>
             {searchParams && (
-              <div style={{ 
-                fontSize: '16px', 
-                color: '#2c3e50', 
-                marginBottom: '10px',
-                fontWeight: '500'
-              }}>
+              <div className="search-summary">
                 Search: {searchParams.txtSubject} {searchParams.txtCourseNumber} - {getTermName(searchParams.txtTerm)}
               </div>
             )}

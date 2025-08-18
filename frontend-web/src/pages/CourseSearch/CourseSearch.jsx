@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { buildApiUrl } from '../../config'
 import '../../App.css'
 import './CourseSearch.css'
 
@@ -12,6 +13,33 @@ function CourseSearch() {
     txtCourseNumber: ''
   })
   const [userInfo, setUserInfo] = useState(null)
+  const [terms, setTerms] = useState([])
+  const [termsLoading, setTermsLoading] = useState(true)
+  const [termsError, setTermsError] = useState(null)
+
+  // Fetch available terms from API
+  useEffect(() => {
+    const fetchTerms = async () => {
+      try {
+        setTermsLoading(true)
+        const response = await fetch(buildApiUrl('/courses/terms'))
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        const termsData = await response.json()
+        setTerms(termsData)
+        setTermsError(null)
+      } catch (error) {
+        console.error('Error fetching terms:', error)
+        setTermsError('Failed to load terms')
+        setTerms([])
+      } finally {
+        setTermsLoading(false)
+      }
+    }
+
+    fetchTerms()
+  }, [])
 
   // Get user info from session storage on component mount
   useEffect(() => {
@@ -84,7 +112,13 @@ function CourseSearch() {
             <label htmlFor="txtTerm">Choose a term: </label>
             <select id="txtTerm" name="txtTerm" onChange={(e) => handleChanges(e)} required>
               <option value="">-- Select a term --</option>
-              <option value="202508">Fall Semester 2025</option>
+              {termsLoading && <option disabled>Loading terms...</option>}
+              {termsError && <option disabled>Error loading terms</option>}
+              {!termsLoading && !termsError && terms.map(term => (
+                <option key={term.code} value={term.code}>
+                  {term.description}
+                </option>
+              ))}
             </select>
 
             <label htmlFor="txtCourseNumber">Enter a course number:</label>
