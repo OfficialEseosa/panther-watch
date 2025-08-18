@@ -111,29 +111,25 @@ public class PantherWatchService {
     }
 
     public List<Terms> fetchAvailableTerms() {
-        try {
-            Terms[] termsArray = webClient
-                    .get()
-                    .uri(uriBuilder -> uriBuilder
-                        .path(TERMS_PATH)
-                        .queryParam("offset", DEFAULT_OFFSET)
-                        .queryParam("max", DEFAULT_MAX)
-                        .build())
-                    .exchangeToMono(response -> {
-                        if (response.statusCode().is2xxSuccessful()) {
-                            return response.bodyToMono(Terms[].class);
-                        } else {
-                            return response.createException()
-                                    .flatMap(exception -> Mono.error(
-                                        new RuntimeException("HTTP error fetching terms: " + response.statusCode().value())
-                                    ));
-                        }
-                    })
-                    .block(TIMEOUT);
-            
-            return Arrays.asList(termsArray);
-        } catch (Exception e) {
-            return Collections.emptyList();
-        }
+        Terms[] termsArray = webClient
+                .get()
+                .uri(uriBuilder -> uriBuilder
+                    .path(TERMS_PATH)
+                    .queryParam("offset", DEFAULT_OFFSET)
+                    .queryParam("max", DEFAULT_MAX)
+                    .build())
+                .exchangeToMono(response -> {
+                    if (response.statusCode().is2xxSuccessful()) {
+                        return response.bodyToMono(Terms[].class);
+                    } else {
+                        return response.createException()
+                                .flatMap(exception -> Mono.error(
+                                    new RuntimeException("HTTP error fetching terms: " + response.statusCode().value())
+                                ));
+                    }
+                })
+                .block(TIMEOUT);
+        
+        return Arrays.asList(termsArray);
     }
 }
