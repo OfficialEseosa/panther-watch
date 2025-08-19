@@ -1,8 +1,20 @@
 /* CourseResultsPage specific styles */
 
+.course-results-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  background-color: #0039A6;
+  min-height: 100vh;
+  padding: 20px;
+}
+
 .course-results-container {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  padding: 24px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
 .new-search-button {

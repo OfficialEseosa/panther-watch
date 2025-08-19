@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { buildApiUrl } from '../../config'
-import '../../App.css'
 import './CourseResultsPage.css'
 import CourseResults from '../../components/CourseResults'
 import { getTermName } from '../../utils'
@@ -12,29 +11,9 @@ function CourseResultsPage() {
   const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [userInfo, setUserInfo] = useState(null)
   const [searchParams, setSearchParams] = useState(null)
 
   useEffect(() => {
-    // Get user info from session storage
-    const authProvider = sessionStorage.getItem('authProvider')
-    
-    if (authProvider === 'google') {
-      const googleUser = JSON.parse(sessionStorage.getItem('googleUser') || '{}')
-      setUserInfo({
-        provider: 'Google',
-        name: googleUser.name,
-        email: googleUser.email,
-        picture: googleUser.picture
-      })
-    } else {
-      setUserInfo({
-        provider: 'Unknown',
-        name: 'User',
-        email: 'Not specified'
-      })
-    }
-
     // Get search parameters from URL or state
     const params = new URLSearchParams(location.search)
     const searchData = {
@@ -87,50 +66,29 @@ function CourseResultsPage() {
     }
   }
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('authProvider')
-    sessionStorage.removeItem('googleUser')
-    window.location.reload()
-  }
-
   const handleNewSearch = () => {
     navigate('/course-search')
   }
 
   return (
-    <>
-      <header className="site-header">
-        <div className="header-content">
-          <h1>PantherWatch Web</h1>
-          {userInfo && (
-            <div className="user-info">
-              <span>Welcome, {userInfo.name}</span>
-              <button onClick={handleLogout} className="logout-btn">Logout</button>
-            </div>
-          )}
-        </div>
-      </header>
-      <main>
-        <div className="container">
-          <div className="course-results-container">
-            <button onClick={handleNewSearch} className="new-search-button">
-              ← New Search
-            </button>
-            {searchParams && (
-              <div className="search-summary">
-                Search: {searchParams.txtSubject} {searchParams.txtCourseNumber} - {getTermName(searchParams.txtTerm)}
-              </div>
-            )}
+    <div className="course-results-page">
+      <div className="course-results-container">
+        <button onClick={handleNewSearch} className="new-search-button">
+          ← New Search
+        </button>
+        {searchParams && (
+          <div className="search-summary">
+            Search: {searchParams.txtSubject} {searchParams.txtCourseNumber} - {getTermName(searchParams.txtTerm)}
           </div>
-          
-          <CourseResults 
-            courses={courses}
-            loading={loading}
-            error={error}
-          />
-        </div>
-      </main>
-    </>
+        )}
+      </div>
+      
+      <CourseResults 
+        courses={courses}
+        loading={loading}
+        error={error}
+      />
+    </div>
   )
 }
 
