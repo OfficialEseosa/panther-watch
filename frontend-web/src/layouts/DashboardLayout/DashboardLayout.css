@@ -1,0 +1,43 @@
+/* Dashboard Layout Styles */
+
+.dashboard-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #0039A6;
+}
+
+.dashboard-content {
+  display: flex;
+  flex: 1;
+  position: relative;
+  background-color: #0039A6;
+}
+
+.main-content {
+  flex: 1;
+  transition: margin-left 0.3s ease;
+  padding: 0;
+  min-height: calc(100vh - 60px); /* Subtract header height */
+}
+
+.main-content.sidebar-open {
+  margin-left: 250px; /* Width of sidebar */
+}
+
+.content-wrapper {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .main-content.sidebar-open {
+    margin-left: 0; /* No margin on mobile - sidebar will overlay */
+  }
+  
+  .content-wrapper {
+    padding: 16px;
+  }
+}

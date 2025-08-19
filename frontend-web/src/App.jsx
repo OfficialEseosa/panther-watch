@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Login from './pages/Login'
+import Dashboard from './pages/Dashboard'
 import CourseSearch from './pages/CourseSearch'
 import CourseResultsPage from './pages/CourseResults'
+import DashboardLayout from './layouts/DashboardLayout'
 import './App.css'
 
 function App() {
@@ -29,15 +31,25 @@ function App() {
         path="/login" 
         element={
           isLoggedIn ? 
-          <Navigate to="/course-search" replace /> : 
+          <Navigate to="/dashboard" replace /> : 
           <Login onLogin={handleLogin} />
+        } 
+      />
+      
+      {/* Protected routes with dashboard layout */}
+      <Route 
+        path="/dashboard" 
+        element={
+          isLoggedIn ? 
+          <DashboardLayout><Dashboard /></DashboardLayout> : 
+          <Navigate to="/login" replace />
         } 
       />
       <Route 
         path="/course-search" 
         element={
           isLoggedIn ? 
-          <CourseSearch onLogout={handleLogout} /> : 
+          <DashboardLayout><CourseSearch /></DashboardLayout> : 
           <Navigate to="/login" replace />
         } 
       />
@@ -45,14 +57,27 @@ function App() {
         path="/course-results" 
         element={
           isLoggedIn ? 
-          <CourseResultsPage onLogout={handleLogout} /> : 
+          <DashboardLayout><CourseResultsPage /></DashboardLayout> : 
+          <Navigate to="/login" replace />
+        } 
+      />
+      <Route 
+        path="/tracked-classes" 
+        element={
+          isLoggedIn ? 
+          <DashboardLayout>
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <h2>Tracked Classes</h2>
+              <p>This feature is coming soon!</p>
+            </div>
+          </DashboardLayout> : 
           <Navigate to="/login" replace />
         } 
       />
       <Route 
         path="/" 
         element={
-          <Navigate to={isLoggedIn ? "/course-search" : "/login"} replace />
+          <Navigate to={isLoggedIn ? "/dashboard" : "/login"} replace />
         } 
       />
     </Routes>

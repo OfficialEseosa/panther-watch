@@ -1,0 +1,17 @@
+services:
+  # PostgreSQL Database Service
+  postgres:
+    image: postgres:15-alpine
+    container_name: pantherwatch-db
+    ports:
+      - "5432:5432" # Exposes the database port to your local machine
+    environment:
+      - POSTGRES_USER=pantherwatch
+      - POSTGRES_PASSWORD=pantherwatch
+      - POSTGRES_DB=pantherwatch
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Persists data even if the container stops
+
+volumes:
+  postgres_data:
+    driver: local
