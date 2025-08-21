@@ -1,12 +1,6 @@
 # 🚧 Work In Progress 🚧
 
-> This project is st### 📚 **Course Management**
-- **Real-time Course Search**: Search courses by subject, number, level, and term with live data
-- **Live Data Integration**: Direct integration with GSU's Banner registration system for up-to-date information
-- **Course Tracking**: Add courses to personal watchlist for monitoring enrollment changes
-- **Multi-term Support**: Track courses across different semesters and academic years
-- **Enrollment Status**: View real-time seat availability, waitlist status, and course capacity
-- **Detailed Course Info**: Access instructor information, meeting times, and course descriptionsnder active development. Features, functionality, and architecture may change without notice.
+> This project is still under active development. Features, functionality, and architecture may change without notice.
 
 ---
 
@@ -52,11 +46,13 @@
 - **Session-based Authentication**: Persistent login sessions
 - **User Data Protection**: Each user's data is isolated and secure
 
-### � **Course Management**
-- **Real-time Course Search**: Search courses by subject, number, level, and term
-- **Live Data Integration**: Direct integration with GSU's Banner registration system
-- **Course Tracking**: Add courses to personal watchlist for monitoring
-- **Multi-term Support**: Track courses across different semesters
+### 📚 **Course Management**
+- **Real-time Course Search**: Search courses by subject, number, level, and term with live data
+- **Live Data Integration**: Direct integration with GSU's Banner registration system for up-to-date information
+- **Course Tracking**: Add courses to personal watchlist for monitoring enrollment changes
+- **Multi-term Support**: Track courses across different semesters and academic years
+- **Enrollment Status**: View real-time seat availability, waitlist status, and course capacity
+- **Detailed Course Info**: Access instructor information, meeting times, and course descriptions
 
 ### 🌐 **Multi-Platform Access**
 - **React Web Application**: Modern, responsive web interface optimized for all devices
