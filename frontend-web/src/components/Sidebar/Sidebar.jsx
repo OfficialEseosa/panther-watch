@@ -9,7 +9,7 @@ const navigationItems = [
   },
   {
     id: 'search',
-    label: 'Search for a Class',
+    label: 'Search for Classes',
     path: '/course-search',
     icon: '🔍'
   },
@@ -17,8 +17,7 @@ const navigationItems = [
     id: 'tracked',
     label: 'View Tracked Classes',
     path: '/tracked-classes',
-    icon: '📚',
-    comingSoon: true
+    icon: '📚'
   }
 ]
 

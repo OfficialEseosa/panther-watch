@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { initializeGoogleAuth, signInWithGoogle } from '../../config/googleAuthConfig.js'
+import { authService } from '../../config/authService.js'
 import './Login.css'
 
 function Login({ onLogin }) {
@@ -36,19 +37,26 @@ function Login({ onLogin }) {
       const response = await signInWithGoogle()
       console.log('Google login successful:', response)
       
-
-      sessionStorage.setItem('authProvider', 'google')
-      sessionStorage.setItem('googleUser', JSON.stringify(response.user))
-
+      const authData = {
+        token: response.token,
+        user: {
+          email: response.user.email,
+          name: response.user.name,
+          picture: response.user.picture,
+          emailVerified: response.user.emailVerified,
+          sub: response.user.email.split('@')[0]
+        }
+      }
+      await authService.authenticateUser(authData)
       onLogin()
-      navigate('/course-search')
+      navigate('/dashboard')
       
     } catch (error) {
       console.error('Google login failed:', error)
       if (error && error.message) {
-        setErrorMessage(`Google login failed: ${error.message}`)
+        setErrorMessage(`Login failed: ${error.message}`)
       } else {
-        setErrorMessage('Google login failed. Please check your network connection or try again later.')
+        setErrorMessage('Login failed. Please check your network connection or try again later.')
       }
     }
   }

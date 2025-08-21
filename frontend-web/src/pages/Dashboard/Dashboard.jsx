@@ -1,31 +1,31 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { authService } from '../../config/authService.js'
+import { watchedClassService } from '../../config/watchedClassService.js'
 import './Dashboard.css'
 
 function Dashboard() {
   const navigate = useNavigate()
   const [userInfo, setUserInfo] = useState(null)
+  const [watchedCount, setWatchedCount] = useState(0)
 
   useEffect(() => {
-    // Get user info from session storage
-    const authProvider = sessionStorage.getItem('authProvider')
+    // Get user info from backend authentication service
+    const userInfo = authService.getUserInfo()
+    setUserInfo(userInfo)
     
-    if (authProvider === 'google') {
-      const googleUser = JSON.parse(sessionStorage.getItem('googleUser') || '{}')
-      setUserInfo({
-        provider: 'Google',
-        name: googleUser.name,
-        email: googleUser.email,
-        picture: googleUser.picture,
-        firstName: googleUser.name?.split(' ')[0] || 'User'
-      })
-    } else {
-      setUserInfo({
-        provider: 'Unknown',
-        name: 'User',
-        email: 'Not specified',
-        firstName: 'User'
-      })
+    // Get watched classes count
+    const loadWatchedCount = async () => {
+      try {
+        const count = await watchedClassService.getWatchedClassCount()
+        setWatchedCount(count)
+      } catch (error) {
+        console.error('Failed to load watched classes count:', error)
+      }
+    }
+    
+    if (userInfo) {
+      loadWatchedCount()
     }
   }, [])
 
@@ -57,13 +57,13 @@ function Dashboard() {
           </p>
         </div>
 
-        <div className="dashboard-card coming-soon">
+        <div className="dashboard-card" onClick={() => navigate('/tracked-classes')}>
           <div className="card-icon">📚</div>
           <h3 className="card-title">Tracked Classes</h3>
           <p className="card-description">
-            Keep track of your favorite classes and get notifications
+            You're tracking {watchedCount} {watchedCount === 1 ? 'class' : 'classes'}
           </p>
-          <span className="coming-soon-badge">Coming Soon</span>
+          {watchedCount > 0 && <span className="active-badge">Active</span>}
         </div>
 
         <div className="dashboard-card coming-soon">

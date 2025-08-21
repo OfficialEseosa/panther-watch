@@ -88,10 +88,14 @@
   align-items: center;
 }
 
+.course-title-section {
+  flex: 1;
+}
+
 .course-title {
   font-size: 16px;
   font-weight: 600;
-  margin: 0;
+  margin: 0 0 4px 0;
 }
 
 .course-crn {
@@ -100,6 +104,55 @@
   border-radius: 4px;
   font-size: 12px;
   font-weight: 600;
+}
+
+.watch-button {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 12px;
+  min-width: 80px;
+  justify-content: center;
+}
+
+.watch-button:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.watch-button:disabled {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.watch-button.watching {
+  background-color: #4caf50;
+  border-color: #388e3c;
+}
+
+.watch-button.watching:hover {
+  background-color: #388e3c;
+}
+
+.watch-button.remove-button {
+  background-color: #f44336;
+  border-color: #d32f2f;
+}
+
+.watch-button.remove-button:hover {
+  background-color: #d32f2f;
+  border-color: #b71c1c;
 }
 
 .course-body {

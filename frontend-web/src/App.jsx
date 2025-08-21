@@ -4,17 +4,17 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import CourseSearch from './pages/CourseSearch'
 import CourseResultsPage from './pages/CourseResults'
+import TrackedClasses from './pages/TrackedClasses'
 import DashboardLayout from './layouts/DashboardLayout'
+import { TermsProvider } from './contexts/TermsContext'
+import { authService } from './config/authService.js'
 import './App.css'
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
 
   useEffect(() => {
-    const authProvider = sessionStorage.getItem('authProvider')
-    if (authProvider) {
-      setIsLoggedIn(true)
-    }
+    setIsLoggedIn(authService.isAuthenticated())
   }, [])
 
   const handleLogin = () => {
@@ -22,6 +22,7 @@ function App() {
   }
 
   const handleLogout = () => {
+    authService.logout()
     setIsLoggedIn(false)
   }
 
@@ -36,12 +37,14 @@ function App() {
         } 
       />
       
-      {/* Protected routes with dashboard layout */}
+      {/* Protected routes with dashboard layout and terms context */}
       <Route 
         path="/dashboard" 
         element={
           isLoggedIn ? 
-          <DashboardLayout><Dashboard /></DashboardLayout> : 
+          <TermsProvider>
+            <DashboardLayout><Dashboard /></DashboardLayout>
+          </TermsProvider> : 
           <Navigate to="/login" replace />
         } 
       />
@@ -49,7 +52,9 @@ function App() {
         path="/course-search" 
         element={
           isLoggedIn ? 
-          <DashboardLayout><CourseSearch /></DashboardLayout> : 
+          <TermsProvider>
+            <DashboardLayout><CourseSearch /></DashboardLayout>
+          </TermsProvider> : 
           <Navigate to="/login" replace />
         } 
       />
@@ -57,7 +62,9 @@ function App() {
         path="/course-results" 
         element={
           isLoggedIn ? 
-          <DashboardLayout><CourseResultsPage /></DashboardLayout> : 
+          <TermsProvider>
+            <DashboardLayout><CourseResultsPage /></DashboardLayout>
+          </TermsProvider> : 
           <Navigate to="/login" replace />
         } 
       />
@@ -65,12 +72,9 @@ function App() {
         path="/tracked-classes" 
         element={
           isLoggedIn ? 
-          <DashboardLayout>
-            <div style={{ textAlign: 'center', padding: '40px' }}>
-              <h2>Tracked Classes</h2>
-              <p>This feature is coming soon!</p>
-            </div>
-          </DashboardLayout> : 
+          <TermsProvider>
+            <DashboardLayout><TrackedClasses /></DashboardLayout>
+          </TermsProvider> : 
           <Navigate to="/login" replace />
         } 
       />
