@@ -4,6 +4,7 @@ import { buildApiUrl } from '../../config'
 import './CourseResultsPage.css'
 import CourseResults from '../../components/CourseResults'
 import { getTermName } from '../../utils'
+import { watchedClassService } from '../../config/watchedClassService.js'
 
 function CourseResultsPage() {
   const location = useLocation()
@@ -12,6 +13,7 @@ function CourseResultsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchParams, setSearchParams] = useState(null)
+  const [watchedCrns, setWatchedCrns] = useState([])
 
   useEffect(() => {
     // Get search parameters from URL or state
@@ -31,9 +33,19 @@ function CourseResultsPage() {
       return
     }
 
-    // Perform the search
     performSearch(searchData)
+    fetchWatchedClasses()
   }, [location, navigate])
+
+  const fetchWatchedClasses = async () => {
+    try {
+      const watchedClasses = await watchedClassService.getWatchedClasses()
+      const crns = watchedClasses.map(wc => wc.crn)
+      setWatchedCrns(crns)
+    } catch (error) {
+      console.error('Failed to fetch watched classes:', error)
+    }
+  }
 
   const performSearch = async (searchData) => {
     setLoading(true)
@@ -87,6 +99,8 @@ function CourseResultsPage() {
         courses={courses}
         loading={loading}
         error={error}
+        selectedTerm={searchParams?.txtTerm}
+        watchedCrns={watchedCrns}
       />
     </div>
   )

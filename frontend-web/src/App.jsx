@@ -4,17 +4,16 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import CourseSearch from './pages/CourseSearch'
 import CourseResultsPage from './pages/CourseResults'
+import TrackedClasses from './pages/TrackedClasses'
 import DashboardLayout from './layouts/DashboardLayout'
+import { authService } from './config/authService.js'
 import './App.css'
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
 
   useEffect(() => {
-    const authProvider = sessionStorage.getItem('authProvider')
-    if (authProvider) {
-      setIsLoggedIn(true)
-    }
+    setIsLoggedIn(authService.isAuthenticated())
   }, [])
 
   const handleLogin = () => {
@@ -22,6 +21,7 @@ function App() {
   }
 
   const handleLogout = () => {
+    authService.logout()
     setIsLoggedIn(false)
   }
 
@@ -65,12 +65,7 @@ function App() {
         path="/tracked-classes" 
         element={
           isLoggedIn ? 
-          <DashboardLayout>
-            <div style={{ textAlign: 'center', padding: '40px' }}>
-              <h2>Tracked Classes</h2>
-              <p>This feature is coming soon!</p>
-            </div>
-          </DashboardLayout> : 
+          <DashboardLayout><TrackedClasses /></DashboardLayout> : 
           <Navigate to="/login" replace />
         } 
       />

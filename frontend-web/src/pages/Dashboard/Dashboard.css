@@ -129,6 +129,20 @@
   letter-spacing: 0.5px;
 }
 
+.active-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background-color: #4caf50;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 /* Mobile responsiveness */
 @media (max-width: 768px) {
   .welcome-section {

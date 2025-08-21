@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { authService } from '../../config/authService.js'
 import './Header.css'
 
 function Header({ onToggleSidebar }) {
@@ -8,26 +9,9 @@ function Header({ onToggleSidebar }) {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
 
   useEffect(() => {
-    // Get user info from session storage
-    const authProvider = sessionStorage.getItem('authProvider')
-    
-    if (authProvider === 'google') {
-      const googleUser = JSON.parse(sessionStorage.getItem('googleUser') || '{}')
-      setUserInfo({
-        provider: 'Google',
-        name: googleUser.name,
-        email: googleUser.email,
-        picture: googleUser.picture,
-        firstName: googleUser.name?.split(' ')[0] || 'User'
-      })
-    } else {
-      setUserInfo({
-        provider: 'Unknown',
-        name: 'User',
-        email: 'Not specified',
-        firstName: 'User'
-      })
-    }
+    // Get user info from backend authentication service
+    const userInfo = authService.getUserInfo()
+    setUserInfo(userInfo)
   }, [])
 
   const handleTitleClick = () => {
@@ -39,9 +23,7 @@ function Header({ onToggleSidebar }) {
   }
 
   const handleLogout = () => {
-    // Clear session storage
-    sessionStorage.removeItem('authProvider')
-    sessionStorage.removeItem('googleUser')
+    authService.logout()
     
     // Reload to go back to login
     window.location.reload()
