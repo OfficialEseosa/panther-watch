@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { buildApiUrl } from '../../config'
+import { useTerms } from '../../contexts/TermsContext'
 import './CourseSearch.css'
 
 function CourseSearch() {
@@ -11,33 +11,7 @@ function CourseSearch() {
     txtTerm: '',
     txtCourseNumber: ''
   })
-  const [terms, setTerms] = useState([])
-  const [termsLoading, setTermsLoading] = useState(true)
-  const [termsError, setTermsError] = useState(null)
-
-  // Fetch available terms from API
-  useEffect(() => {
-    const fetchTerms = async () => {
-      try {
-        setTermsLoading(true)
-        const response = await fetch(buildApiUrl('/courses/terms'))
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-        const termsData = await response.json()
-        setTerms(termsData)
-        setTermsError(null)
-      } catch (error) {
-        console.error('Error fetching terms:', error)
-        setTermsError('Failed to load terms')
-        setTerms([])
-      } finally {
-        setTermsLoading(false)
-      }
-    }
-
-    fetchTerms()
-  }, [])
+  const { terms, termsLoading, termsError } = useTerms()
 
   const handleChanges = (e) => {
     setValue({...value, [e.target.name]: e.target.value})

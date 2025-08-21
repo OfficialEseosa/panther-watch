@@ -201,7 +201,6 @@ public class WatchedClassController {
                         }
                     }
                 } catch (Exception e) {
-                    System.err.println("Error searching for course " + subject + " " + courseNumber + ": " + e.getMessage());
                 }
             }
 

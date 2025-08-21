@@ -65,7 +65,7 @@ export const formatCreditHours = (creditHourLow, creditHourHigh) => {
  * @returns {Object} Waitlist status object
  */
 export const getWaitlistStatus = (waitAvailable, waitCapacity) => {
-  if (waitAvailable === null || waitAvailable === undefined || waitCapacity === null || waitCapacity === undefined || !waitCapacity || waitCapacity === 0) {
+  if (waitAvailable === null || waitAvailable === undefined || !waitCapacity || waitCapacity === 0) {
     return {
       hasWaitlist: false,
       status: 'No Waitlist',

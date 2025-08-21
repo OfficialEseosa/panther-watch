@@ -72,7 +72,6 @@ function TrackedClasses() {
         courses={watchedClasses}
         loading={loading}
         error={error}
-        selectedTerm={watchedClasses[0]?.term || ''}
         isTrackedView={true}
         onCourseRemoved={handleCourseRemoved}
       />

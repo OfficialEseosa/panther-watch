@@ -26,25 +26,32 @@ export const DAYS_OF_WEEK = [
   { key: 'monday', label: 'Mon' },
   { key: 'tuesday', label: 'Tue' },
   { key: 'wednesday', label: 'Wed' },
-  { key: 'thursday', label: 'Th' },
-  { key: 'friday', label: 'Fr' },
+  { key: 'thursday', label: 'Thu' },
+  { key: 'friday', label: 'Fri' },
   { key: 'saturday', label: 'Sat' }
 ];
 
 /**
  * Maps term codes to human-readable names
- * @param {string} termCode - Term code (e.g., "202508")
+ * This function should be used with the TermsContext for optimal performance
+ * @param {string} termCode - Term code (e.g., "202508") 
+ * @param {Object} termMappings - Term mappings from TermsContext (optional)
  * @returns {string} Human-readable term name
  */
-export const getTermName = (termCode) => {
-  const termMap = {
+export const getTermName = (termCode, termMappings = null) => {
+  // If term mappings are provided (from context), use them
+  if (termMappings && termMappings[termCode]) {
+    return termMappings[termCode]
+  }
+  
+  const fallbackMap = {
     '202508': 'Fall Semester 2025',
-    '202501': 'Spring Semester 2025',
+    '202501': 'Spring Semester 2025', 
     '202505': 'Summer Semester 2025',
     '202408': 'Fall Semester 2024',
     '202401': 'Spring Semester 2024',
     '202405': 'Summer Semester 2024',
-  };
+  }
   
-  return termMap[termCode] || termCode;
-};
+  return fallbackMap[termCode] || termCode
+}

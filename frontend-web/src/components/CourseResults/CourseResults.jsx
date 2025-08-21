@@ -1,17 +1,20 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './CourseResults.css'
-import { formatTime, getEnrollmentStatus, formatCreditHours, getWaitlistStatus } from '../../utils'
+import { formatTime, getEnrollmentStatus, formatCreditHours, getWaitlistStatus, getTermName } from '../../utils'
 import { renderDaysOfWeek } from '../../utils/scheduleComponents'
 import { watchedClassService } from '../../config/watchedClassService.js'
+import { useTerms } from '../../contexts/TermsContext'
 import LoadingBar from '../LoadingBar'
 
 function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = false, onCourseRemoved, watchedCrns = [] }) {
   const [watchingStatus, setWatchingStatus] = useState({})
   const [watchLoading, setWatchLoading] = useState({})
+  const { termMappings, getTermName: getTermNameFromContext } = useTerms()
 
   const handleWatchToggle = async (course) => {
     const crn = course.courseReferenceNumber
-    const key = `${crn}-${selectedTerm}`
+    const courseTerm = course.term || selectedTerm
+    const key = `${crn}-${courseTerm}`
     
     try {
       setWatchLoading(prev => ({ ...prev, [key]: true }))
@@ -19,7 +22,7 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
       const isCurrentlyWatching = watchingStatus[key] || isTrackedView
       
       if (isCurrentlyWatching || isTrackedView) {
-        await watchedClassService.removeWatchedClass(crn, selectedTerm)
+        await watchedClassService.removeWatchedClass(crn, courseTerm)
         setWatchingStatus(prev => ({ ...prev, [key]: false }))
 
         if (isTrackedView && onCourseRemoved) {
@@ -29,7 +32,7 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
         // Add to watch list
         const watchData = {
           crn: crn,
-          term: selectedTerm,
+          term: courseTerm,
           courseTitle: course.courseTitle,
           courseNumber: course.courseNumber,
           subject: course.subject,
@@ -73,7 +76,8 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
       <div className="courses-grid">
         {courses.map((course) => {
           const crn = course.courseReferenceNumber
-          const key = `${crn}-${selectedTerm}`
+          const courseTerm = course.term || selectedTerm
+          const key = `${crn}-${courseTerm}`
           const isWatchingFromState = watchingStatus[key]
           const isWatchingFromProps = watchedCrns.includes(crn)
           const isWatching = isWatchingFromState !== undefined ? isWatchingFromState : isWatchingFromProps
@@ -115,6 +119,12 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
                     <span className="info-label">Section</span>
                     <span className="info-value">{course.sequenceNumber}</span>
                   </div>
+                  {isTrackedView && course.term && (
+                    <div className="info-item">
+                      <span className="info-label">Term</span>
+                      <span className="info-value">{getTermNameFromContext(course.term)}</span>
+                    </div>
+                  )}
                   <div className="info-item">
                     <span className="info-label">Credits</span>
                     <span className="info-value">{formatCreditHours(course.creditHourLow, course.creditHourHigh)}</span>
