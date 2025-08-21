@@ -9,7 +9,7 @@
  * @returns {string} CSS class name for styling
  */
 export const getEnrollmentStatus = (available, total) => {
-  if (available == null || total == null) return 'seats-unknown';
+  if (available === null || available === undefined || total === null || total === undefined) return 'seats-unknown';
   if (available === 0) return 'seats-full';
   if (available <= total * 0.2) return 'seats-low';
   return 'seats-available';
@@ -46,7 +46,7 @@ export const getEnrollmentMessage = (available, total) => {
  * @returns {string} Formatted credit hours
  */
 export const formatCreditHours = (creditHourLow, creditHourHigh) => {
-  if (creditHourLow == null || creditHourHigh == null) {
+  if (creditHourLow === null || creditHourLow === undefined || creditHourHigh === null || creditHourHigh === undefined) {
     return 'N/A';
   }
   
@@ -65,7 +65,7 @@ export const formatCreditHours = (creditHourLow, creditHourHigh) => {
  * @returns {Object} Waitlist status object
  */
 export const getWaitlistStatus = (waitAvailable, waitCapacity) => {
-  if (waitAvailable == null || waitCapacity == null || !waitCapacity || waitCapacity === 0) {
+  if (waitAvailable === null || waitAvailable === undefined || waitCapacity === null || waitCapacity === undefined || !waitCapacity || waitCapacity === 0) {
     return {
       hasWaitlist: false,
       status: 'No Waitlist',

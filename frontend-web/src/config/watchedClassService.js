@@ -7,17 +7,13 @@ export class WatchedClassService {
   }
 
   async getWatchedClasses() {
-    const googleId = authService.getGoogleId()
-    if (!googleId) {
-      throw new Error('User not authenticated')
-    }
-
     try {
-      const response = await fetch(`${this.baseUrl}?googleId=${encodeURIComponent(googleId)}`, {
+      const response = await fetch(`${this.baseUrl}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
+        credentials: 'include'
       })
 
       const result = await response.json()
@@ -34,17 +30,13 @@ export class WatchedClassService {
   }
 
   async addWatchedClass(classData) {
-    const googleId = authService.getGoogleId()
-    if (!googleId) {
-      throw new Error('User not authenticated')
-    }
-
     try {
-      const response = await fetch(`${this.baseUrl}?googleId=${encodeURIComponent(googleId)}`, {
+      const response = await fetch(`${this.baseUrl}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(classData)
       })
 
@@ -62,19 +54,15 @@ export class WatchedClassService {
   }
 
   async removeWatchedClass(crn, term) {
-    const googleId = authService.getGoogleId()
-    if (!googleId) {
-      throw new Error('User not authenticated')
-    }
-
     try {
       const response = await fetch(
-        `${this.baseUrl}?googleId=${encodeURIComponent(googleId)}&crn=${encodeURIComponent(crn)}&term=${encodeURIComponent(term)}`, 
+        `${this.baseUrl}?crn=${encodeURIComponent(crn)}&term=${encodeURIComponent(term)}`, 
         {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',
-          }
+          },
+          credentials: 'include'
         }
       )
 
@@ -92,19 +80,15 @@ export class WatchedClassService {
   }
 
   async isWatchingClass(crn, term) {
-    const googleId = authService.getGoogleId()
-    if (!googleId) {
-      return false
-    }
-
     try {
       const response = await fetch(
-        `${this.baseUrl}/check?googleId=${encodeURIComponent(googleId)}&crn=${encodeURIComponent(crn)}&term=${encodeURIComponent(term)}`, 
+        `${this.baseUrl}/check?crn=${encodeURIComponent(crn)}&term=${encodeURIComponent(term)}`, 
         {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-          }
+          },
+          credentials: 'include'
         }
       )
 
@@ -123,17 +107,13 @@ export class WatchedClassService {
   }
 
   async getWatchedClassCount() {
-    const googleId = authService.getGoogleId()
-    if (!googleId) {
-      return 0
-    }
-
     try {
-      const response = await fetch(`${this.baseUrl}/count?googleId=${encodeURIComponent(googleId)}`, {
+      const response = await fetch(`${this.baseUrl}/count`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
+        credentials: 'include'
       })
 
       const result = await response.json()
@@ -151,17 +131,13 @@ export class WatchedClassService {
   }
 
   async getWatchedClassesWithFullDetails() {
-    const googleId = authService.getGoogleId()
-    if (!googleId) {
-      throw new Error('User not authenticated')
-    }
-
     try {
-      const response = await fetch(`${this.baseUrl}/full-details?googleId=${encodeURIComponent(googleId)}`, {
+      const response = await fetch(`${this.baseUrl}/full-details`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
+        credentials: 'include'
       })
 
       const result = await response.json()

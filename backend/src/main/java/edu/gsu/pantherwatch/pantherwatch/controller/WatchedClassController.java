@@ -6,13 +6,13 @@ import edu.gsu.pantherwatch.pantherwatch.api.RetrieveCourseInfoRequest;
 import edu.gsu.pantherwatch.pantherwatch.api.RetrieveCourseInfoResponse;
 import edu.gsu.pantherwatch.pantherwatch.api.CourseData;
 import edu.gsu.pantherwatch.pantherwatch.model.User;
-import edu.gsu.pantherwatch.pantherwatch.service.UserService;
 import edu.gsu.pantherwatch.pantherwatch.service.WatchedClassService;
 import edu.gsu.pantherwatch.pantherwatch.service.PantherWatchService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -23,18 +23,14 @@ public class WatchedClassController {
 
     @Autowired
     private WatchedClassService watchedClassService;
-
-    @Autowired
-    private UserService userService;
     
     @Autowired
     private PantherWatchService pantherWatchService;
 
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getWatchedClasses(@RequestParam String googleId) {
+    public ResponseEntity<Map<String, Object>> getWatchedClasses(HttpServletRequest request) {
         try {
-            User user = userService.findByGoogleId(googleId)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
+            User user = (User) request.getAttribute("currentUser");
 
             List<WatchedClassResponse> watchedClasses = watchedClassService.getWatchedClasses(user);
 
@@ -56,11 +52,10 @@ public class WatchedClassController {
 
     @PostMapping
     public ResponseEntity<Map<String, Object>> addWatchedClass(
-            @RequestParam String googleId,
-            @RequestBody WatchedClassRequest request) {
+            @RequestBody WatchedClassRequest request,
+            HttpServletRequest httpRequest) {
         try {
-            User user = userService.findByGoogleId(googleId)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
+            User user = (User) httpRequest.getAttribute("currentUser");
 
             WatchedClassResponse watchedClass = watchedClassService.addWatchedClass(user, request);
 
@@ -82,12 +77,11 @@ public class WatchedClassController {
 
     @DeleteMapping
     public ResponseEntity<Map<String, Object>> removeWatchedClass(
-            @RequestParam String googleId,
             @RequestParam String crn,
-            @RequestParam String term) {
+            @RequestParam String term,
+            HttpServletRequest request) {
         try {
-            User user = userService.findByGoogleId(googleId)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
+            User user = (User) request.getAttribute("currentUser");
 
             boolean removed = watchedClassService.removeWatchedClass(user, crn, term);
 
@@ -113,12 +107,11 @@ public class WatchedClassController {
 
     @GetMapping("/check")
     public ResponseEntity<Map<String, Object>> checkIfWatching(
-            @RequestParam String googleId,
             @RequestParam String crn,
-            @RequestParam String term) {
+            @RequestParam String term,
+            HttpServletRequest request) {
         try {
-            User user = userService.findByGoogleId(googleId)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
+            User user = (User) request.getAttribute("currentUser");
 
             boolean isWatching = watchedClassService.isWatching(user, crn, term);
 
@@ -138,10 +131,9 @@ public class WatchedClassController {
     }
 
     @GetMapping("/count")
-    public ResponseEntity<Map<String, Object>> getWatchedClassCount(@RequestParam String googleId) {
+    public ResponseEntity<Map<String, Object>> getWatchedClassCount(HttpServletRequest request) {
         try {
-            User user = userService.findByGoogleId(googleId)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
+            User user = (User) request.getAttribute("currentUser");
 
             long count = watchedClassService.getWatchedClassCount(user);
 
@@ -161,10 +153,9 @@ public class WatchedClassController {
     }
 
     @GetMapping("/full-details")
-    public ResponseEntity<Map<String, Object>> getWatchedClassesWithFullDetails(@RequestParam String googleId) {
+    public ResponseEntity<Map<String, Object>> getWatchedClassesWithFullDetails(HttpServletRequest request) {
         try {
-            User user = userService.findByGoogleId(googleId)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
+            User user = (User) request.getAttribute("currentUser");
 
             List<WatchedClassResponse> watchedClasses = watchedClassService.getWatchedClasses(user);
             
@@ -190,10 +181,11 @@ public class WatchedClassController {
                 List<WatchedClassResponse> classesForThisCourse = entry.getValue();
 
                 try {
-                    RetrieveCourseInfoRequest searchRequest = new RetrieveCourseInfoRequest();
-                    searchRequest.setTxtSubject(subject);
-                    searchRequest.setTxtCourseNumber(courseNumber);
-                    searchRequest.setTxtTerm(term);
+                    RetrieveCourseInfoRequest searchRequest = RetrieveCourseInfoRequest.builder()
+                            .txtSubject(subject)
+                            .txtCourseNumber(courseNumber)
+                            .txtTerm(term)
+                            .build();
 
                     RetrieveCourseInfoResponse searchResponse = pantherWatchService.searchCourses(searchRequest);
 

@@ -67,15 +67,15 @@ public class WatchedClassService {
     }
 
     private WatchedClassResponse convertToResponse(WatchedClass watchedClass) {
-        WatchedClassResponse response = new WatchedClassResponse();
-        response.setId(watchedClass.getId());
-        response.setCrn(watchedClass.getCrn());
-        response.setTerm(watchedClass.getTerm());
-        response.setCourseTitle(watchedClass.getCourseTitle());
-        response.setCourseNumber(watchedClass.getCourseNumber());
-        response.setSubject(watchedClass.getSubject());
-        response.setInstructor(watchedClass.getInstructor());
-        response.setCreatedAt(watchedClass.getCreatedAt());
-        return response;
+        return WatchedClassResponse.builder()
+                .id(watchedClass.getId())
+                .crn(watchedClass.getCrn())
+                .term(watchedClass.getTerm())
+                .courseTitle(watchedClass.getCourseTitle())
+                .courseNumber(watchedClass.getCourseNumber())
+                .subject(watchedClass.getSubject())
+                .instructor(watchedClass.getInstructor())
+                .createdAt(watchedClass.getCreatedAt())
+                .build();
     }
 }

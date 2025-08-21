@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -19,9 +21,12 @@ public class AuthController {
     private UserService userService;
 
     @PostMapping("/login")
-    public ResponseEntity<Map<String, Object>> login(@RequestBody AuthRequest authRequest) {
+    public ResponseEntity<Map<String, Object>> login(@RequestBody AuthRequest authRequest, HttpServletRequest request) {
         try {
             User user = userService.authenticateOrCreateUser(authRequest);
+
+            HttpSession session = request.getSession(true);
+            session.setAttribute("userId", user.getId());
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -31,7 +36,6 @@ public class AuthController {
             userData.put("id", user.getId());
             userData.put("email", user.getEmail());
             userData.put("name", user.getName());
-            userData.put("googleId", user.getGoogleId());
             userData.put("picture", user.getPicture());
             
             response.put("user", userData);
@@ -48,10 +52,9 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<Map<String, Object>> getCurrentUser(@RequestParam String googleId) {
+    public ResponseEntity<Map<String, Object>> getCurrentUser(HttpServletRequest request) {
         try {
-            User user = userService.findByGoogleId(googleId)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
+            User user = (User) request.getAttribute("currentUser");
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -60,7 +63,6 @@ public class AuthController {
             userData.put("id", user.getId());
             userData.put("email", user.getEmail());
             userData.put("name", user.getName());
-            userData.put("googleId", user.getGoogleId());
             userData.put("picture", user.getPicture());
             
             response.put("user", userData);
@@ -71,6 +73,29 @@ public class AuthController {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("success", false);
             errorResponse.put("message", "User not found: " + e.getMessage());
+            
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Map<String, Object>> logout(HttpServletRequest request) {
+        try {
+            HttpSession session = request.getSession(false);
+            if (session != null) {
+                session.invalidate();
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Logged out successfully");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "Logout failed: " + e.getMessage());
             
             return ResponseEntity.badRequest().body(errorResponse);
         }

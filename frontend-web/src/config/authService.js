@@ -12,6 +12,7 @@ export class AuthService {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(authData)
       })
 
@@ -31,13 +32,14 @@ export class AuthService {
     }
   }
 
-  async getCurrentUser(googleId) {
+  async getCurrentUser() {
     try {
-      const response = await fetch(`${this.baseUrl}/me?googleId=${encodeURIComponent(googleId)}`, {
+      const response = await fetch(`${this.baseUrl}/me`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
+        credentials: 'include'
       })
 
       const result = await response.json()
@@ -66,14 +68,26 @@ export class AuthService {
   isAuthenticated() {
     const authProvider = localStorage.getItem('authProvider')
     const userData = this.getStoredUserData()
-    return authProvider && userData && userData.googleId
+    return authProvider && userData && userData.email
   }
 
-  logout() {
-    localStorage.removeItem('authProvider')
-    localStorage.removeItem('userData')
-    localStorage.removeItem('googleUser')
-    sessionStorage.clear()
+  async logout() {
+    try {
+      await fetch(`${this.baseUrl}/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+      })
+    } catch (error) {
+      console.error('Backend logout error:', error)
+    } finally {
+      localStorage.removeItem('authProvider')
+      localStorage.removeItem('userData')
+      localStorage.removeItem('googleUser')
+      sessionStorage.clear()
+    }
   }
 
   getGoogleId() {
@@ -90,8 +104,7 @@ export class AuthService {
       name: userData.name,
       email: userData.email,
       picture: userData.picture,
-      firstName: userData.name?.split(' ')[0] || 'User',
-      googleId: userData.googleId
+      firstName: userData.name?.split(' ')[0] || 'User'
     }
   }
 }

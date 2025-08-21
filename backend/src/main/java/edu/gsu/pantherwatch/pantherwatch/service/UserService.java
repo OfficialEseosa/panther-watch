@@ -1,6 +1,7 @@
 package edu.gsu.pantherwatch.pantherwatch.service;
 
 import edu.gsu.pantherwatch.pantherwatch.api.AuthRequest;
+import edu.gsu.pantherwatch.pantherwatch.api.UserInfo;
 import edu.gsu.pantherwatch.pantherwatch.model.User;
 import edu.gsu.pantherwatch.pantherwatch.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +16,7 @@ public class UserService {
     private UserRepository userRepository;
 
     public User authenticateOrCreateUser(AuthRequest authRequest) {
-        AuthRequest.UserInfo userInfo = authRequest.getUser();
+        UserInfo userInfo = authRequest.getUser();
 
         Optional<User> existingUser = userRepository.findByGoogleId(userInfo.getGoogleId());
         
@@ -53,5 +54,9 @@ public class UserService {
 
     public Optional<User> findByEmail(String email) {
         return userRepository.findByEmail(email);
+    }
+
+    public User findById(Long id) {
+        return userRepository.findById(id).orElse(null);
     }
 }
