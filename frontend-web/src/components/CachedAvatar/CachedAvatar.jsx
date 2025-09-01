@@ -1,5 +1,24 @@
 import { useState, useEffect } from 'react'
 
+function cleanupOldAvatarCache() {
+  const keysToRemove = []
+
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i)
+    if (key && key.startsWith('avatar_')) {
+      keysToRemove.push(key)
+    }
+  }
+
+  keysToRemove.forEach(key => {
+    try {
+      localStorage.removeItem(key)
+    } catch (e) {
+      console.warn('Failed to remove old cache item:', e.message)
+    }
+  })
+}
+
 function CachedAvatar({ src, alt, fallbackText, className }) {
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
@@ -45,6 +64,8 @@ function CachedAvatar({ src, alt, fallbackText, className }) {
           setImageLoaded(true)
 
           try {
+            cleanupOldAvatarCache()
+            
             localStorage.setItem(cacheKey, JSON.stringify({
               dataUrl,
               timestamp: Date.now()
