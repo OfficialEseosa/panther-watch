@@ -3,6 +3,7 @@ package edu.gsu.pantherwatch.pantherwatch.repository;
 import edu.gsu.pantherwatch.pantherwatch.model.User;
 import edu.gsu.pantherwatch.pantherwatch.model.WatchedClass;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -20,4 +21,9 @@ public interface WatchedClassRepository extends JpaRepository<WatchedClass, Long
     void deleteByUserAndCrnAndTerm(User user, String crn, String term);
     
     long countByUser(User user);
+
+    @Query("SELECT DISTINCT w.crn, w.term FROM WatchedClass w")
+    List<Object[]> findAllUniqueCrnTermPairs();
+
+    List<WatchedClass> findByCrnAndTerm(String crn, String term);
 }
