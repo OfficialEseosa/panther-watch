@@ -106,6 +106,20 @@
   text-transform: uppercase;
 }
 
+.nav-link[data-admin="true"] {
+  border-left: 3px solid #667eea;
+  background: linear-gradient(90deg, rgba(102, 126, 234, 0.1) 0%, transparent 100%);
+}
+
+.nav-link[data-admin="true"]:hover {
+  background: linear-gradient(90deg, rgba(102, 126, 234, 0.2) 0%, rgba(102, 126, 234, 0.05) 100%);
+}
+
+.nav-link[data-admin="true"].active {
+  background: linear-gradient(90deg, rgba(102, 126, 234, 0.2) 0%, rgba(102, 126, 234, 0.1) 100%);
+  border-left-color: #5a67d8;
+}
+
 /* Mobile responsiveness */
 @media (max-width: 768px) {
   .sidebar-backdrop {
