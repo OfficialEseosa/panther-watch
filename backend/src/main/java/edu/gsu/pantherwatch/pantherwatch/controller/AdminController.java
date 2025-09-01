@@ -20,7 +20,6 @@ import java.util.List;
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000", "https://pantherwatch.app", "https://www.pantherwatch.app"})
 public class AdminController {
     
     private final AdminService adminService;
