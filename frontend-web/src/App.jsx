@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard'
 import CourseSearch from './pages/CourseSearch'
 import CourseResultsPage from './pages/CourseResults'
 import TrackedClasses from './pages/TrackedClasses'
+import AdminPanel from './pages/Admin'
 import DashboardLayout from './layouts/DashboardLayout'
 import { TermsProvider } from './contexts/TermsContext'
 import { authService } from './config/authService.js'
@@ -115,6 +116,16 @@ function App() {
           isLoggedIn ? 
           <TermsProvider>
             <DashboardLayout onLogout={handleLogout}><TrackedClasses /></DashboardLayout>
+          </TermsProvider> : 
+          <Navigate to="/login" replace />
+        } 
+      />
+      <Route 
+        path="/admin" 
+        element={
+          isLoggedIn ? 
+          <TermsProvider>
+            <DashboardLayout onLogout={handleLogout}><AdminPanel /></DashboardLayout>
           </TermsProvider> : 
           <Navigate to="/login" replace />
         } 

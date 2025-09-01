@@ -24,7 +24,7 @@ public class EmailService {
             String htmlContent = buildClassAvailabilityEmail(userName, courseTitle, courseNumber, subject, crn, term);
             
             CreateEmailOptions params = CreateEmailOptions.builder()
-                    .from("PantherWatch <no-reply@pantherwatch.app>")
+                    .from("PantherWatch <no-reply@class.pantherwatch.app>")
                     .to(toEmail)
                     .subject("🎉 Class Spot Available: " + subject + " " + courseNumber)
                     .html(htmlContent)
@@ -44,7 +44,7 @@ public class EmailService {
             String htmlContent = buildCustomEmail(userName, message);
             
             CreateEmailOptions params = CreateEmailOptions.builder()
-                    .from("PantherWatch <no-reply@pantherwatch.app>")
+                    .from("PantherWatch <no-reply@class.pantherwatch.app>")
                     .to(toEmail)
                     .subject(subject)
                     .html(htmlContent)
@@ -54,14 +54,14 @@ public class EmailService {
             log.info("Custom email sent successfully to {} with ID: {}", toEmail, data.getId());
             
         } catch (ResendException e) {
-            log.error("Failed to send custom email to {}: {}", toEmail, e.getMessage(), e);
-            throw new RuntimeException("Failed to send custom email", e);
+            log.error("Failed to send custom email to {}: {}", toEmail, e.getMessage());
+            throw new RuntimeException("Failed to send custom email: " + e.getMessage(), e);
         }
     }
 
     private String buildClassAvailabilityEmail(String userName, String courseTitle, String courseNumber, 
                                              String subject, String crn, String term) {
-        return """
+        String htmlTemplate = """
             <!DOCTYPE html>
             <html>
             <head>
@@ -76,14 +76,14 @@ public class EmailService {
                         padding: 0;
                         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                         line-height: 1.6;
-                        color: #333;
-                        background-color: #f8fafc;
+                        color: ##333;
+                        background-color: ##f8fafc;
                     }
                     
                     .container {
                         max-width: 600px;
                         margin: 0 auto;
-                        background-color: #ffffff;
+                        background-color: ##ffffff;
                         border-radius: 12px;
                         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
                         overflow: hidden;
@@ -92,7 +92,7 @@ public class EmailService {
                     }
                     
                     .header {
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        background: linear-gradient(135deg, ##667eea 0%%, ##764ba2 100%%);
                         color: white;
                         padding: 30px;
                         text-align: center;
@@ -118,12 +118,12 @@ public class EmailService {
                         font-size: 18px;
                         font-weight: 500;
                         margin-bottom: 20px;
-                        color: #1f2937;
+                        color: ##1f2937;
                     }
                     
                     .course-card {
-                        background-color: #f9fafb;
-                        border: 2px solid #e5e7eb;
+                        background-color: ##f9fafb;
+                        border: 2px solid ##e5e7eb;
                         border-radius: 8px;
                         padding: 20px;
                         margin: 20px 0;
@@ -132,7 +132,7 @@ public class EmailService {
                     .course-title {
                         font-size: 20px;
                         font-weight: 600;
-                        color: #1f2937;
+                        color: ##1f2937;
                         margin-bottom: 10px;
                     }
                     
@@ -149,18 +149,18 @@ public class EmailService {
                     
                     .detail-label {
                         font-weight: 500;
-                        color: #6b7280;
+                        color: ##6b7280;
                         margin-right: 5px;
                     }
                     
                     .detail-value {
-                        color: #1f2937;
+                        color: ##1f2937;
                         font-weight: 400;
                     }
                     
                     .cta-button {
                         display: inline-block;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        background: linear-gradient(135deg, ##667eea 0%%, ##764ba2 100%%);
                         color: white;
                         text-decoration: none;
                         padding: 12px 24px;
@@ -176,20 +176,20 @@ public class EmailService {
                     }
                     
                     .footer {
-                        background-color: #f9fafb;
+                        background-color: ##f9fafb;
                         padding: 20px 30px;
                         text-align: center;
-                        border-top: 1px solid #e5e7eb;
+                        border-top: 1px solid ##e5e7eb;
                     }
                     
                     .footer p {
                         margin: 5px 0;
                         font-size: 14px;
-                        color: #6b7280;
+                        color: ##6b7280;
                     }
                     
                     .urgent-badge {
-                        background-color: #dc2626;
+                        background-color: ##dc2626;
                         color: white;
                         padding: 4px 8px;
                         border-radius: 4px;
@@ -209,26 +209,26 @@ public class EmailService {
                     
                     <div class="content">
                         <div class="greeting">
-                            Hi %s! 👋
+                            Hi %1$s! 👋
                         </div>
                         
                         <p>Great news! A spot has just become available in the class you've been watching. 
                            <span class="urgent-badge">Act Fast</span> - spots fill up quickly!</p>
                         
                         <div class="course-card">
-                            <div class="course-title">%s</div>
+                            <div class="course-title">%2$s</div>
                             <div class="course-details">
                                 <div class="detail-item">
                                     <span class="detail-label">Course:</span>
-                                    <span class="detail-value">%s %s</span>
+                                    <span class="detail-value">%3$s %4$s</span>
                                 </div>
                                 <div class="detail-item">
                                     <span class="detail-label">CRN:</span>
-                                    <span class="detail-value">%s</span>
+                                    <span class="detail-value">%5$s</span>
                                 </div>
                                 <div class="detail-item">
                                     <span class="detail-label">Term:</span>
-                                    <span class="detail-value">%s</span>
+                                    <span class="detail-value">%6$s</span>
                                 </div>
                             </div>
                         </div>
@@ -236,13 +236,13 @@ public class EmailService {
                         <p>🚀 <strong>What to do next:</strong></p>
                         <ol>
                             <li>Log into GoSolar immediately</li>
-                            <li>Search for CRN <strong>%s</strong></li>
+                            <li>Search for CRN <strong>%7$s</strong></li>
                             <li>Register for the class before someone else does!</li>
                         </ol>
                         
                         <a href="https://gosolar.gsu.edu" class="cta-button">Go to GoSolar →</a>
                         
-                        <p style="margin-top: 30px; font-size: 14px; color: #6b7280;">
+                        <p style="margin-top: 30px; font-size: 14px; color: ##6b7280;">
                             ⏰ <em>This notification was sent because the waitlist for this class dropped to zero. 
                             We'll continue monitoring this class for you.</em>
                         </p>
@@ -255,11 +255,13 @@ public class EmailService {
                 </div>
             </body>
             </html>
-            """.formatted(userName, courseTitle, subject, courseNumber, crn, term, crn);
+            """;
+            
+            return String.format(htmlTemplate, userName, courseTitle, subject, courseNumber, crn, term, crn);
     }
 
     private String buildCustomEmail(String userName, String message) {
-        return """
+        String htmlTemplate = """
             <!DOCTYPE html>
             <html>
             <head>
@@ -290,7 +292,7 @@ public class EmailService {
                     }
                     
                     .header {
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
                         color: white;
                         padding: 30px;
                         text-align: center;
@@ -341,17 +343,14 @@ public class EmailService {
                     <div class="header">
                         <h1>📧 Message from PantherWatch</h1>
                     </div>
-                    
                     <div class="content">
                         <div class="greeting">
                             Hi %s! 👋
                         </div>
-                        
                         <div class="message-content">
                             %s
                         </div>
                     </div>
-                    
                     <div class="footer">
                         <p><strong>PantherWatch</strong> - Your GSU Class Monitoring Service</p>
                         <p>Keeping Georgia State students ahead of the registration game</p>
@@ -359,6 +358,8 @@ public class EmailService {
                 </div>
             </body>
             </html>
-            """.formatted(userName, message);
+            """;
+            
+            return String.format(htmlTemplate, userName, message);
     }
 }

@@ -148,6 +148,8 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
                   </div>
                   {(() => {
                     const waitAvailable = course.waitAvailable;
+                    const waitCapacity = course.waitCapacity;
+                    const waitCount = course.waitCount;
                     const waitlistInfo = getWaitlistStatus(waitAvailable, waitCapacity);
                     if (waitlistInfo.hasWaitlist) {
                       return (
