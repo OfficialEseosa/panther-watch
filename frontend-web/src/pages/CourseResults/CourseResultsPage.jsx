@@ -4,7 +4,7 @@ import { buildApiUrl } from '../../config'
 import './CourseResultsPage.css'
 import CourseResults from '../../components/CourseResults'
 import { getTermName } from '../../utils'
-import { watchedClassService } from '../../config/watchedClassService.js'
+import { watchedClassService } from '../../config'
 
 function CourseResultsPage() {
   const location = useLocation()
@@ -59,7 +59,10 @@ function CourseResultsPage() {
       })
 
       if (!res.ok) {
-        throw new Error(`Request failed with status: ${res.status}`)
+        setError(`Search request failed (status ${res.status}). Please try again.`)
+        setCourses([])
+        setLoading(false)
+        return
       }
 
       const json = await res.json()

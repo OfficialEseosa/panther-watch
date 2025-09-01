@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { watchedClassService } from '../../config/watchedClassService.js'
+import { watchedClassService } from '../../config'
 import CourseResults from '../../components/CourseResults'
 import './TrackedClasses.css'
 
@@ -48,10 +48,10 @@ function TrackedClasses() {
           </p>
         ) : (
           <>
-            <div className="tracking-stats">
-              Currently tracking
+            <div className="tracking-stats" aria-live="polite">
+              <span className="label">Tracking</span>
               <span className="count">{watchedClasses.length}</span>
-              {watchedClasses.length === 1 ? 'class' : 'classes'}
+              <span className="label">{watchedClasses.length === 1 ? 'class' : 'classes'}</span>
             </div>
             <p className="page-description">
               Stay updated with real-time enrollment information for your selected courses

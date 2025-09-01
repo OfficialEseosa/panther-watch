@@ -42,13 +42,16 @@
   font-weight: 600;
   margin-bottom: 1.5rem;
   box-shadow: 0 2px 4px rgba(0, 57, 166, 0.3);
+  gap: 0.5rem;
+  white-space: nowrap;
 }
 
 .tracking-stats .count {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 0.25rem 0.5rem;
-  border-radius: 12px;
-  margin-left: 0.5rem;
+  /* Removed pill background to reduce visual bulk and spacing */
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  margin-left: 0.35rem;
   font-weight: 700;
 }
 
@@ -290,4 +293,9 @@
     align-items: flex-start;
     gap: 0.5rem;
   }
+}
+
+
+.tracking-stats .label {
+  opacity: 0.95;
 }

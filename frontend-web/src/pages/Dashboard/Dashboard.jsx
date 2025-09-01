@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { authService } from '../../config/authService.js'
-import { watchedClassService } from '../../config/watchedClassService.js'
+import { authService, watchedClassService } from '../../config'
 import './Dashboard.css'
 
 function Dashboard() {
@@ -13,27 +12,24 @@ function Dashboard() {
     // Get user info from backend authentication service
     const loadUserInfo = async () => {
       try {
-        const userInfo = await authService.getUserInfo()
-        setUserInfo(userInfo)
+        const info = await authService.getUserInfo()
+        setUserInfo(info)
       } catch (error) {
         console.error('Failed to load user info:', error)
       }
     }
-    loadUserInfo()
-    
-    // Get watched classes count
+
     const loadWatchedCount = async () => {
       try {
         const count = await watchedClassService.getWatchedClassCount()
-        setWatchedCount(count)
+        setWatchedCount(typeof count === 'number' ? count : 0)
       } catch (error) {
         console.error('Failed to load watched classes count:', error)
+        setWatchedCount(0)
       }
     }
-    
-    if (userInfo) {
-      loadWatchedCount()
-    }
+
+    loadUserInfo().then(loadWatchedCount)
   }, [])
 
   const handleNavigateToSearch = () => {
