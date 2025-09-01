@@ -147,8 +147,6 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
                     <span className="enrollment-label">Capacity</span>
                   </div>
                   {(() => {
-                    // Backend now provides waitCount (number of students waiting) instead of waitAvailable (spots left)
-                    // Derive waitCapacity and compute available spots for status, but display Count/Capacity labels.
                     const waitCapacity = course.waitCapacity;
                     const waitCount = course.waitCount ?? (waitCapacity != null && course.waitAvailable != null ? (waitCapacity - course.waitAvailable) : undefined);
                     const waitAvailable = (waitCapacity != null && waitCount != null) ? (waitCapacity - waitCount) : course.waitAvailable;
