@@ -25,10 +25,10 @@ public class UserService {
     private EmailService emailService;
 
     public User findByAuthUserId(UUID authUserId) {
-        return userRepository.findByAuthUserId(authUserId).orElse(null);
+        return userRepository.findById(authUserId).orElse(null);
     }
 
-    public User findById(Long id) {
+    public User findById(UUID id) {
         return userRepository.findById(id).orElse(null);
     }
     
@@ -42,7 +42,7 @@ public class UserService {
             String picture = userMetadata != null ? (String) userMetadata.get("avatar_url") : null;
             
             User user = User.builder()
-                    .authUserId(authUserId)
+                    .id(authUserId)
                     .email(email)
                     .name(name)
                     .picture(picture)

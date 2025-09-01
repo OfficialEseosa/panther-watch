@@ -10,13 +10,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface UserRepository extends JpaRepository<User, Long> {
-    
-    Optional<User> findByAuthUserId(UUID authUserId);
+public interface UserRepository extends JpaRepository<User, UUID> {
     
     Optional<User> findByEmail(String email);
-    
-    boolean existsByAuthUserId(UUID authUserId);
 
     @Query("SELECT u FROM User u WHERE " +
            "LOWER(u.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +

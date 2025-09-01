@@ -16,11 +16,8 @@ import java.util.UUID;
 @Builder
 public class User {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(name = "auth_user_id", nullable = false, unique = true)
-    private UUID authUserId;
+    @Column(name = "user_id")
+    private UUID id;
 
     @Column(nullable = false, unique = true)
     private String email;
