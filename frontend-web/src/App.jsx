@@ -12,18 +12,59 @@ import './App.css'
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    setIsLoggedIn(authService.isAuthenticated())
+    const checkAuth = async () => {
+      try {
+        if (window.location.hash.includes('access_token') || window.location.search.includes('code=')) {
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        }
+        
+        const session = await authService.getSession()
+        setIsLoggedIn(!!session)
+      } catch (error) {
+        console.error('Auth check failed:', error)
+        setIsLoggedIn(false)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    checkAuth()
+    
+    const { data: { subscription } } = authService.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN') {
+        setIsLoggedIn(true)
+        setLoading(false)
+      } else if (event === 'SIGNED_OUT') {
+        setIsLoggedIn(false)
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   const handleLogin = () => {
     setIsLoggedIn(true)
   }
 
-  const handleLogout = () => {
-    authService.logout()
+  const handleLogout = async () => {
+    await authService.logout()
     setIsLoggedIn(false)
+  }
+
+  if (loading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh' 
+      }}>
+        Loading...
+      </div>
+    )
   }
 
   return (
@@ -43,7 +84,7 @@ function App() {
         element={
           isLoggedIn ? 
           <TermsProvider>
-            <DashboardLayout><Dashboard /></DashboardLayout>
+            <DashboardLayout onLogout={handleLogout}><Dashboard /></DashboardLayout>
           </TermsProvider> : 
           <Navigate to="/login" replace />
         } 
@@ -53,7 +94,7 @@ function App() {
         element={
           isLoggedIn ? 
           <TermsProvider>
-            <DashboardLayout><CourseSearch /></DashboardLayout>
+            <DashboardLayout onLogout={handleLogout}><CourseSearch /></DashboardLayout>
           </TermsProvider> : 
           <Navigate to="/login" replace />
         } 
@@ -63,7 +104,7 @@ function App() {
         element={
           isLoggedIn ? 
           <TermsProvider>
-            <DashboardLayout><CourseResultsPage /></DashboardLayout>
+            <DashboardLayout onLogout={handleLogout}><CourseResultsPage /></DashboardLayout>
           </TermsProvider> : 
           <Navigate to="/login" replace />
         } 
@@ -73,7 +114,7 @@ function App() {
         element={
           isLoggedIn ? 
           <TermsProvider>
-            <DashboardLayout><TrackedClasses /></DashboardLayout>
+            <DashboardLayout onLogout={handleLogout}><TrackedClasses /></DashboardLayout>
           </TermsProvider> : 
           <Navigate to="/login" replace />
         } 

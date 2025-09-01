@@ -56,6 +56,15 @@
   margin: 0;
   cursor: pointer;
   transition: color 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-logo {
+  height: 32px;
+  width: 32px;
+  object-fit: contain;
 }
 
 .app-title:hover {

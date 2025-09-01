@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Spring Boot (backend)",
+      "request": "launch",
+      "mainClass": "edu.gsu.pantherwatch.pantherwatch.PantherWatchApplication",
+      "cwd": "${workspaceFolder}/backend",
+      "envFile": "${workspaceFolder}/backend/.env",
+      "vmArgs": "-Dspring.devtools.restart.enabled=true"
+    }
+  ]
+}

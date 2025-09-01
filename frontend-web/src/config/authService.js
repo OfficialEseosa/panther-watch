@@ -1,111 +1,126 @@
-import { API_BASE_URL } from './apiConfig.js'
+import { supabase } from './supabase.js'
 
 export class AuthService {
   constructor() {
-    this.baseUrl = `${API_BASE_URL}/auth`
+
+    this.handleOAuthCallback()
+    
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN') {
+        console.log('User signed in successfully')
+      } else if (event === 'SIGNED_OUT') {
+        console.log('User signed out')
+        this.clearLocalData()
+      }
+    })
   }
 
-  async authenticateUser(authData) {
+  async handleOAuthCallback() {
+    // Check if we're in an OAuth callback
+    if (window.location.hash.includes('access_token') || window.location.search.includes('code=')) {
+      try {
+        const { data, error } = await supabase.auth.getSession()
+        if (error) {
+          console.error('OAuth callback error:', error.message)
+        }
+      } catch (error) {
+        console.error('OAuth callback processing error:', error.message)
+      }
+    }
+  }
+
+  async signInWithGoogle() {
     try {
-      const response = await fetch(`${this.baseUrl}/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(authData)
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
+        }
       })
 
-      const result = await response.json()
-      
-      if (!response.ok) {
-        throw new Error(result.message || 'Authentication failed')
-      }
-
-      localStorage.setItem('authProvider', 'google')
-      localStorage.setItem('userData', JSON.stringify(result.user))
-      
-      return result
+      if (error) throw error
+      return data
     } catch (error) {
-      console.error('Authentication error:', error)
+      console.error('Google sign in error:', error)
       throw error
     }
   }
 
   async getCurrentUser() {
     try {
-      const response = await fetch(`${this.baseUrl}/me`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include'
-      })
-
-      const result = await response.json()
-      
-      if (!response.ok) {
-        throw new Error(result.message || 'Failed to get user data')
-      }
-
-      return result.user
+      const { data: { user }, error } = await supabase.auth.getUser()
+      if (error) throw error
+      return user
     } catch (error) {
       console.error('Get user error:', error)
-      throw error
-    }
-  }
-
-  getStoredUserData() {
-    try {
-      const userData = localStorage.getItem('userData')
-      return userData ? JSON.parse(userData) : null
-    } catch (error) {
-      console.error('Error parsing stored user data:', error)
       return null
     }
   }
 
-  isAuthenticated() {
-    const authProvider = localStorage.getItem('authProvider')
-    const userData = this.getStoredUserData()
-    return authProvider && userData && userData.email
+  async getSession() {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession()
+      if (error) throw error
+      return session
+    } catch (error) {
+      console.error('Get session error:', error.message)
+      return null
+    }
   }
 
   async logout() {
     try {
-      await fetch(`${this.baseUrl}/logout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include'
-      })
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
     } catch (error) {
-      console.error('Backend logout error:', error)
+      console.error('Logout error:', error)
     } finally {
-      localStorage.removeItem('authProvider')
-      localStorage.removeItem('userData')
-      localStorage.removeItem('googleUser')
-      sessionStorage.clear()
+      this.clearLocalData()
     }
   }
 
-  getGoogleId() {
-    const userData = this.getStoredUserData()
-    return userData ? userData.googleId : null
+  clearLocalData() {
+    localStorage.removeItem('authProvider')
+    localStorage.removeItem('userData')
+    localStorage.removeItem('googleUser')
+    sessionStorage.clear()
+  }
+
+  isAuthenticated() {
+    return this.getSession().then(session => !!session)
   }
 
   getUserInfo() {
-    const userData = this.getStoredUserData()
-    if (!userData) return null
+    return this.getCurrentUser().then(user => {
+      if (!user) return null
 
-    return {
-      provider: 'Google',
-      name: userData.name,
-      email: userData.email,
-      picture: userData.picture,
-      firstName: userData.name?.split(' ')[0] || 'User'
-    }
+      let picture = user.user_metadata?.avatar_url || user.user_metadata?.picture
+
+      if (picture && picture.includes('googleusercontent.com')) {
+        picture = picture.replace(/[?&]s=\d+/, '').replace(/=s\d+(-c)?/, '=s96-c')
+      }
+      
+      return {
+        provider: 'Google',
+        name: user.user_metadata?.full_name || user.email,
+        email: user.email,
+        picture: picture,
+        firstName: user.user_metadata?.full_name?.split(' ')[0] || user.user_metadata?.name?.split(' ')[0] || 'User'
+      }
+    })
+  }
+
+  async getAccessToken() {
+    const session = await this.getSession()
+    return session?.access_token || null
+  }
+
+  onAuthStateChange(callback) {
+    return supabase.auth.onAuthStateChange(callback)
   }
 }
 

@@ -6,16 +6,22 @@ export class WatchedClassService {
     this.baseUrl = `${API_BASE_URL}/watched-classes`
   }
 
+  async makeAuthenticatedRequest(url, options = {}) {
+    const token = await authService.getAccessToken()
+    
+    return fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : '',
+        ...options.headers
+      }
+    })
+  }
+
   async getWatchedClasses() {
     try {
-      const response = await fetch(`${this.baseUrl}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include'
-      })
-
+      const response = await this.makeAuthenticatedRequest(this.baseUrl)
       const result = await response.json()
       
       if (!response.ok) {
@@ -31,12 +37,8 @@ export class WatchedClassService {
 
   async addWatchedClass(classData) {
     try {
-      const response = await fetch(`${this.baseUrl}`, {
+      const response = await this.makeAuthenticatedRequest(this.baseUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
         body: JSON.stringify(classData)
       })
 
@@ -55,15 +57,9 @@ export class WatchedClassService {
 
   async removeWatchedClass(crn, term) {
     try {
-      const response = await fetch(
-        `${this.baseUrl}?crn=${encodeURIComponent(crn)}&term=${encodeURIComponent(term)}`, 
-        {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include'
-        }
+      const response = await this.makeAuthenticatedRequest(
+        `${this.baseUrl}?crn=${encodeURIComponent(crn)}&term=${encodeURIComponent(term)}`,
+        { method: 'DELETE' }
       )
 
       const result = await response.json()
@@ -81,15 +77,8 @@ export class WatchedClassService {
 
   async isWatchingClass(crn, term) {
     try {
-      const response = await fetch(
-        `${this.baseUrl}/check?crn=${encodeURIComponent(crn)}&term=${encodeURIComponent(term)}`, 
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include'
-        }
+      const response = await this.makeAuthenticatedRequest(
+        `${this.baseUrl}/check?crn=${encodeURIComponent(crn)}&term=${encodeURIComponent(term)}`
       )
 
       const result = await response.json()
@@ -108,14 +97,7 @@ export class WatchedClassService {
 
   async getWatchedClassCount() {
     try {
-      const response = await fetch(`${this.baseUrl}/count`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include'
-      })
-
+      const response = await this.makeAuthenticatedRequest(`${this.baseUrl}/count`)
       const result = await response.json()
       
       if (!response.ok) {
@@ -132,14 +114,7 @@ export class WatchedClassService {
 
   async getWatchedClassesWithFullDetails() {
     try {
-      const response = await fetch(`${this.baseUrl}/full-details`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include'
-      })
-
+      const response = await this.makeAuthenticatedRequest(`${this.baseUrl}/full-details`)
       const result = await response.json()
       
       if (!response.ok) {
