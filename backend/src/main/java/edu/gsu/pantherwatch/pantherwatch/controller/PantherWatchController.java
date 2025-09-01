@@ -13,7 +13,7 @@ import edu.gsu.pantherwatch.pantherwatch.api.RetrieveCourseInfoResponse;
 import edu.gsu.pantherwatch.pantherwatch.api.Terms;
 import java.util.List;
 
-@CrossOrigin(origins = {"http://localhost:5173", "https://pantherwatch.app"})
+@CrossOrigin(origins = {"http://localhost:5173", "https://pantherwatch.app", "https://www.pantherwatch.app"})
 @RestController
 @RequestMapping("/api/courses")
 @RequiredArgsConstructor

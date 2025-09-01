@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/watched-classes")
-@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"}, allowCredentials = "true")
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000", "https://pantherwatch.app", "https://www.pantherwatch.app"}, allowCredentials = "true")
 public class WatchedClassController {
 
     @Autowired
