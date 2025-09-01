@@ -148,20 +148,20 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
                   </div>
                   {(() => {
                     const waitCapacity = course.waitCapacity;
-                    const waitCount = course.waitCount ?? (waitCapacity != null && course.waitAvailable != null ? (waitCapacity - course.waitAvailable) : undefined);
-                    const waitAvailable = (waitCapacity != null && waitCount != null) ? (waitCapacity - waitCount) : course.waitAvailable;
+                    const waitCount = course.waitCount;
+                      const waitAvailable = course.waitAvailable;
                     const waitlistInfo = getWaitlistStatus(waitAvailable, waitCapacity);
                     if (waitlistInfo.hasWaitlist) {
                       return (
                         <>
                           <div className="enrollment-item waitlist-item">
                             <span className={`enrollment-number waitlist-number ${waitlistInfo.statusClass}`}>
-                              {waitCount ?? 0}
+                              {waitCount ?? 'N/A'}
                             </span>
                             <span className="enrollment-label">Waitlist Count</span>
                           </div>
                           <div className="enrollment-item waitlist-item">
-                            <span className="enrollment-number waitlist-number">{waitCapacity ?? 0}</span>
+                            <span className="enrollment-number waitlist-number">{waitCapacity ?? 'N/A'}</span>
                             <span className="enrollment-label">Waitlist Capacity</span>
                           </div>
                         </>
