@@ -147,9 +147,7 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
                     <span className="enrollment-label">Capacity</span>
                   </div>
                   {(() => {
-                    const waitCapacity = course.waitCapacity;
-                    const waitCount = course.waitCount;
-                      const waitAvailable = course.waitAvailable;
+                    const waitAvailable = course.waitAvailable;
                     const waitlistInfo = getWaitlistStatus(waitAvailable, waitCapacity);
                     if (waitlistInfo.hasWaitlist) {
                       return (
