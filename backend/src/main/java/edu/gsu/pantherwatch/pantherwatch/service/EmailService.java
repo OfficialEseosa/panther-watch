@@ -59,6 +59,26 @@ public class EmailService {
         }
     }
 
+    public void sendWelcomeEmail(String toEmail, String firstName) {
+        try {
+            String htmlContent = buildWelcomeEmail(firstName);
+            
+            CreateEmailOptions params = CreateEmailOptions.builder()
+                    .from("PantherWatch <no-reply@class.pantherwatch.app>")
+                    .to(toEmail)
+                    .subject("🎉 Welcome to PantherWatch!")
+                    .html(htmlContent)
+                    .build();
+
+            CreateEmailResponse data = resend.emails().send(params);
+            log.info("Welcome email sent successfully to {} with ID: {}", toEmail, data.getId());
+            
+        } catch (ResendException e) {
+            log.error("Failed to send welcome email to {}: {}", toEmail, e.getMessage(), e);
+            log.warn("User registration will continue despite welcome email failure");
+        }
+    }
+
     private String buildClassAvailabilityEmail(String userName, String courseTitle, String courseNumber, 
                                              String subject, String crn, String term) {
         String htmlTemplate = """
@@ -361,5 +381,183 @@ public class EmailService {
             """;
             
             return String.format(htmlTemplate, userName, message);
+    }
+
+    private String buildWelcomeEmail(String firstName) {
+        return """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Welcome to PantherWatch</title>
+                <style>
+                    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+                    
+                    body {
+                        margin: 0;
+                        padding: 0;
+                        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                        line-height: 1.6;
+                        color: #333;
+                        background-color: #f8fafc;
+                    }
+                    
+                    .container {
+                        max-width: 600px;
+                        margin: 0 auto;
+                        background-color: #ffffff;
+                        border-radius: 12px;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                        overflow: hidden;
+                        margin-top: 20px;
+                        margin-bottom: 20px;
+                    }
+                    
+                    .header {
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white;
+                        padding: 40px 30px;
+                        text-align: center;
+                    }
+                    
+                    .header h1 {
+                        margin: 0;
+                        font-size: 28px;
+                        font-weight: 700;
+                    }
+                    
+                    .content {
+                        padding: 40px 30px;
+                    }
+                    
+                    .greeting {
+                        font-size: 24px;
+                        color: #1f2937;
+                        margin-bottom: 20px;
+                        font-weight: 600;
+                    }
+                    
+                    .message {
+                        font-size: 16px;
+                        color: #4b5563;
+                        margin-bottom: 30px;
+                        line-height: 1.7;
+                    }
+                    
+                    .features {
+                        background-color: #f9fafb;
+                        border-radius: 8px;
+                        padding: 24px;
+                        margin: 24px 0;
+                    }
+                    
+                    .features h3 {
+                        color: #1f2937;
+                        font-size: 18px;
+                        margin: 0 0 16px 0;
+                        font-weight: 600;
+                    }
+                    
+                    .feature-list {
+                        list-style: none;
+                        padding: 0;
+                        margin: 0;
+                    }
+                    
+                    .feature-list li {
+                        padding: 8px 0;
+                        border-bottom: 1px solid #e5e7eb;
+                        font-size: 14px;
+                        color: #4b5563;
+                    }
+                    
+                    .feature-list li:last-child {
+                        border-bottom: none;
+                    }
+                    
+                    .feature-list li::before {
+                        content: "✅ ";
+                        margin-right: 8px;
+                    }
+                    
+                    .cta-section {
+                        text-align: center;
+                        margin: 30px 0 20px 0;
+                    }
+                    
+                    .cta-button {
+                        display: inline-block;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white;
+                        padding: 12px 30px;
+                        text-decoration: none;
+                        border-radius: 8px;
+                        font-weight: 600;
+                        font-size: 16px;
+                        transition: transform 0.2s;
+                    }
+                    
+                    .footer {
+                        background-color: #f9fafb;
+                        padding: 20px 30px;
+                        text-align: center;
+                        border-top: 1px solid #e5e7eb;
+                    }
+                    
+                    .footer p {
+                        margin: 5px 0;
+                        font-size: 14px;
+                        color: #6b7280;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>🎉 Welcome to PantherWatch!</h1>
+                    </div>
+                    
+                    <div class="content">
+                        <div class="greeting">
+                            Hi %s! 👋
+                        </div>
+                        
+                        <div class="message">
+                            Welcome to PantherWatch - your ultimate companion for tracking GSU class availability! 
+                            We're excited to have you on board and help you secure the classes you need.
+                        </div>
+                        
+                        <div class="features">
+                            <h3>🚀 How to Navigate PantherWatch:</h3>
+                            <ul class="feature-list">
+                                <li><strong>Search for Classes:</strong> Use the Course Search page to find any GSU course by subject, course number, or CRN</li>
+                                <li><strong>Track Classes:</strong> Click the "👁️ Watch" button on any class to get notified when spots open up</li>
+                                <li><strong>View Your List:</strong> Check your "Tracked Classes" page to see all the courses you're monitoring</li>
+                                <li><strong>Get Instant Alerts:</strong> Receive email notifications the moment a spot becomes available in your watched classes</li>
+                                <li><strong>Stay Updated:</strong> We'll keep you informed about enrollment changes and waitlist movements</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="message">
+                            <strong>Pro tip:</strong> Add classes to your watch list even if they're full! 
+                            Students often drop during the first week of classes, and you'll be the first to know when spots open up.
+                        </div>
+                        
+                        <div class="cta-section">
+                            <a href="https://class.pantherwatch.app" class="cta-button">
+                                Start Tracking Classes →
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="footer">
+                        <p><strong>PantherWatch</strong> - Your GSU Class Monitoring Service</p>
+                        <p>Keeping Georgia State students ahead of the registration game</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """.formatted(firstName);
     }
 }

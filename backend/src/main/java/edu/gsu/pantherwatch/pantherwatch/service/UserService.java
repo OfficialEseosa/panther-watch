@@ -20,6 +20,9 @@ public class UserService {
     
     @Autowired
     private SupabaseAuthService supabaseAuthService;
+    
+    @Autowired
+    private EmailService emailService;
 
     public User findByAuthUserId(UUID authUserId) {
         return userRepository.findByAuthUserId(authUserId).orElse(null);
@@ -45,7 +48,20 @@ public class UserService {
                     .picture(picture)
                     .build();
             
-            return userRepository.save(user);
+            User savedUser = userRepository.save(user);
+
+            try {
+                String firstName = name != null && !name.trim().isEmpty() ? 
+                    name.trim().split("\\s+")[0] :
+                    email.split("@")[0];
+                
+                emailService.sendWelcomeEmail(email, firstName);
+                logger.info("Welcome email sent to new user: {}", email);
+            } catch (Exception e) {
+                logger.error("Failed to send welcome email to {}: {}", email, e.getMessage(), e);
+            }
+            
+            return savedUser;
             
         } catch (Exception e) {
             logger.error("Failed to create user from Supabase auth for user {}: {}", authUserId, e.getMessage(), e);
