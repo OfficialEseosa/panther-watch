@@ -53,7 +53,7 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
         } catch (Exception e) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
-            response.getWriter().write("{\"success\": false, \"message\": \"Invalid token: " + e.getMessage() + "\"}");
+            response.getWriter().write("{\"success\": false, \"message\": \"Invalid or expired token\"}");
             return false;
         }
     }

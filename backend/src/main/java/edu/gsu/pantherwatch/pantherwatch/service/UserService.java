@@ -3,6 +3,8 @@ package edu.gsu.pantherwatch.pantherwatch.service;
 import edu.gsu.pantherwatch.pantherwatch.model.User;
 import edu.gsu.pantherwatch.pantherwatch.repository.UserRepository;
 import io.jsonwebtoken.Claims;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.Map;
@@ -10,6 +12,8 @@ import java.util.UUID;
 
 @Service
 public class UserService {
+
+    private static final Logger logger = LoggerFactory.getLogger(UserService.class);
 
     @Autowired
     private UserRepository userRepository;
@@ -44,7 +48,8 @@ public class UserService {
             return userRepository.save(user);
             
         } catch (Exception e) {
-            throw new RuntimeException("Failed to create user from Supabase auth: " + e.getMessage());
+            logger.error("Failed to create user from Supabase auth for user {}: {}", authUserId, e.getMessage(), e);
+            throw new RuntimeException("Failed to create user account");
         }
     }
 }
