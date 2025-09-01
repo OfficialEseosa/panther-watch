@@ -24,7 +24,7 @@ public class EmailService {
             String htmlContent = buildClassAvailabilityEmail(userName, courseTitle, courseNumber, subject, crn, term);
             
             CreateEmailOptions params = CreateEmailOptions.builder()
-                    .from("PantherWatch <no-reply@send.pantherwatch.app>")
+                    .from("PantherWatch <no-reply@class.pantherwatch.app>")
                     .to(toEmail)
                     .subject("🎉 Class Spot Available: " + subject + " " + courseNumber)
                     .html(htmlContent)
@@ -44,7 +44,7 @@ public class EmailService {
             String htmlContent = buildCustomEmail(userName, message);
             
             CreateEmailOptions params = CreateEmailOptions.builder()
-                    .from("PantherWatch <no-reply@send.pantherwatch.app>")
+                    .from("PantherWatch <no-reply@class.pantherwatch.app>")
                     .to(toEmail)
                     .subject(subject)
                     .html(htmlContent)
