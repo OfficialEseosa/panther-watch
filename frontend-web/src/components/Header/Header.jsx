@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { authService } from '../../config/authService.js'
+import CachedAvatar from '../CachedAvatar'
+import pantherLogo from '../../assets/panther.png'
 import './Header.css'
 
 function Header({ onToggleSidebar }) {
@@ -10,8 +12,16 @@ function Header({ onToggleSidebar }) {
 
   useEffect(() => {
     // Get user info from backend authentication service
-    const userInfo = authService.getUserInfo()
-    setUserInfo(userInfo)
+    const loadUserInfo = async () => {
+      try {
+        const userInfo = await authService.getUserInfo()
+        setUserInfo(userInfo)
+      } catch (error) {
+        console.error('Failed to load user info:', error)
+      }
+    }
+    
+    loadUserInfo()
   }, [])
 
   const handleTitleClick = () => {
@@ -22,11 +32,14 @@ function Header({ onToggleSidebar }) {
     setShowProfileDropdown(!showProfileDropdown)
   }
 
-  const handleLogout = () => {
-    authService.logout()
-    
-    // Reload to go back to login
-    window.location.reload()
+  const handleLogout = async () => {
+    try {
+      await authService.logout()
+      window.location.reload()
+    } catch (error) {
+      console.error('Logout failed:', error)
+      window.location.reload()
+    }
   }
 
   const handleClickOutside = (e) => {
@@ -55,6 +68,7 @@ function Header({ onToggleSidebar }) {
           <span className="hamburger"></span>
         </button>
         <h1 className="app-title" onClick={handleTitleClick}>
+          <img src={pantherLogo} alt="PantherWatch" className="app-logo" />
           PantherWatch
         </h1>
       </div>
@@ -63,17 +77,12 @@ function Header({ onToggleSidebar }) {
         {userInfo && (
           <div className="user-profile-container">
             <div className="user-avatar" onClick={handleProfileClick}>
-              {userInfo.picture ? (
-                <img 
-                  src={userInfo.picture} 
-                  alt={userInfo.name}
-                  className="avatar-image"
-                />
-              ) : (
-                <div className="avatar-placeholder">
-                  {userInfo.firstName.charAt(0).toUpperCase()}
-                </div>
-              )}
+              <CachedAvatar
+                src={userInfo.picture}
+                alt={userInfo.name}
+                fallbackText={userInfo.firstName.charAt(0).toUpperCase()}
+                className="avatar-image"
+              />
             </div>
             
             {showProfileDropdown && (

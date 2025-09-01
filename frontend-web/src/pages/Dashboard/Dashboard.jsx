@@ -11,8 +11,15 @@ function Dashboard() {
 
   useEffect(() => {
     // Get user info from backend authentication service
-    const userInfo = authService.getUserInfo()
-    setUserInfo(userInfo)
+    const loadUserInfo = async () => {
+      try {
+        const userInfo = await authService.getUserInfo()
+        setUserInfo(userInfo)
+      } catch (error) {
+        console.error('Failed to load user info:', error)
+      }
+    }
+    loadUserInfo()
     
     // Get watched classes count
     const loadWatchedCount = async () => {
