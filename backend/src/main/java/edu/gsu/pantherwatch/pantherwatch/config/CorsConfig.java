@@ -17,7 +17,9 @@ public class CorsConfig {
 
         configuration.setAllowedOrigins(Arrays.asList(
             "http://localhost:5173", 
-            "http://localhost:3000"
+            "http://localhost:3000",
+            "https://pantherwatch.app",
+            "https://www.pantherwatch.app"
         ));
 
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
