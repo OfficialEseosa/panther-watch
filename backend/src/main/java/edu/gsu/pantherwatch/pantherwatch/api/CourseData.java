@@ -50,6 +50,9 @@ public class CourseData {
     @JsonProperty("waitCapacity")
     private int waitCapacity;
 
+    @JsonProperty("waitCount")
+    private int waitCount;
+
     @JsonProperty("waitAvailable")
     private int waitAvailable;
 

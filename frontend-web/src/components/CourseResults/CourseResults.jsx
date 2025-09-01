@@ -1,15 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import './CourseResults.css'
-import { formatTime, getEnrollmentStatus, formatCreditHours, getWaitlistStatus, getTermName } from '../../utils'
+import { formatTime, getEnrollmentStatus, formatCreditHours, getWaitlistStatus } from '../../utils'
 import { renderDaysOfWeek } from '../../utils/scheduleComponents'
-import { watchedClassService } from '../../config/watchedClassService.js'
+import { watchedClassService } from '../../config'
 import { useTerms } from '../../contexts/TermsContext'
 import LoadingBar from '../LoadingBar'
 
 function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = false, onCourseRemoved, watchedCrns = [] }) {
   const [watchingStatus, setWatchingStatus] = useState({})
   const [watchLoading, setWatchLoading] = useState({})
-  const { termMappings, getTermName: getTermNameFromContext } = useTerms()
+  const { getTermName: getTermNameFromContext } = useTerms()
 
   const handleWatchToggle = async (course) => {
     const crn = course.courseReferenceNumber
@@ -147,18 +147,19 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
                     <span className="enrollment-label">Capacity</span>
                   </div>
                   {(() => {
-                    const waitlistInfo = getWaitlistStatus(course.waitAvailable, course.waitCapacity);
+                    const waitAvailable = course.waitAvailable;
+                    const waitlistInfo = getWaitlistStatus(waitAvailable, waitCapacity);
                     if (waitlistInfo.hasWaitlist) {
                       return (
                         <>
                           <div className="enrollment-item waitlist-item">
                             <span className={`enrollment-number waitlist-number ${waitlistInfo.statusClass}`}>
-                              {course.waitAvailable}
+                              {waitCount ?? 'N/A'}
                             </span>
-                            <span className="enrollment-label">Waitlist Available</span>
+                            <span className="enrollment-label">Waitlist Count</span>
                           </div>
                           <div className="enrollment-item waitlist-item">
-                            <span className="enrollment-number waitlist-number">{course.waitCapacity}</span>
+                            <span className="enrollment-number waitlist-number">{waitCapacity ?? 'N/A'}</span>
                             <span className="enrollment-label">Waitlist Capacity</span>
                           </div>
                         </>
