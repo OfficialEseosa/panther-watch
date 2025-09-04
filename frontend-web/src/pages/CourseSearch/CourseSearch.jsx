@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTerms } from '../../contexts/TermsContext'
+import SubjectAutocomplete from '../../components/SubjectAutocomplete'
 import './CourseSearch.css'
 
 function CourseSearch() {
@@ -11,10 +12,23 @@ function CourseSearch() {
     txtTerm: '',
     txtCourseNumber: ''
   })
+  const [selectedSubjects, setSelectedSubjects] = useState([])
   const { terms, termsLoading, termsError } = useTerms()
 
   const handleChanges = (e) => {
-    setValue({...value, [e.target.name]: e.target.value})
+    const { name, value: newValue } = e.target
+    setValue({...value, [name]: newValue})
+
+    if (name === 'txtTerm') {
+      setSelectedSubjects([])
+      setValue(prev => ({...prev, [name]: newValue, txtSubject: ''}))
+    }
+  }
+
+  const handleSubjectsChange = (subjects) => {
+    setSelectedSubjects(subjects)
+    const subjectCodes = subjects.map(s => s.code).join(',')
+    setValue(prev => ({...prev, txtSubject: subjectCodes}))
   }
 
   const handleSubmit = async (e) => {
@@ -40,8 +54,13 @@ function CourseSearch() {
             <option value="US">Bachelors (4 Year)</option>
           </select>
 
-          <label htmlFor="txtSubject">Enter a subject:</label>
-          <input id="txtSubject" name="txtSubject" type="text" placeholder="e.g. CSC" onChange={handleChanges} required />
+          <label htmlFor="txtSubject">Enter subjects:</label>
+          <SubjectAutocomplete
+            selectedTerm={value.txtTerm}
+            selectedSubjects={selectedSubjects}
+            onSubjectsChange={handleSubjectsChange}
+            required={true}
+          />
 
           <label htmlFor="txtTerm">Choose a term: </label>
           <select id="txtTerm" name="txtTerm" onChange={(e) => handleChanges(e)} required>
