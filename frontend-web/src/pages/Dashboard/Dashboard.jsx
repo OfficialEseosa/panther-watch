@@ -21,6 +21,7 @@ function Dashboard() {
 
     const loadWatchedCount = async () => {
       try {
+        await new Promise(resolve => setTimeout(resolve, 500))        
         const count = await watchedClassService.getWatchedClassCount()
         setWatchedCount(typeof count === 'number' ? count : 0)
       } catch (error) {
