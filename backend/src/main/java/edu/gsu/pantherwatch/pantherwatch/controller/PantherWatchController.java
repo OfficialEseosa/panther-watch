@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 
 import edu.gsu.pantherwatch.pantherwatch.service.PantherWatchService;
 import lombok.RequiredArgsConstructor;
+import edu.gsu.pantherwatch.pantherwatch.api.GetSubjectRequest;
+import edu.gsu.pantherwatch.pantherwatch.api.GetSubjectResponse;
 import edu.gsu.pantherwatch.pantherwatch.api.RetrieveCourseInfoRequest;
 import edu.gsu.pantherwatch.pantherwatch.api.RetrieveCourseInfoResponse;
 import edu.gsu.pantherwatch.pantherwatch.api.Terms;
@@ -29,5 +31,11 @@ public class PantherWatchController {
     @GetMapping("/terms")
     public List<Terms> getTerms() {
         return pantherWatchService.fetchAvailableTerms();
+    }
+
+    @GetMapping("/subjects")
+    public GetSubjectResponse[] getSubjects(@ModelAttribute GetSubjectRequest request) {
+        List<GetSubjectResponse> subjects = pantherWatchService.getSubjects(request);
+        return subjects.toArray(new GetSubjectResponse[0]);
     }
 }
