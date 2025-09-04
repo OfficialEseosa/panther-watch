@@ -7,6 +7,8 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Arrays;
 
+import edu.gsu.pantherwatch.pantherwatch.api.GetSubjectRequest;
+import edu.gsu.pantherwatch.pantherwatch.api.GetSubjectResponse;
 import edu.gsu.pantherwatch.pantherwatch.api.RetrieveCourseInfoRequest;
 import edu.gsu.pantherwatch.pantherwatch.api.RetrieveCourseInfoResponse;
 import edu.gsu.pantherwatch.pantherwatch.api.Terms;
@@ -24,6 +26,7 @@ public class PantherWatchService {
     private static final String RETRIEVE_INFO_PATH = "/searchResults/searchResults";
     private static final String RESET_PATH = "/classSearch/resetDataForm";
     private static final String TERMS_PATH = "/classSearch/getTerms";
+    private static final String SUBJECT_PATH = "/classSearch/get_subject";
 
     public PantherWatchService(WebClient webClient) {
         this.webClient = webClient;
@@ -130,5 +133,30 @@ public class PantherWatchService {
                 .block(TIMEOUT);
         
         return Arrays.asList(termsArray);
+    }
+
+    public List<GetSubjectResponse> getSubjects(GetSubjectRequest request) {
+        GetSubjectResponse[] subjectsArray = webClient
+                .get()
+                .uri(uriBuilder -> uriBuilder
+                    .path(SUBJECT_PATH)
+                    .queryParam("searchTerm", request.getSearchTerm())
+                    .queryParam("term", request.getTerm())
+                    .queryParam("offset", request.getOffset())
+                    .queryParam("max", request.getMax())
+                    .build())
+                .exchangeToMono(response -> {
+                    if (response.statusCode().is2xxSuccessful()) {
+                        return response.bodyToMono(GetSubjectResponse[].class);
+                    } else {
+                        return response.createException()
+                                .flatMap(exception -> Mono.error(
+                                    new RuntimeException("HTTP error fetching subjects: " + response.statusCode().value())
+                                ));
+                    }
+                })
+                .block(TIMEOUT);
+        
+        return Arrays.asList(subjectsArray);
     }
 }
