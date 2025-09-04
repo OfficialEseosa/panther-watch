@@ -34,8 +34,7 @@ public class PantherWatchController {
     }
 
     @GetMapping("/subjects")
-    public GetSubjectResponse[] getSubjects(@ModelAttribute GetSubjectRequest request) {
-        List<GetSubjectResponse> subjects = pantherWatchService.getSubjects(request);
-        return subjects.toArray(new GetSubjectResponse[0]);
+    public List<GetSubjectResponse> getSubjects(@ModelAttribute GetSubjectRequest request) {
+        return pantherWatchService.getSubjects(request);
     }
 }
