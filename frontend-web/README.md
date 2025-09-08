@@ -1,4 +1,4 @@
-## PantherWatch Web
+﻿## PantherWatch Web
 
 This directory contains the React/Vite web frontend for PantherWatch. It provides a browser-based interface for searching GSU course information.
 
@@ -6,7 +6,7 @@ This directory contains the React/Vite web frontend for PantherWatch. It provide
 - React 19
 - Vite 7
 - ESLint (basic config in `eslint.config.js`)
-- Environment-based API configuration
+- Supabase-based authentication
 
 ### Dev Scripts
 - `npm run dev`  Start local dev server
@@ -22,8 +22,12 @@ npm run dev
 Then open the displayed local URL (default: http://localhost:5173).
 
 ### Environment Configuration
-- `.env.development` - Points to local backend (`http://localhost:8080`)
-- `.env.production` - Points to live API (`https://api.pantherwatch.app`)
+- `.env.development` — set:
+  - `VITE_SUPABASE_URL`
+  - `VITE_SUPABASE_ANON_KEY`
+- Production hosting should also set the same two variables.
+
+API base selection is handled in `src/config/apiConfig.js` (localhost → `http://localhost:8080/api`, otherwise `https://api.pantherwatch.app/api`).
 
 ### Deployment
 Production builds automatically use the live API endpoint. Deploy the `dist/` folder to any static hosting service.
