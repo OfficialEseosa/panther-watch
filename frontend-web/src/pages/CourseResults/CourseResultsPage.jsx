@@ -4,7 +4,7 @@ import { buildApiUrl } from '../../config'
 import './CourseResultsPage.css'
 import CourseResults from '../../components/CourseResults'
 import { getTermName } from '../../utils'
-import { watchedClassService } from '../../config'
+import { useWatchedClasses } from '../../contexts/WatchedClassesContext'
 
 function CourseResultsPage() {
   const location = useLocation()
@@ -13,7 +13,9 @@ function CourseResultsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchParams, setSearchParams] = useState(null)
-  const [watchedCrns, setWatchedCrns] = useState([])
+  const { watchedClasses } = useWatchedClasses()
+  
+  const watchedCrns = watchedClasses.map(wc => wc.crn)
 
   useEffect(() => {
     // Get search parameters from URL or state
@@ -34,18 +36,7 @@ function CourseResultsPage() {
     }
 
     performSearch(searchData)
-    fetchWatchedClasses()
   }, [location, navigate])
-
-  const fetchWatchedClasses = async () => {
-    try {
-      const watchedClasses = await watchedClassService.getWatchedClasses()
-      const crns = watchedClasses.map(wc => wc.crn)
-      setWatchedCrns(crns)
-    } catch (error) {
-      console.error('Failed to fetch watched classes:', error)
-    }
-  }
 
   const performSearch = async (searchData) => {
     setLoading(true)
@@ -56,6 +47,7 @@ function CourseResultsPage() {
       const res = await fetch(`${buildApiUrl('/courses/search')}?${params.toString()}`, {
         method: 'GET',
         headers: { Accept: "application/json" },
+        credentials: 'include',
       })
 
       if (!res.ok) {

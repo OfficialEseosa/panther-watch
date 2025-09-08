@@ -21,7 +21,9 @@ export const TermsProvider = ({ children }) => {
     const fetchTerms = async () => {
       try {
         setTermsLoading(true)
-        const response = await fetch(buildApiUrl('/courses/terms'))
+        const response = await fetch(buildApiUrl('/courses/terms'), {
+          credentials: 'include'
+        })
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`)
         }

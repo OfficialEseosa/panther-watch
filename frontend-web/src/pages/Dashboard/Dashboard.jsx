@@ -1,37 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { authService, watchedClassService } from '../../config'
+import { useAuth } from '../../contexts/AuthContext'
+import { useWatchedClasses } from '../../contexts/WatchedClassesContext'
 import './Dashboard.css'
 
 function Dashboard() {
   const navigate = useNavigate()
-  const [userInfo, setUserInfo] = useState(null)
-  const [watchedCount, setWatchedCount] = useState(0)
-
-  useEffect(() => {
-    // Get user info from backend authentication service
-    const loadUserInfo = async () => {
-      try {
-        const info = await authService.getUserInfo()
-        setUserInfo(info)
-      } catch (error) {
-        console.error('Failed to load user info:', error)
-      }
-    }
-
-    const loadWatchedCount = async () => {
-      try {
-        await new Promise(resolve => setTimeout(resolve, 500))        
-        const count = await watchedClassService.getWatchedClassCount()
-        setWatchedCount(typeof count === 'number' ? count : 0)
-      } catch (error) {
-        console.error('Failed to load watched classes count:', error)
-        setWatchedCount(0)
-      }
-    }
-
-    loadUserInfo().then(loadWatchedCount)
-  }, [])
+  const { userInfo, loading: authLoading } = useAuth()
+  const { watchedCount, loading: watchedLoading } = useWatchedClasses()
 
   const handleNavigateToSearch = () => {
     navigate('/course-search')

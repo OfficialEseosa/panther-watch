@@ -4,6 +4,20 @@ import { authService } from './authService.js'
 export class WatchedClassService {
   constructor() {
     this.baseUrl = `${API_BASE_URL}/watched-classes`
+    this.watchedClassesCache = null
+    this.watchedCountCache = null
+    this.cacheTimestamp = null
+    this.CACHE_DURATION = 60 * 60 * 1000
+  }
+
+  clearCache() {
+    this.watchedClassesCache = null
+    this.watchedCountCache = null
+    this.cacheTimestamp = null
+  }
+
+  isCacheValid() {
+    return this.cacheTimestamp && (Date.now() - this.cacheTimestamp) < this.CACHE_DURATION
   }
 
   async makeAuthenticatedRequest(url, options = {}) {
@@ -11,6 +25,7 @@ export class WatchedClassService {
     
     return fetch(url, {
       ...options,
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': token ? `Bearer ${token}` : '',
@@ -21,12 +36,18 @@ export class WatchedClassService {
 
   async getWatchedClasses() {
     try {
+      if (this.watchedClassesCache && this.isCacheValid()) {
+        return this.watchedClassesCache
+      }
+
       const response = await this.makeAuthenticatedRequest(this.baseUrl)
       const result = await response.json()
       
       if (!response.ok) {
         throw new Error(result.message || 'Failed to get watched classes')
       }
+      this.watchedClassesCache = result.data
+      this.cacheTimestamp = Date.now()
 
       return result.data
     } catch (error) {
@@ -48,6 +69,8 @@ export class WatchedClassService {
         throw new Error(result.message || 'Failed to add class to watch list')
       }
 
+      this.clearCache()
+
       return result.data
     } catch (error) {
       console.error('Add watched class error:', error)
@@ -67,6 +90,8 @@ export class WatchedClassService {
       if (!response.ok) {
         throw new Error(result.message || 'Failed to remove class from watch list')
       }
+
+      this.clearCache()
 
       return result.success
     } catch (error) {
@@ -97,6 +122,10 @@ export class WatchedClassService {
 
   async getWatchedClassCount() {
     try {
+      if (this.watchedCountCache !== null && this.isCacheValid()) {
+        return this.watchedCountCache
+      }
+
       const response = await this.makeAuthenticatedRequest(`${this.baseUrl}/count`)
       const result = await response.json()
       
@@ -104,6 +133,9 @@ export class WatchedClassService {
         console.error('Get watch count failed:', result.message)
         return 0
       }
+
+      this.watchedCountCache = result.count
+      this.cacheTimestamp = Date.now()
 
       return result.count
     } catch (error) {

@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { watchedClassService } from '../../config'
+import { useWatchedClasses } from '../../contexts/WatchedClassesContext'
 import CourseResults from '../../components/CourseResults'
 import './TrackedClasses.css'
 
 function TrackedClasses() {
   const navigate = useNavigate()
+  const { 
+    watchedClassesWithDetails, 
+    loadWatchedClassesWithDetails, 
+    loading: contextLoading 
+  } = useWatchedClasses()
   const [watchedClasses, setWatchedClasses] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -14,16 +19,21 @@ function TrackedClasses() {
     loadWatchedClasses()
   }, [])
 
+  useEffect(() => {
+    if (watchedClassesWithDetails) {
+      setWatchedClasses(watchedClassesWithDetails)
+      setLoading(false)
+    }
+  }, [watchedClassesWithDetails])
+
   const loadWatchedClasses = async () => {
     try {
       setLoading(true)
       setError('')
-      const classes = await watchedClassService.getWatchedClassesWithFullDetails()
-      setWatchedClasses(classes)
+      await loadWatchedClassesWithDetails()
     } catch (error) {
       console.error('Failed to load watched classes:', error)
       setError('Failed to load tracked classes. Please try again.')
-    } finally {
       setLoading(false)
     }
   }
