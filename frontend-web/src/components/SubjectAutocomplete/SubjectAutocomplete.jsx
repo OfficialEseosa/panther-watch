@@ -24,7 +24,9 @@ function SubjectAutocomplete({
     
     setLoadingSubjects(true)
     try {
-      const response = await fetch(buildApiUrl(`/courses/subjects?searchTerm=${encodeURIComponent(searchTerm)}&term=${encodeURIComponent(term)}&offset=1&max=10`))
+      const response = await fetch(buildApiUrl(`/courses/subjects?searchTerm=${encodeURIComponent(searchTerm)}&term=${encodeURIComponent(term)}&offset=1&max=10`), {
+        credentials: 'include'
+      })
       if (response.ok) {
         const subjects = await response.json()
         setSubjectSuggestions(subjects)

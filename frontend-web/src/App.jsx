@@ -8,6 +8,8 @@ import TrackedClasses from './pages/TrackedClasses'
 import AdminPanel from './pages/Admin'
 import DashboardLayout from './layouts/DashboardLayout'
 import { TermsProvider } from './contexts/TermsContext'
+import { AuthProvider } from './contexts/AuthContext'
+import { WatchedClassesProvider } from './contexts/WatchedClassesContext'
 import { authService } from './config/authService.js'
 import './App.css'
 
@@ -69,74 +71,78 @@ function App() {
   }
 
   return (
-    <Routes>
-      <Route 
-        path="/login" 
-        element={
-          isLoggedIn ? 
-          <Navigate to="/dashboard" replace /> : 
-          <Login onLogin={handleLogin} />
-        } 
-      />
-      
-      {/* Protected routes with dashboard layout and terms context */}
-      <Route 
-        path="/dashboard" 
-        element={
-          isLoggedIn ? 
-          <TermsProvider>
-            <DashboardLayout onLogout={handleLogout}><Dashboard /></DashboardLayout>
-          </TermsProvider> : 
-          <Navigate to="/login" replace />
-        } 
-      />
-      <Route 
-        path="/course-search" 
-        element={
-          isLoggedIn ? 
-          <TermsProvider>
-            <DashboardLayout onLogout={handleLogout}><CourseSearch /></DashboardLayout>
-          </TermsProvider> : 
-          <Navigate to="/login" replace />
-        } 
-      />
-      <Route 
-        path="/course-results" 
-        element={
-          isLoggedIn ? 
-          <TermsProvider>
-            <DashboardLayout onLogout={handleLogout}><CourseResultsPage /></DashboardLayout>
-          </TermsProvider> : 
-          <Navigate to="/login" replace />
-        } 
-      />
-      <Route 
-        path="/tracked-classes" 
-        element={
-          isLoggedIn ? 
-          <TermsProvider>
-            <DashboardLayout onLogout={handleLogout}><TrackedClasses /></DashboardLayout>
-          </TermsProvider> : 
-          <Navigate to="/login" replace />
-        } 
-      />
-      <Route 
-        path="/admin" 
-        element={
-          isLoggedIn ? 
-          <TermsProvider>
-            <DashboardLayout onLogout={handleLogout}><AdminPanel /></DashboardLayout>
-          </TermsProvider> : 
-          <Navigate to="/login" replace />
-        } 
-      />
-      <Route 
-        path="/" 
-        element={
-          <Navigate to={isLoggedIn ? "/dashboard" : "/login"} replace />
-        } 
-      />
-    </Routes>
+    <AuthProvider>
+      <WatchedClassesProvider>
+        <Routes>
+          <Route 
+            path="/login" 
+            element={
+              isLoggedIn ? 
+              <Navigate to="/dashboard" replace /> : 
+              <Login onLogin={handleLogin} />
+            } 
+          />
+          
+          {/* Protected routes with dashboard layout and terms context */}
+        <Route 
+          path="/dashboard" 
+          element={
+            isLoggedIn ? 
+            <TermsProvider>
+              <DashboardLayout onLogout={handleLogout}><Dashboard /></DashboardLayout>
+            </TermsProvider> : 
+            <Navigate to="/login" replace />
+          } 
+        />
+        <Route 
+          path="/course-search" 
+          element={
+            isLoggedIn ? 
+            <TermsProvider>
+              <DashboardLayout onLogout={handleLogout}><CourseSearch /></DashboardLayout>
+            </TermsProvider> : 
+            <Navigate to="/login" replace />
+          } 
+        />
+        <Route 
+          path="/course-results" 
+          element={
+            isLoggedIn ? 
+            <TermsProvider>
+              <DashboardLayout onLogout={handleLogout}><CourseResultsPage /></DashboardLayout>
+            </TermsProvider> : 
+            <Navigate to="/login" replace />
+          } 
+        />
+        <Route 
+          path="/tracked-classes" 
+          element={
+            isLoggedIn ? 
+            <TermsProvider>
+              <DashboardLayout onLogout={handleLogout}><TrackedClasses /></DashboardLayout>
+            </TermsProvider> : 
+            <Navigate to="/login" replace />
+          } 
+        />
+        <Route 
+          path="/admin" 
+          element={
+            isLoggedIn ? 
+            <TermsProvider>
+              <DashboardLayout onLogout={handleLogout}><AdminPanel /></DashboardLayout>
+            </TermsProvider> : 
+            <Navigate to="/login" replace />
+          } 
+        />
+        <Route 
+          path="/" 
+          element={
+            <Navigate to={isLoggedIn ? "/dashboard" : "/login"} replace />
+          } 
+        />
+      </Routes>
+      </WatchedClassesProvider>
+    </AuthProvider>
   )
 }
 
