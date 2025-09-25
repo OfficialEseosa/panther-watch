@@ -1,140 +1,258 @@
-.site-header {
-  background-color: rgba(0, 113, 206, 0.95);
-  padding: 1rem 0;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  margin-bottom: 10px;
+/* ===== GSU Front Page – Polished Blue Theme (CSS-only) ===== */
+
+/* Color system */
+:root{
+  --gsu-blue-900:#001f4d;
+  --gsu-blue-800:#002a73;
+  --gsu-blue-700:#0039a6; /* Brand core */
+  --gsu-blue-600:#004fbf;
+  --gsu-blue-500:#0071ce;
+  --ink-900:#0b1320;
+  --ink-700:#1b2a4a;
+  --white:#ffffff;
+  --muted:#e6eef7;
+  --ring: 0 0 0 3px rgba(0,113,206,.35);
+  --shadow-lg: 0 20px 40px rgba(0,0,0,.18);
+  --shadow-md: 0 10px 24px rgba(0,0,0,.14);
+  --radius: 14px;
 }
 
-.header-content {
+*,
+*::before,
+*::after{
+  box-sizing: border-box;
+}
+
+html, body{
+  height: 100%;
+}
+
+body{
+  position: relative;
+  min-height: 100vh;
+  margin: 0;
+  text-align: left;
+  color: var(--white);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui, sans-serif;
+  line-height: 1.45;
+}
+
+/* Background image + overlays */
+body::before{
+  content:'';
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(1200px 600px at 20% -10%, rgba(0,113,206,.35), transparent 60%),
+                    radial-gradient(900px 500px at 110% 10%, rgba(0,57,166,.35), transparent 60%),
+                    url('./assets/background.png');
+  background-size: cover;
+  background-position: center;
+  filter: blur(8px) saturate(115%);
+  z-index: -2;
+}
+body::after{
+  content:'';
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,31,77,.65) 0%, rgba(0,31,77,.50) 35%, rgba(0,31,77,.65) 100%);
+  z-index: -1;
+}
+
+/* ===== Header ===== */
+.site-header{
+  background: linear-gradient(180deg, rgba(0,57,166,.92), rgba(0,57,166,.86));
+  backdrop-filter: blur(6px);
+  padding: .85rem 0;
+  box-shadow: 0 2px 12px rgba(0,0,0,.18);
+  margin-bottom: 18px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.header-content{
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1.25rem;
 }
 
-.header-content h1 {
-  color: white;
+.header-content h1{
+  color: var(--white);
   margin: 0;
   padding: 0;
-  font-family: 'Roboto', sans-serif;
-  font-weight: 500;
-  font-size: 2.5rem;
+  font-weight: 700;
+  font-size: clamp(1.5rem, 3vw, 2.35rem);
+  letter-spacing: .2px;
+  text-shadow: 0 2px 10px rgba(0,0,0,.25);
 }
 
-.user-info {
+.user-info{
   display: flex;
   align-items: center;
-  gap: 1rem;
-  color: white;
+  gap: .85rem;
+  color: var(--muted);
+  font-weight: 500;
 }
 
-.gsu-email {
-  font-size: 0.9em;
-  opacity: 0.8;
+.gsu-email{
+  font-size: 4rem;
+  opacity: .9;
 }
 
-.logout-btn {
-  background-color: #ff4444;
-  color: white;
+/* Logout button (primary-contrast) */
+.logout-btn{
+  background: linear-gradient(180deg, #ff5a5a, #e33e3e);
+  color: var(--white);
   border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  font-size: 0.875rem;
-}
-
-.logout-btn:hover {
-  background-color: #cc0000;
-}
-
-body {
-  position: relative;
-  min-height: 100vh;
-  margin: 0;
-  text-align: left;
-}
-
-body::before {
-  content: '';
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background-image: url('./assets/background.png');
-  background-color: #969696;
-  background-size: cover;
-  background-position: center;
-  filter: blur(6px);
-  z-index: -2;
-}
-body::after {
-  content: '';
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background-color: rgba(0,0,0,0.4);
-  z-index: -1;
-}
-
-.container {
-  background-color: #0071ce;
+  padding: .55rem 1rem;
   border-radius: 10px;
-  box-shadow: #969696 0px 10px 20px -10px;
-  transition: transform 0.2s;
-  width: 90%;
-  max-width: 700px;
-  margin: 2rem auto;
-  padding: 1.5rem;
-}
-
-h1 {
-  padding: 20px;
-}
-
-label {
-  color: white;
-  font-size: 20px;
-  text-align: center;
-}
-
-input {
-  display: block;
-  margin: 1rem auto;
-  padding: 8px;
-  border-radius: 5px;
-  border: 2px solid #0039a6;
-  width: 300px;
-  font-size: 16px;
-}
-
-select {
-  display: block;
-  margin: 1rem auto;
-  padding: 8px;
-  border-radius: 5px;
-  border: 2px solid #0039a6;
-  width: 300px;
-  font-size: 16px;
-}
-
-button {
-  background-color: #0039a6;
-  border: none;
-  border-radius: 5px;
-  color: white;
   cursor: pointer;
-  font-size: 16px;
-  margin: 1rem auto;
-  padding: 10px 20px;
-  transition: background-color 0.2s;
+  transition: transform .12s ease, box-shadow .12s ease, filter .2s ease;
+  font-size: .9rem;
+  box-shadow: 0 6px 16px rgba(227,62,62,.35);
+}
+.logout-btn:hover{
+  filter: brightness(1.03);
+  transform: translateY(-1px);
+}
+.logout-btn:active{
+  transform: translateY(0);
+}
+.logout-btn:focus-visible{
+  outline: none;
+  box-shadow: var(--ring);
 }
 
-button:hover {
-  background-color: #001f4d;
+/* ===== Main Container (Hero Card) ===== */
+.container{
+  background: linear-gradient(180deg, rgba(0,113,206,.35), rgba(0,57,166,.35));
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  transition: transform .18s ease, box-shadow .18s ease;
+  width: min(92%, 880px);
+  margin: 2.25rem auto;
+  padding: clamp(1rem, 3vw, 2rem);
+  backdrop-filter: blur(8px) saturate(115%);
+}
+.container:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 24px 50px rgba(0,0,0,.22);
 }
 
-.container form {
+.container form{
   text-align: center;
+}
+
+/* ===== Typography ===== */
+h1{
+  padding: 10px 0 18px;
+  margin: 0;
+  font-weight: 800;
+  color: #f3f7ff;
+}
+
+label{
+  color: #eef5ff;
+  font-size: 1.05rem;
+  text-align: center;
+  display: block;
+  margin-top: .5rem;
+}
+
+/* ===== Form Controls ===== */
+input,
+select{
+  display: block;
+  margin: .85rem auto 1.1rem;
+  padding: .8rem .95rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.22);
+  width: min(100%, 520px);
+  font-size: 1rem;
+  background: rgba(255,255,255,.06);
+  color: var(--white);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+input:hover,
+select:hover{
+  border-color: rgba(255,255,255,.32);
+  background: rgba(255,255,255,.08);
+}
+input:focus-visible,
+select:focus-visible{
+  outline: none;
+  border-color: rgba(73, 177, 255, .85);
+  box-shadow: var(--ring);
+  background: rgba(255,255,255,.10);
+}
+input::placeholder{
+  color: rgba(255,255,255,.65);
+}
+
+/* ===== Buttons ===== */
+/* Google button hover effect */
+.google-btn {
+  background: linear-gradient(180deg, #ffffff, #f7f7f7);
+  color: #444;
+  border: 1px solid #ddd;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 20s ease;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,.15);
+}
+
+.google-btn:hover {
+  background: #ffffff;          /* full white background */
+  color: #000;                  /* dark text for contrast */
+  border-color: #ccc;           /* subtle border */
+  transform: translateY(-1px);  /* subtle lift */
+  box-shadow: 0 6px 18px rgba(0,0,0,.2);
+}
+
+/* Subtitle text under PantherWatch */
+.subtitle {
+  font-size: 10px;       /* slightly larger */
+  color: #eef5ff;          /* brighter for readability */
+  font-weight: 500;
+  letter-spacing: .3px;
+  margin: .5rem 0 1rem;
+  text-shadow: 0 1px 4px rgba(0,0,0,.45); /* glow for clarity */
+}
+
+
+
+
+/* ===== Utilities & Media ===== */
+@media (max-width: 768px){
+  .header-content{
+    padding: 0 1rem;
+  }
+  .user-info{
+    gap: .6rem;
+    font-size: .95rem;
+  }
+  .container{
+    padding: 1.25rem;
+    margin: 1.25rem auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{
+    transition: none !important;
+  }
 }
