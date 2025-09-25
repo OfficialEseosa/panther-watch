@@ -2,7 +2,7 @@ import { useState } from 'react'
 import './CourseResults.css'
 import { formatTime, getEnrollmentStatus, formatCreditHours, getWaitlistStatus } from '../../utils'
 import { renderDaysOfWeek } from '../../utils/scheduleComponents'
-import { watchedClassService } from '../../config'
+import { useWatchedClasses } from '../../contexts/WatchedClassesContext'
 import { useTerms } from '../../contexts/TermsContext'
 import LoadingBar from '../LoadingBar'
 
@@ -10,6 +10,7 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
   const [watchingStatus, setWatchingStatus] = useState({})
   const [watchLoading, setWatchLoading] = useState({})
   const { getTermName: getTermNameFromContext } = useTerms()
+  const { addWatchedClass, removeWatchedClass } = useWatchedClasses()
 
   const handleWatchToggle = async (course) => {
     const crn = course.courseReferenceNumber
@@ -22,7 +23,7 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
       const isCurrentlyWatching = watchingStatus[key] || isTrackedView
       
       if (isCurrentlyWatching || isTrackedView) {
-        await watchedClassService.removeWatchedClass(crn, courseTerm)
+        await removeWatchedClass(crn, courseTerm)
         setWatchingStatus(prev => ({ ...prev, [key]: false }))
 
         if (isTrackedView && onCourseRemoved) {
@@ -39,7 +40,7 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
           instructor: course.faculty?.[0]?.displayName || 'TBA'
         }
         
-        await watchedClassService.addWatchedClass(watchData)
+        await addWatchedClass(watchData)
         setWatchingStatus(prev => ({ ...prev, [key]: true }))
       }
     } catch (error) {

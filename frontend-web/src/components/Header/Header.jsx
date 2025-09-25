@@ -1,28 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { authService } from '../../config/authService.js'
+import { useAuth } from '../../contexts/AuthContext'
 import CachedAvatar from '../CachedAvatar'
 import pantherLogo from '../../assets/panther.png'
 import './Header.css'
 
 function Header({ onToggleSidebar }) {
   const navigate = useNavigate()
-  const [userInfo, setUserInfo] = useState(null)
+  const { userInfo, loading: authLoading } = useAuth()
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
-
-  useEffect(() => {
-    // Get user info from backend authentication service
-    const loadUserInfo = async () => {
-      try {
-        const userInfo = await authService.getUserInfo()
-        setUserInfo(userInfo)
-      } catch (error) {
-        console.error('Failed to load user info:', error)
-      }
-    }
-    
-    loadUserInfo()
-  }, [])
 
   const handleTitleClick = () => {
     navigate('/dashboard')

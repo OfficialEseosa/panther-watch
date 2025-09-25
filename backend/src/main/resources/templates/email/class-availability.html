@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Class Spot Available</title>
+    <link rel="stylesheet" href="class-availability.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 Class Spot Available!</h1>
+            <p>A spot just opened up in your watched class</p>
+        </div>
+        
+        <div class="content">
+            <div class="greeting">
+                Hi %s! 👋
+            </div>
+            
+            <p>Great news! A spot has just become available in the class you've been watching. 
+               <span class="urgent-badge">Act Fast</span> - spots fill up quickly!</p>
+            
+            <div class="course-card">
+                <div class="course-title">%s</div>
+                <div class="course-details">
+                    <div class="detail-item">
+                        <span class="detail-label">Course:</span>
+                        <span class="detail-value">%s %s</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">CRN:</span>
+                        <span class="detail-value">%s</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Term:</span>
+                        <span class="detail-value">%s</span>
+                    </div>
+                </div>
+            </div>
+            
+            <p>🚀 <strong>What to do next:</strong></p>
+            <ol>
+                <li>Log into GoSolar immediately</li>
+                <li>Search for CRN <strong>%s</strong></li>
+                <li>Register for the class before someone else does!</li>
+            </ol>
+            
+            <a href="https://registration.gosolar.gsu.edu/StudentRegistrationSsb/ssb/term/termSelection?mode=registration" class="cta-button">Go to GoSolar →</a>
+            
+            <p style="margin-top: 30px; font-size: 14px; color: #6b7280;">
+                ⏰ <em>This notification was sent because the waitlist for this class dropped to zero. 
+                We'll continue monitoring this class for you.</em>
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p><strong>PantherWatch</strong> - Your GSU Class Monitoring Service</p>
+            <p>Keeping Georgia State students ahead of the registration game</p>
+        </div>
+    </div>
+</body>
+</html>

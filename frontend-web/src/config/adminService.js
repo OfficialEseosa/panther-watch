@@ -23,7 +23,8 @@ class AdminService {
       const headers = await this.getAuthHeaders()
       const response = await fetch(`${this.baseUrl}/check`, {
         method: 'GET',
-        headers
+        headers,
+        credentials: 'include'
       })
 
       if (!response.ok) {
@@ -43,6 +44,7 @@ class AdminService {
       const response = await fetch(`${this.baseUrl}/users/search`, {
         method: 'POST',
         headers,
+        credentials: 'include',
         body: JSON.stringify({ query })
       })
 
@@ -62,7 +64,8 @@ class AdminService {
       const headers = await this.getAuthHeaders()
       const response = await fetch(`${this.baseUrl}/users`, {
         method: 'GET',
-        headers
+        headers,
+        credentials: 'include'
       })
 
       if (!response.ok) {
@@ -82,6 +85,7 @@ class AdminService {
       const response = await fetch(`${this.baseUrl}/email/send`, {
         method: 'POST',
         headers,
+        credentials: 'include',
         body: JSON.stringify({
           targetEmail,
           subject,
