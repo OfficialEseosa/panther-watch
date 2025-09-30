@@ -1,258 +1,161 @@
-/* ===== GSU Front Page – Polished Blue Theme (CSS-only) ===== */
-
-/* Color system */
-:root{
-  --gsu-blue-900:#001f4d;
-  --gsu-blue-800:#002a73;
-  --gsu-blue-700:#0039a6; /* Brand core */
-  --gsu-blue-600:#004fbf;
-  --gsu-blue-500:#0071ce;
-  --ink-900:#0b1320;
-  --ink-700:#1b2a4a;
-  --white:#ffffff;
-  --muted:#e6eef7;
-  --ring: 0 0 0 3px rgba(0,113,206,.35);
-  --shadow-lg: 0 20px 40px rgba(0,0,0,.18);
-  --shadow-md: 0 10px 24px rgba(0,0,0,.14);
-  --radius: 14px;
+﻿:root {
+  --color-primary-900: #0b1c3d;
+  --color-primary-700: #0f2f61;
+  --color-primary-600: #0039a6;
+  --color-primary-500: #1f5fc3;
+  --color-primary-300: #7fa9e6;
+  --color-primary-100: #e4eef9;
+  --color-accent: #1f5fc3;
+  --color-page-background: #f5f6fb;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f1f4f9;
+  --color-border: #d6deeb;
+  --color-border-strong: #b5bfd3;
+  --color-text: #1f2937;
+  --color-text-muted: #4b5563;
+  --color-heading: #152044;
+  --color-success: #1d814c;
+  --color-warning: #b36b09;
+  --color-danger: #b42318;
+  --shadow-xs: 0 1px 0 rgba(15, 23, 42, 0.06);
+  --shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 12px 30px rgba(15, 23, 42, 0.12);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --transition-base: 150ms ease;
 }
 
 *,
 *::before,
-*::after{
+*::after {
   box-sizing: border-box;
 }
 
-html, body{
-  height: 100%;
+html,
+body {
+  min-height: 100%;
 }
 
-body{
-  position: relative;
+body {
+  margin: 0;
+  background: var(--color-page-background);
+  color: var(--color-text);
+  font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#root {
   min-height: 100vh;
-  margin: 0;
-  text-align: left;
-  color: var(--white);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui, sans-serif;
-  line-height: 1.45;
+  background: var(--color-page-background);
 }
 
-/* Background image + overlays */
-body::before{
-  content:'';
-  position: fixed;
-  inset: 0;
-  background-image: radial-gradient(1200px 600px at 20% -10%, rgba(0,113,206,.35), transparent 60%),
-                    radial-gradient(900px 500px at 110% 10%, rgba(0,57,166,.35), transparent 60%),
-                    url('./assets/background.png');
-  background-size: cover;
-  background-position: center;
-  filter: blur(8px) saturate(115%);
-  z-index: -2;
-}
-body::after{
-  content:'';
-  position: fixed;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(0,31,77,.65) 0%, rgba(0,31,77,.50) 35%, rgba(0,31,77,.65) 100%);
-  z-index: -1;
-}
-
-/* ===== Header ===== */
-.site-header{
-  background: linear-gradient(180deg, rgba(0,57,166,.92), rgba(0,57,166,.86));
-  backdrop-filter: blur(6px);
-  padding: .85rem 0;
-  box-shadow: 0 2px 12px rgba(0,0,0,.18);
-  margin-bottom: 18px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  border-bottom: 1px solid rgba(255,255,255,.08);
-}
-
-.header-content{
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 2rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1.25rem;
-}
-
-.header-content h1{
-  color: var(--white);
-  margin: 0;
-  padding: 0;
-  font-weight: 700;
-  font-size: clamp(1.5rem, 3vw, 2.35rem);
-  letter-spacing: .2px;
-  text-shadow: 0 2px 10px rgba(0,0,0,.25);
-}
-
-.user-info{
-  display: flex;
-  align-items: center;
-  gap: .85rem;
-  color: var(--muted);
-  font-weight: 500;
-}
-
-.gsu-email{
-  font-size: 4rem;
-  opacity: .9;
-}
-
-/* Logout button (primary-contrast) */
-.logout-btn{
-  background: linear-gradient(180deg, #ff5a5a, #e33e3e);
-  color: var(--white);
-  border: none;
-  padding: .55rem 1rem;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: transform .12s ease, box-shadow .12s ease, filter .2s ease;
-  font-size: .9rem;
-  box-shadow: 0 6px 16px rgba(227,62,62,.35);
-}
-.logout-btn:hover{
-  filter: brightness(1.03);
-  transform: translateY(-1px);
-}
-.logout-btn:active{
-  transform: translateY(0);
-}
-.logout-btn:focus-visible{
-  outline: none;
-  box-shadow: var(--ring);
-}
-
-/* ===== Main Container (Hero Card) ===== */
-.container{
-  background: linear-gradient(180deg, rgba(0,113,206,.35), rgba(0,57,166,.35));
-  border: 1px solid rgba(255,255,255,.18);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-lg);
-  transition: transform .18s ease, box-shadow .18s ease;
-  width: min(92%, 880px);
-  margin: 2.25rem auto;
-  padding: clamp(1rem, 3vw, 2rem);
-  backdrop-filter: blur(8px) saturate(115%);
-}
-.container:hover{
-  transform: translateY(-2px);
-  box-shadow: 0 24px 50px rgba(0,0,0,.22);
-}
-
-.container form{
-  text-align: center;
-}
-
-/* ===== Typography ===== */
-h1{
-  padding: 10px 0 18px;
-  margin: 0;
-  font-weight: 800;
-  color: #f3f7ff;
-}
-
-label{
-  color: #eef5ff;
-  font-size: 1.05rem;
-  text-align: center;
+main {
   display: block;
-  margin-top: .5rem;
 }
 
-/* ===== Form Controls ===== */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a:hover,
+a:focus {
+  color: var(--color-primary-600);
+}
+
+button,
 input,
-select{
-  display: block;
-  margin: .85rem auto 1.1rem;
-  padding: .8rem .95rem;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,.22);
-  width: min(100%, 520px);
-  font-size: 1rem;
-  background: rgba(255,255,255,.06);
-  color: var(--white);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
-  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
-}
-input:hover,
-select:hover{
-  border-color: rgba(255,255,255,.32);
-  background: rgba(255,255,255,.08);
-}
-input:focus-visible,
-select:focus-visible{
-  outline: none;
-  border-color: rgba(73, 177, 255, .85);
-  box-shadow: var(--ring);
-  background: rgba(255,255,255,.10);
-}
-input::placeholder{
-  color: rgba(255,255,255,.65);
+select,
+textarea {
+  font: inherit;
 }
 
-/* ===== Buttons ===== */
-/* Google button hover effect */
-.google-btn {
-  background: linear-gradient(180deg, #ffffff, #f7f7f7);
-  color: #444;
-  border: 1px solid #ddd;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: all 20s ease;
+button {
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0,0,0,.15);
+  border: none;
+  border-radius: var(--radius-sm);
+  transition: transform var(--transition-base), box-shadow var(--transition-base), background var(--transition-base);
 }
 
-.google-btn:hover {
-  background: #ffffff;          /* full white background */
-  color: #000;                  /* dark text for contrast */
-  border-color: #ccc;           /* subtle border */
-  transform: translateY(-1px);  /* subtle lift */
-  box-shadow: 0 6px 18px rgba(0,0,0,.2);
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  box-shadow: none;
+  transform: none;
 }
 
-/* Subtitle text under PantherWatch */
-.subtitle {
-  font-size: 10px;       /* slightly larger */
-  color: #eef5ff;          /* brighter for readability */
-  font-weight: 500;
-  letter-spacing: .3px;
-  margin: .5rem 0 1rem;
-  text-shadow: 0 1px 4px rgba(0,0,0,.45); /* glow for clarity */
+input,
+select,
+textarea {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  padding: 0.65rem 0.75rem;
+  background: var(--color-surface);
+  color: inherit;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
 }
 
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px rgba(31, 95, 195, 0.18);
+}
 
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
 
+::-webkit-scrollbar-thumb {
+  background: rgba(21, 32, 68, 0.25);
+  border-radius: 99px;
+}
 
-/* ===== Utilities & Media ===== */
-@media (max-width: 768px){
-  .header-content{
-    padding: 0 1rem;
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.theme-dark {
+  --color-page-background: #0f1729;
+  --color-surface: #111f33;
+  --color-surface-muted: #152a45;
+  --color-border: #1e3352;
+  --color-border-strong: #2f4a6d;
+  --color-text: #e4ecf8;
+  --color-text-muted: #9db2d2;
+  --color-heading: #f7fbff;
+  --color-primary-100: #1c2f52;
+  --color-primary-300: #4668a8;
+  --shadow-xs: 0 1px 0 rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 6px 16px rgba(3, 10, 22, 0.45);
+  --shadow-md: 0 20px 40px rgba(3, 10, 22, 0.6);
+}
+
+.theme-dark body {
+  background: var(--color-page-background);
+  color: var(--color-text);
+}
+
+.theme-dark a:hover,
+.theme-dark a:focus {
+  color: var(--color-primary-300);
+}
+
+.theme-dark ::-webkit-scrollbar-thumb {
+  background: rgba(148, 178, 218, 0.3);
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
-  .user-info{
-    gap: .6rem;
-    font-size: .95rem;
-  }
-  .container{
-    padding: 1.25rem;
-    margin: 1.25rem auto;
-  }
 }
 
-@media (prefers-reduced-motion: reduce){
-  *{
-    transition: none !important;
-  }
-}
+

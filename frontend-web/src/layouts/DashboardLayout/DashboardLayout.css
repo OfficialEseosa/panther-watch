@@ -1,141 +1,46 @@
-/* ===== PantherWatch • Georgia State Theme (CSS ONLY) ===== */
-:root{
-  /* GSU palette */
-  --gsu-950:#0b1426;
-  --gsu-900:#0f1f3a;
-  --gsu-800:#183157;
-  --gsu-700:#1f4274;
-  --gsu-600:#255491;
-  --gsu-500:#0039A6;   /* Panther Blue */
-  --gsu-400:#2b6ec9;
-  --gsu-300:#5d93de;
-
-  /* Accent (sparingly) */
-  --gsu-red:#E03A3E;
-
-  /* Neutrals */
-  --ink-050:#f7f9ff;
-  --ink-100:#eef3fb;
-  --ink-300:#c9d5ea;
-  --ink-500:#9fb1cc;
-  --ink-700:#7c91b1;
-
-  /* Surfaces */
-  --panel:#0f1f3a;
-  --card:#142a51;
-  --card-hover:#1a3766;
-
-  --line:rgba(255,255,255,.10);
-  --shadow:0 10px 28px rgba(5,12,27,.28);
-  --radius-xl:18px;
-  --radius-lg:14px;
-  --radius-md:12px;
+﻿.dashboard-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-page-background);
 }
 
-/* ===== Base layout (flatter, no neon) ===== */
-.dashboard-layout{
-  display:flex; flex-direction:column; min-height:100vh;
-  background: linear-gradient(180deg, var(--gsu-950), var(--gsu-900)) !important;
-  color:var(--ink-050);
-  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans";
+.dashboard-content {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  position: relative;
 }
 
-.dashboard-content{ display:flex; flex:1; position:relative; }
-.main-content{ flex:1; transition: margin-left .3s ease; padding:0; min-height:calc(100vh - 60px); }
-.main-content.sidebar-open{ margin-left:250px; }
-.content-wrapper{ padding:28px; max-width:1200px; margin:0 auto; }
-
-/* ===== Hero (photo + soft overlay, no glow) ===== */
-.hero{
-  position:relative; overflow:hidden;
-  border-radius: var(--radius-xl);
-  background:
-    linear-gradient(0deg, rgba(12,24,48,.55), rgba(12,24,48,.55)),
-    url("/images/gsu-quad.jpg") center/cover no-repeat;
-  border:1px solid var(--line);
-  box-shadow: var(--shadow);
-  padding:36px 28px;
-  margin: 12px auto 28px;
-  color:#f1f6ff;
-}
-.hero h1{ margin:0 0 6px; font-size:32px; line-height:1.15; font-weight:800; }
-.hero p{ margin:0; color:#d7e4ff; font-weight:600; }
-.hero::after{ content:none; } /* remove previous neon edge */
-
-/* ===== Card grid ===== */
-.card-grid{ display:grid; gap:22px; grid-template-columns: repeat(12,1fr); }
-.card{ grid-column: span 4; } /* 3-up desktop */
-
-/* ===== Tiles (flat Panther surfaces) ===== */
-.tile{
-  background: var(--card) !important;
-  border:1px solid var(--line);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  padding:22px;
-  display:flex; flex-direction:column; gap:8px;
-  transition: transform .12s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
-}
-.tile:hover{
-  transform: translateY(-2px);
-  background: var(--card-hover);
-  border-color: rgba(255,255,255,.14);
-  box-shadow: 0 14px 32px rgba(7,18,40,.32);
-}
-.tile:focus-within{ outline:none; box-shadow:0 0 0 3px rgba(90,150,240,.35); }
-
-.tile-icon{
-  width:52px; height:52px; border-radius:14px;
-  display:grid; place-items:center;
-  background: rgba(255,255,255,.06);
-  border:1px solid rgba(255,255,255,.10);
+.main-content {
+  flex: 1;
+  padding: 32px 40px;
+  transition: margin-left 0.3s ease;
 }
 
-.tile h3{ margin:8px 0 4px; font-size:18px; font-weight:800; color:#eef4ff; }
-.tile p{ margin:0; color:var(--ink-700); font-size:14.5px; line-height:1.45; }
-
-/* Badge (use GSU red subtly) */
-.badge{
-  position:absolute; top:14px; right:14px;
-  font-size:12px; font-weight:800; color:#fff;
-  padding:.28rem .5rem; border-radius:999px;
-  background: var(--gsu-red);
-  border:1px solid rgba(0,0,0,.08);
+.main-content.sidebar-open {
+  margin-left: 260px;
 }
 
-/* ===== Buttons ===== */
-.btn{
-  margin-top:auto; align-self:flex-start;
-  background: var(--gsu-500);
-  color:#fff; border:1px solid rgba(255,255,255,.12);
-  padding:.7rem 1rem; border-radius:12px; font-weight:800; letter-spacing:.2px;
-  box-shadow: 0 8px 20px rgba(0,57,166,.28);
-  transition: transform .12s ease, box-shadow .18s ease, background .18s ease;
-}
-.btn:hover{ transform: translateY(-1px); background: var(--gsu-400); }
-.btn:focus-visible{ outline:3px solid rgba(90,150,240,.45); outline-offset:2px; }
-
-/* ===== Top bar ===== */
-.header-blur{
-  background: rgba(15,31,68,.82);
-  border-bottom: 1px solid var(--line);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+.content-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  min-height: calc(100vh - 120px);
 }
 
-/* ===== Scrollbar ===== */
-@media (hover:hover){
-  ::-webkit-scrollbar{ height:10px; width:10px }
-  ::-webkit-scrollbar-thumb{ background:#1b2f57; border-radius:999px; }
-  ::-webkit-scrollbar-track{ background: transparent; }
+@media (max-width: 1024px) {
+  .main-content {
+    padding: 28px;
+  }
+
+  .main-content.sidebar-open {
+    margin-left: 0;
+  }
 }
 
-/* ===== Responsive ===== */
-@media (max-width:1024px){ .card{ grid-column: span 6; } }
-@media (max-width:768px){
-  .main-content.sidebar-open{ margin-left:0 }
-  .content-wrapper{ padding:18px }
-  .hero{ padding:26px 18px }
-  .hero h1{ font-size:26px }
-  .card{ grid-column: span 12; }
+@media (max-width: 768px) {
+  .main-content {
+    padding: 20px;
+  }
 }

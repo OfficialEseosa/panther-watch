@@ -1,85 +1,83 @@
-import { useState, useEffect } from 'react'
-import { adminService } from '../../config/adminService'
-import './Sidebar.css'
+﻿import { useState, useEffect } from 'react';
+import Icon from '../Icon';
+import { adminService } from '../../config/adminService';
+import './Sidebar.css';
 
 function Sidebar({ isOpen, currentPath, onNavigate, onClose }) {
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [adminCheckComplete, setAdminCheckComplete] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    checkAdminStatus()
-  }, [])
+    checkAdminStatus();
+  }, []);
 
   const checkAdminStatus = async () => {
     try {
-      const adminStatus = await adminService.checkAdminStatus()
-      setIsAdmin(adminStatus)
+      const adminStatus = await adminService.checkAdminStatus();
+      setIsAdmin(adminStatus);
     } catch (error) {
-      console.error('Error checking admin status:', error)
-      setIsAdmin(false)
-    } finally {
-      setAdminCheckComplete(true)
+      console.error('Error checking admin status:', error);
+      setIsAdmin(false);
     }
-  }
+  };
 
   const navigationItems = [
     {
       id: 'dashboard',
       label: 'Dashboard',
       path: '/dashboard',
-      icon: '🏠'
+      icon: 'dashboard'
     },
     {
       id: 'search',
-      label: 'Search for Classes',
+      label: 'Course Search',
       path: '/course-search',
-      icon: '🔍'
+      icon: 'search'
     },
     {
       id: 'tracked',
-      label: 'View Tracked Classes',
+      label: 'Tracked Classes',
       path: '/tracked-classes',
-      icon: '📚'
-    },
-    ...(isAdmin ? [{
+      icon: 'bookmark'
+    }
+  ];
+
+  if (isAdmin) {
+    navigationItems.push({
       id: 'admin',
       label: 'Admin Panel',
       path: '/admin',
-      icon: '⚙️'
-    }] : [])
-  ]
+      icon: 'admin'
+    });
+  }
 
   const handleNavigate = (path, comingSoon = false) => {
     if (comingSoon) {
-      // For now, just show an alert
-      alert('This feature is coming soon!')
-      return
+      alert('This feature is coming soon!');
+      return;
     }
-    
-    onNavigate(path)
-    onClose() // Close sidebar on mobile after navigation
-  }
+
+    onNavigate(path);
+    onClose();
+  };
 
   return (
     <>
-      {/* Backdrop for mobile */}
       {isOpen && <div className="sidebar-backdrop" onClick={onClose}></div>}
-      
-      <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
+
+      <aside className={`sidebar ${isOpen ? 'open' : ''}`} aria-label="Primary navigation">
         <nav className="sidebar-nav">
           <ul className="nav-list">
             {navigationItems.map((item) => (
               <li key={item.id} className="nav-item">
                 <button
-                  className={`nav-link ${currentPath === item.path ? 'active' : ''} ${item.comingSoon ? 'coming-soon' : ''}`}
+                  type="button"
+                  className={`nav-link ${currentPath === item.path ? 'active' : ''}`}
                   onClick={() => handleNavigate(item.path, item.comingSoon)}
                   data-admin={item.id === 'admin' ? 'true' : undefined}
                 >
-                  <span className="nav-icon">{item.icon}</span>
-                  <span className="nav-label">
-                    {item.label}
-                    {item.comingSoon && <span className="badge">Soon</span>}
-                  </span>
+                  <Icon name={item.icon} size={18} className="nav-icon" aria-hidden />
+                  <span className="nav-label">{item.label}</span>
+                  {item.comingSoon && <span className="badge">Soon</span>}
                 </button>
               </li>
             ))}
@@ -87,7 +85,7 @@ function Sidebar({ isOpen, currentPath, onNavigate, onClose }) {
         </nav>
       </aside>
     </>
-  )
+  );
 }
 
-export default Sidebar
+export default Sidebar;

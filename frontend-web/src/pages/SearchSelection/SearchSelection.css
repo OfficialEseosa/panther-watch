@@ -1,109 +1,83 @@
-/* ===== Search Selection • Georgia State Theme (CSS only) ===== */
-:root{
-  --gsu-500:#0039A6;   /* Panther Blue */
-  --gsu-600:#1f4274;   /* deep blue hover */
-  --gsu-300:#5d93de;   /* light blue accent */
-  --ink-900:#122142;   /* headings */
-  --ink-700:#516489;   /* body copy */
-  --ink-050:#f7f9ff;   /* paper tint */
-  --line:#dbe3f5;      /* soft border */
+﻿.search-selection {
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 0 16px;
 }
 
-.search-selection{
-  padding:2rem;
-  max-width:800px;
-  margin:0 auto;
+.search-selection-container {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  box-shadow: var(--shadow-sm);
+  text-align: center;
 }
 
-.search-selection-container{ text-align:center; }
-
-.search-selection h1{
-  margin-bottom:1rem;
-  color:var(--ink-900);
-  letter-spacing:.2px;
-  font-weight:800;
+.search-selection h1 {
+  margin: 0 0 12px;
+  color: var(--color-heading);
+  font-size: clamp(1.6rem, 2.4vw, 2.1rem);
 }
 
-.search-selection p{
-  margin-bottom:2rem;
-  color:var(--ink-700);
-  font-size:1.05rem;
+.search-selection p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 1rem;
 }
 
-/* layout */
-.search-options{
-  display:flex;
-  gap:1.5rem;
-  justify-content:center;
-  flex-wrap:wrap;
+.search-options {
+  margin-top: 28px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
 }
 
-/* card buttons — paper surface with Panther Blue accents */
-.search-option-btn{
-  background:var(--ink-050);
-  border:1.5px solid var(--line);
-  border-radius:14px;
-  padding:1.75rem;
-  min-width:300px;
-  cursor:pointer;
-  transition:transform .12s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
-  box-shadow:0 6px 16px rgba(9, 24, 55, .08);
-  text-align:left;
+.search-option-btn {
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  min-width: 280px;
+  max-width: 320px;
+  cursor: pointer;
+  transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base), background var(--transition-base);
+  text-align: left;
 }
 
-.search-option-btn:hover{
-  transform:translateY(-2px);
-  border-color:var(--gsu-500);
-  background:#ffffff;
-  box-shadow:0 12px 24px rgba(0,57,166,.18);
+.search-option-btn:hover {
+  transform: translateY(-3px);
+  border-color: var(--color-primary-300);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
 }
 
-/* distinct but on-brand variants (no green/teal bootstrap colors) */
-.course-search-btn{ border-color:rgba(0,57,166,.18); }
-.crn-search-btn{ border-color:rgba(0,57,166,.12); }
-
-/* hover fills with Panther Blue and inverts text for focus */
-.course-search-btn:hover{
-  background:var(--gsu-500);
-  border-color:var(--gsu-500);
-  box-shadow:0 14px 26px rgba(0,57,166,.28);
-}
-.crn-search-btn:hover{
-  background:var(--gsu-600);
-  border-color:var(--gsu-600);
-  box-shadow:0 14px 26px rgba(31,66,116,.28);
+.search-option-btn:focus-visible {
+  outline: 3px solid rgba(31, 95, 195, 0.3);
+  outline-offset: 4px;
 }
 
-/* accessible keyboard focus */
-.search-option-btn:focus-visible{
-  outline:3px solid rgba(0,57,166,.35);
-  outline-offset:3px;
+.btn-content h3 {
+  margin: 0 0 8px;
+  color: var(--color-heading);
+  font-size: 1.2rem;
 }
 
-/* text styles */
-.btn-content h3{
-  margin:0 0 .5rem 0;
-  color:var(--ink-900);
-  font-size:1.25rem;
-  font-weight:800;
-}
-.btn-content p{
-  margin:0;
-  color:var(--ink-700);
-  font-size:.97rem;
-  line-height:1.45;
+.btn-content p {
+  margin: 0;
+  color: var(--color-text-muted);
+  line-height: 1.5;
 }
 
-/* invert text when the card turns blue on hover */
-.course-search-btn:hover .btn-content h3,
-.course-search-btn:hover .btn-content p,
-.crn-search-btn:hover .btn-content h3,
-.crn-search-btn:hover .btn-content p{
-  color:#fff;
-}
+@media (max-width: 768px) {
+  .search-selection-container {
+    padding: 24px;
+  }
 
-/* responsive */
-@media (max-width:768px){
-  .search-options{ flex-direction:column; align-items:center; }
-  .search-option-btn{ min-width:260px; }
+  .search-option-btn {
+    width: 100%;
+  }
 }
