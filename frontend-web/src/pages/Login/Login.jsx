@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { authService } from '../../config/authService.js'
 import pantherLogo from '../../assets/panther.png'
@@ -29,7 +29,7 @@ function Login({ onLogin }) {
       setLoading(true)
       setErrorMessage('')
       
-      const result = await authService.signInWithGoogle()
+      await authService.signInWithGoogle()
       
       // The redirect will happen automatically, so we don't need to handle success here
       

@@ -1,62 +1,91 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../../contexts/AuthContext'
-import { useWatchedClasses } from '../../contexts/WatchedClassesContext'
-import './Dashboard.css'
+﻿import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import { useWatchedClasses } from '../../contexts/WatchedClassesContext';
+import Icon from '../../components/Icon';
+import './Dashboard.css';
 
 function Dashboard() {
-  const navigate = useNavigate()
-  const { userInfo, loading: authLoading } = useAuth()
-  const { watchedCount, loading: watchedLoading } = useWatchedClasses()
+  const navigate = useNavigate();
+  const { userInfo } = useAuth();
+  const { watchedCount, loading: watchedLoading } = useWatchedClasses();
 
-  const handleNavigateToSearch = () => {
-    navigate('/course-search')
-  }
+  const cards = [
+    {
+      id: 'search',
+      icon: 'search',
+      title: 'Course search',
+      description: 'Filter by term, subject, and course details with real-time availability.',
+      actionLabel: 'Search courses',
+      onClick: () => navigate('/course-search')
+    },
+    {
+      id: 'tracked',
+      icon: 'bookmark',
+      title: 'Tracked classes',
+      description: 'Review the sections you are monitoring and adjust alerts anytime.',
+      actionLabel: watchedCount > 0 ? 'Manage tracked list' : 'Start tracking',
+      badge: watchedLoading ? undefined : `${watchedCount} active`,
+      onClick: () => navigate('/tracked-classes')
+    },
+    {
+      id: 'analytics',
+      icon: 'analytics',
+      title: 'Insights & reports',
+      description: 'Usage analytics, notification history, and seat trends (coming soon).',
+      actionLabel: 'In development',
+      disabled: true
+    }
+  ];
+
+  const greetingName = userInfo?.firstName || 'Panther';
 
   return (
     <div className="dashboard">
-      <div className="welcome-section">
-        <div className="welcome-content">
-          <div className="welcome-text">
-            <h1 className="welcome-title">
-              Welcome, {userInfo?.firstName || 'User'}!
-            </h1>
-            <p className="welcome-subtitle">
-              Ready to search for your classes?
-            </p>
+      <section className="dashboard-header">
+        <div className="header-copy">
+          <span className="eyebrow">Overview</span>
+          <h1 className="dashboard-title">Welcome back, {greetingName}.</h1>
+          <p className="dashboard-subtitle">
+            Keep an eye on enrollment and act quickly when seats open across Georgia State courses.
+          </p>
+        </div>
+
+        <div className="tracked-summary" aria-live="polite">
+          <div className="summary-icon">
+            <Icon name="bookmark" size={26} aria-hidden />
+          </div>
+          <div className="summary-content">
+            <span className="summary-label">Tracked classes</span>
+            <span className="summary-value">{watchedLoading ? '—' : watchedCount}</span>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="dashboard-cards">
-        <div className="dashboard-card clickable" onClick={handleNavigateToSearch}>
-          <div className="card-icon">🔍</div>
-          <h3 className="card-title">Search for Classes</h3>
-          <p className="card-description">
-            Find and explore available courses for the semester
-          </p>
-        </div>
+      <section className="dashboard-grid">
+        {cards.map((card) => (
+          <article key={card.id} className={`dashboard-card ${card.disabled ? 'disabled' : ''}`}>
+            <div className="card-icon">
+              <Icon name={card.icon} size={28} aria-hidden />
+            </div>
+            <h3 className="card-title">{card.title}</h3>
+            <p className="card-description">{card.description}</p>
 
-        <div className="dashboard-card" onClick={() => navigate('/tracked-classes')}>
-          <div className="card-icon">📚</div>
-          <h3 className="card-title">Tracked Classes</h3>
-          <p className="card-description">
-            You're tracking {watchedCount} {watchedCount === 1 ? 'class' : 'classes'}
-          </p>
-          {watchedCount > 0 && <span className="active-badge">Active</span>}
-        </div>
-
-        <div className="dashboard-card coming-soon">
-          <div className="card-icon">📊</div>
-          <h3 className="card-title">Analytics</h3>
-          <p className="card-description">
-            View your search history and class statistics
-          </p>
-          <span className="coming-soon-badge">Coming Soon</span>
-        </div>
-      </div>
+            <div className="card-footer">
+              {card.badge && <span className="card-badge">{card.badge}</span>}
+              <button
+                type="button"
+                className="card-button"
+                onClick={card.onClick}
+                disabled={card.disabled}
+              >
+                {card.actionLabel}
+              </button>
+            </div>
+          </article>
+        ))}
+      </section>
     </div>
-  )
+  );
 }
 
-export default Dashboard
+export default Dashboard;

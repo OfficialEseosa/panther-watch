@@ -1,112 +1,87 @@
-/* Course Search Page Styles */
-
-.course-search-page {
-  max-width: 800px;
-  margin: 0 auto;
-  background-color: #0039A6;
-  min-height: 100vh;
-  padding: 20px;
+﻿.course-search-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
-.page-header {
-  text-align: center;
-  margin-bottom: 32px;
+.course-search-page .page-header {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 28px 32px;
+  box-shadow: var(--shadow-sm);
 }
 
-.page-title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #ffffff;
-  margin: 0 0 8px 0;
+.course-search-page .page-title {
+  margin: 0 0 8px;
+  font-size: clamp(1.5rem, 2.2vw, 2rem);
+  color: var(--color-heading);
 }
 
-.page-description {
-  font-size: 16px;
-  color: #f0f8ff;
+.course-search-page .page-description {
   margin: 0;
+  color: var(--color-text-muted);
+  font-size: 1rem;
 }
 
-.search-form-container {
-  background: linear-gradient(135deg, rgba(0, 113, 206, 0.95) 0%, rgba(0, 90, 165, 0.95) 100%), 
-              url('../../assets/background.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+.course-search-page .search-form-container {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
   padding: 32px;
-  margin: 0 auto;
-  min-height: 400px;
 }
 
 .course-search-form {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 20px;
-  backdrop-filter: blur(1px);
-  background: rgba(255, 255, 255, 0.05);
-  padding: 24px;
-  border-radius: 8px;
 }
 
-/* Form elements */
 .course-search-form label {
-  color: white;
-  font-size: 16px;
-  font-weight: 500;
-  margin-bottom: 8px;
-  display: block;
+  font-weight: 600;
+  color: var(--color-heading);
 }
 
 .course-search-form select,
 .course-search-form input {
   width: 100%;
-  padding: 12px;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  color: black;
-  background-color: white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: box-shadow 0.2s ease;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 0.75rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
 }
 
 .course-search-form select:focus,
 .course-search-form input:focus {
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px rgba(31, 95, 195, 0.18);
   outline: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .course-search-form button {
-  background-color: #27ae60;
-  color: white;
+  justify-self: start;
   border: none;
-  padding: 14px 24px;
-  border-radius: 8px;
-  font-size: 16px;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-600);
+  color: #fff;
   font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-  margin-top: 12px;
+  padding: 12px 20px;
+  transition: background var(--transition-base), box-shadow var(--transition-base);
 }
 
 .course-search-form button:hover {
-  background-color: #229954;
+  background: var(--color-primary-500);
+  box-shadow: var(--shadow-sm);
 }
 
-/* Mobile responsiveness */
 @media (max-width: 768px) {
-  .search-form-container {
-    margin: 0 16px;
-    padding: 24px 20px;
+  .course-search-page .page-header {
+    padding: 24px;
   }
-  
-  .page-title {
-    font-size: 24px;
-  }
-  
-  .course-search-form select,
-  .course-search-form input {
-    font-size: 16px; /* Prevent zoom on iOS */
+
+  .course-search-page .search-form-container {
+    padding: 24px;
   }
 }
