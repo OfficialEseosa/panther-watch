@@ -283,51 +283,14 @@
 
   .bulk-actions {
     flex-wrap: wrap;
-  }
-
-  .users-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .user-card {
-    padding: 18px;
-  }
-}
- 0, 0, 0);
-  border: 0;
-}
-
-@media (max-width: 768px) {
-  .search-controls {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .bulk-actions {
-    flex-wrap: wrap;
-  }
-
-  .users-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .user-card {
-    padding: 18px;
-dth: 768px) {
-  .search-controls {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .bulk-actions {
     justify-content: space-between;
   }
-  
+
   .users-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .user-card {
-    padding: 1rem;
+    padding: 18px;
   }
 }
