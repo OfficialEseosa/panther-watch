@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Icon from '../../Icon'
 import EmailTemplates from './EmailTemplates'
 import EmailForm from './EmailForm'
 import { adminService } from '../../../config/adminService'
@@ -13,7 +14,7 @@ function EmailComposer({ user, onCancel, onEmailSent }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (!subject.trim() || !message.trim()) {
       setError('Please fill in both subject and message fields.')
       return
@@ -25,7 +26,7 @@ function EmailComposer({ user, onCancel, onEmailSent }) {
 
     try {
       const response = await adminService.sendCustomEmail(user.email, subject, message)
-      
+
       if (response.success) {
         setSuccess('Email sent successfully!')
         setTimeout(() => {
@@ -47,17 +48,22 @@ function EmailComposer({ user, onCancel, onEmailSent }) {
   }
 
   return (
-    <div className="email-composer-overlay">
+    <div className="email-composer-overlay" role="dialog" aria-modal="true" aria-labelledby="email-composer-title">
       <div className="email-composer">
-        <div className="composer-header">
-          <h3>📧 Compose Email</h3>
-          <button className="close-btn" onClick={onCancel}>×</button>
-        </div>
+        <header className="composer-header">
+          <div className="composer-heading">
+            <Icon name="mail" size={20} className="composer-heading-icon" aria-hidden />
+            <h3 id="email-composer-title">Compose email</h3>
+          </div>
+          <button type="button" className="close-btn" onClick={onCancel} aria-label="Close composer">
+            <Icon name="x" size={18} aria-hidden />
+          </button>
+        </header>
 
         <div className="recipient-info">
-          <div className="recipient-avatar">
+          <div className="recipient-avatar" aria-hidden>
             {user?.picture ? (
-              <img src={user.picture} alt={user.name || user.email} />
+              <img src={user.picture} alt="" />
             ) : (
               <div className="avatar-placeholder">
                 {(user?.name || user?.email).charAt(0).toUpperCase()}

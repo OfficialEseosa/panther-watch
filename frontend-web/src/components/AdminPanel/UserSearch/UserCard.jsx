@@ -1,3 +1,5 @@
+import Icon from '../../Icon'
+
 function UserCard({ user, isSelected, onSelect, onSendEmail }) {
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A'
@@ -9,11 +11,11 @@ function UserCard({ user, isSelected, onSelect, onSendEmail }) {
   }
 
   return (
-    <div className={`user-card ${isSelected ? 'selected' : ''}`}>
-      <div className="user-card-header">
-        <div className="user-avatar">
+    <article className={`user-card ${isSelected ? 'selected' : ''}`}>
+      <header className="user-card-header">
+        <div className="user-avatar" aria-hidden>
           {user.picture ? (
-            <img src={user.picture} alt={user.name || user.email} />
+            <img src={user.picture} alt="" />
           ) : (
             <div className="avatar-placeholder">
               {(user.name || user.email).charAt(0).toUpperCase()}
@@ -21,9 +23,7 @@ function UserCard({ user, isSelected, onSelect, onSendEmail }) {
           )}
         </div>
         <div className="user-info">
-          <h3 className="user-name">
-            {user.name || user.email.split('@')[0]}
-          </h3>
+          <h3 className="user-name">{user.name || user.email.split('@')[0]}</h3>
           <p className="user-email">{user.email}</p>
         </div>
         <label className="user-checkbox">
@@ -31,36 +31,36 @@ function UserCard({ user, isSelected, onSelect, onSendEmail }) {
             type="checkbox"
             checked={isSelected}
             onChange={onSelect}
+            aria-label={isSelected ? 'Deselect user' : 'Select user'}
           />
-          <span className="checkmark"></span>
+          <span className="checkmark">
+            <Icon name="check" size={11} aria-hidden />
+          </span>
         </label>
-      </div>
-      
-      <div className="user-stats">
+      </header>
+
+      <dl className="user-stats">
         <div className="stat-item">
-          <span className="stat-icon">📚</span>
-          <span className="stat-text">
-            {user.watchedClassesCount} watched classes
-          </span>
+          <dt className="sr-only">Watched classes</dt>
+          <Icon name="bookmark" size={14} className="stat-icon" aria-hidden />
+          <dd className="stat-text">{user.watchedClassesCount} watched classes</dd>
         </div>
         <div className="stat-item">
-          <span className="stat-icon">📅</span>
-          <span className="stat-text">
-            Joined {formatDate(user.createdAt)}
-          </span>
+          <dt className="sr-only">Joined</dt>
+          <Icon name="calendar" size={14} className="stat-icon" aria-hidden />
+          <dd className="stat-text">Joined {formatDate(user.createdAt)}</dd>
         </div>
-      </div>
+      </dl>
 
       <div className="user-actions">
-        <button
-          className="send-email-btn"
-          onClick={onSendEmail}
-        >
-          📧 Send Email
+        <button type="button" className="send-email-btn" onClick={onSendEmail}>
+          <Icon name="mail" size={16} aria-hidden />
+          Send email
         </button>
       </div>
-    </div>
+    </article>
   )
 }
 
 export default UserCard
+

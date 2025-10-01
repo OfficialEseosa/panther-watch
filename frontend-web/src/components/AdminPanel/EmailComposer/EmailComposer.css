@@ -1,74 +1,81 @@
-/* Email Composer Styles */
 .email-composer-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background: rgba(17, 24, 39, 0.46);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
-  padding: 1rem;
+  z-index: 1200;
+  padding: 20px;
 }
 
 .email-composer {
-  background: white;
-  border-radius: 12px;
   width: 100%;
-  max-width: 600px;
-  max-height: 90vh;
+  max-width: 640px;
+  max-height: 92vh;
   overflow-y: auto;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--color-border);
 }
 
 .composer-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
+  justify-content: space-between;
+  padding: 22px 24px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.composer-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.composer-heading-icon {
+  color: var(--color-primary-600);
 }
 
 .composer-header h3 {
   margin: 0;
-  color: #1f2937;
   font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-heading);
 }
 
 .close-btn {
-  background: none;
-  border: none;
-  font-size: 2rem;
-  color: #6b7280;
-  cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
-  transition: background-color 0.2s;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  transition: background var(--transition-base), border-color var(--transition-base), color var(--transition-base);
 }
 
 .close-btn:hover {
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
+  border-color: var(--color-border);
+  color: var(--color-heading);
 }
 
 .recipient-info {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1.5rem;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  gap: 16px;
+  padding: 20px 24px;
+  background: var(--color-surface-muted);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .recipient-avatar {
-  width: 50px;
-  height: 50px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
@@ -83,203 +90,174 @@
 .avatar-placeholder {
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
-  font-size: 1.25rem;
+  font-weight: 700;
+  font-size: 1.1rem;
+  background: var(--color-primary-100);
+  color: var(--color-primary-600);
 }
 
 .recipient-details h4 {
-  margin: 0 0 0.25rem 0;
-  color: #1f2937;
-  font-size: 1.1rem;
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  color: var(--color-heading);
 }
 
 .recipient-details p {
   margin: 0;
-  color: #6b7280;
-  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
 }
 
 .email-templates {
-  padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 22px 24px;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .email-templates h4 {
-  margin: 0 0 1rem 0;
-  color: #1f2937;
-  font-size: 1rem;
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-heading);
 }
 
 .template-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 10px;
 }
 
 .template-btn {
-  padding: 0.5rem 1rem;
-  background: #e5e7eb;
-  color: #374151;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-heading);
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: background var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
 }
 
 .template-btn:hover {
-  background: #d1d5db;
+  background: var(--color-primary-100);
+  border-color: var(--color-primary-300);
+  box-shadow: var(--shadow-sm);
 }
 
 .email-form {
-  padding: 1.5rem;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 
 .form-group {
-  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  color: #374151;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--color-heading);
+}
+
+.status-message {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
   font-weight: 500;
 }
 
-.form-group input,
-.form-group textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 2px solid #e5e7eb;
-  border-radius: 6px;
-  font-size: 1rem;
-  transition: border-color 0.2s;
-  font-family: inherit;
-}
-
-.form-group input:focus,
-.form-group textarea:focus {
-  outline: none;
-  border-color: #667eea;
-}
-
-.form-group textarea {
-  resize: vertical;
-  min-height: 120px;
-}
-
 .error-message {
-  background: #fef2f2;
-  color: #dc2626;
-  padding: 0.75rem;
-  border-radius: 6px;
-  border: 1px solid #fecaca;
-  margin-bottom: 1rem;
-  font-size: 0.875rem;
+  background: rgba(180, 35, 24, 0.1);
+  color: var(--color-danger);
+  border: 1px solid rgba(180, 35, 24, 0.3);
 }
 
 .success-message {
-  background: #f0fdf4;
-  color: #16a34a;
-  padding: 0.75rem;
-  border-radius: 6px;
-  border: 1px solid #bbf7d0;
-  margin-bottom: 1rem;
-  font-size: 0.875rem;
+  background: rgba(29, 129, 76, 0.12);
+  color: var(--color-success);
+  border: 1px solid rgba(29, 129, 76, 0.3);
 }
 
 .form-actions {
+  margin-top: 8px;
   display: flex;
-  gap: 1rem;
   justify-content: flex-end;
+  gap: 12px;
 }
 
 .cancel-btn {
-  padding: 0.75rem 1.5rem;
-  background: #f3f4f6;
-  color: #374151;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-heading);
+  font-weight: 600;
+  transition: background var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
 }
 
 .cancel-btn:hover:not(:disabled) {
-  background: #e5e7eb;
+  background: var(--color-surface-muted);
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-sm);
 }
 
 .send-btn {
-  padding: 0.75rem 1.5rem;
-  background: #667eea;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.2s;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: var(--color-primary-600);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
 }
 
 .send-btn:hover:not(:disabled) {
-  background: #5a67d8;
+  background: var(--color-primary-500);
+  box-shadow: var(--shadow-md);
 }
 
 .send-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  opacity: 0.7;
+  box-shadow: none;
 }
 
 .spinner-small {
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top: 2px solid white;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  animation: spin 0.8s linear infinite;
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* Responsive Design */
 @media (max-width: 768px) {
   .email-composer-overlay {
-    padding: 0.5rem;
+    padding: 12px;
   }
-  
-  .email-composer {
-    max-height: 95vh;
-  }
-  
+
   .composer-header,
   .recipient-info,
   .email-templates,
   .email-form {
-    padding: 1rem;
+    padding: 20px;
   }
-  
-  .template-buttons {
-    flex-direction: column;
-  }
-  
-  .template-btn {
-    width: 100%;
-  }
-  
+
   .form-actions {
     flex-direction: column;
   }
-  
+
   .cancel-btn,
   .send-btn {
     width: 100%;
+    justify-content: center;
   }
 }
