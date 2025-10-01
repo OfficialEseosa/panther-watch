@@ -64,7 +64,13 @@
   color: var(--color-primary-600);
 }
 
-.summary-content {\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n\n.summary-label {
+.summary-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.summary-label {
   display: block;
   font-size: 0.8rem;
   color: var(--color-text-muted);

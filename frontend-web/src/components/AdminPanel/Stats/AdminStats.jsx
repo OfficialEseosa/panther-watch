@@ -1,3 +1,4 @@
+import Icon from '../../Icon'
 import './AdminStats.css'
 
 function AdminStats({ users }) {
@@ -8,48 +9,52 @@ function AdminStats({ users }) {
 
   const stats = [
     {
-      label: 'Total Users',
+      label: 'Total users',
       value: totalUsers,
-      icon: '👥',
-      color: '#667eea'
+      icon: 'users',
+      tone: 'primary'
     },
     {
-      label: 'Active Users',
+      label: 'Active users',
       value: activeUsers,
-      icon: '🔥',
-      color: '#10b981'
+      icon: 'userCheck',
+      tone: 'success'
     },
     {
-      label: 'Total Watched Classes',
+      label: 'Total watched classes',
       value: totalWatchedClasses,
-      icon: '📚',
-      color: '#f59e0b'
+      icon: 'bookmark',
+      tone: 'warning'
     },
     {
-      label: 'Avg Classes per User',
+      label: 'Avg classes per user',
       value: avgWatchedClasses,
-      icon: '📊',
-      color: '#8b5cf6'
+      icon: 'gauge',
+      tone: 'accent'
     }
   ]
 
   return (
-    <div className="admin-stats">
-      <h2 className="stats-title">📊 System Overview</h2>
+    <section className="admin-stats" aria-labelledby="admin-stats-title">
+      <header className="stats-header">
+        <Icon name="analytics" size={22} className="stats-header-icon" aria-hidden />
+        <h2 id="admin-stats-title" className="stats-title">System overview</h2>
+      </header>
+
       <div className="stats-grid">
-        {stats.map((stat, index) => (
-          <div key={index} className="stat-card" style={{ borderTopColor: stat.color }}>
-            <div className="stat-icon" style={{ backgroundColor: `${stat.color}20`, color: stat.color }}>
-              {stat.icon}
+        {stats.map((stat) => (
+          <article key={stat.label} className={`stat-card tone-${stat.tone}`}>
+            <div className="stat-icon">
+              <Icon name={stat.icon} size={28} strokeWidth={1.6} aria-hidden />
             </div>
             <div className="stat-content">
-              <div className="stat-value">{stat.value}</div>
-              <div className="stat-label">{stat.label}</div>
+              <p className="stat-label">{stat.label}</p>
+              <p className="stat-value">{stat.value}</p>
             </div>
-          </div>
+          </article>
         ))}
       </div>
-    </div>
+    </section>
   )
 }
 

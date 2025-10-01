@@ -1,4 +1,4 @@
-﻿const ICONS = {
+const ICONS = {
   dashboard: (
     <>
       <path d="M3.5 3.5h7v7h-7z" />
@@ -87,6 +87,61 @@
     <>
       <path d="M7 10.5 12 15.5 17 10.5" />
     </>
+  ),
+  users: (
+    <>
+      <path d="M8.5 12.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z" />
+      <path d="M15.5 11.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+      <path d="M3 19v-.6c0-2.6 2.1-4.7 4.7-4.7h2.2c2.6 0 4.7 2.1 4.7 4.7V19" />
+      <path d="M13 19v-.2c0-2 1.6-3.6 3.5-3.6h0.8c1.9 0 3.5 1.6 3.5 3.6V19" />
+    </>
+  ),
+  userCheck: (
+    <>
+      <path d="M12 12.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
+      <path d="M4 20v-.6C4 15.7 7.1 13 10.9 13h.2" />
+      <path d="m15.5 16.5 1.8 1.8L21 14.5" />
+    </>
+  ),
+  gauge: (
+    <>
+      <path d="M5 18a7 7 0 0 1 14 0" />
+      <path d="M12 12v3.8" />
+      <path d="m9.2 14.3 1.3-1.3" />
+      <path d="m14.8 14.3-1.3-1.3" />
+      <path d="M4 18h16" />
+    </>
+  ),
+  mail: (
+    <>
+      <rect x="3.5" y="6" width="17" height="12" rx="1.8" />
+      <path d="M4.5 7l7.5 5 7.5-5" />
+    </>
+  ),
+  x: (
+    <>
+      <path d="M5 5 19 19" />
+      <path d="M19 5 5 19" />
+    </>
+  ),
+  shieldOff: (
+    <>
+      <path d="M6 6.3V6l6-2.4L18 6v6.2c0 3.6-2.5 6.9-6 7.8" />
+      <path d="M3 3l18 18" />
+    </>
+  ),
+  calendar: (
+    <>
+      <rect x="4.5" y="6" width="15" height="14" rx="1.8" />
+      <path d="M8 3.5v4" />
+      <path d="M16 3.5v4" />
+      <path d="M4.5 11h15" />
+    </>
+  ),
+  check: (
+    <>
+      <path d="M5.5 12.5 10 17l8.5-9" />
+    </>
   )
 };
 
@@ -97,7 +152,7 @@ function Icon({ name, size = 20, strokeWidth = 1.7, className, ariaLabel, ...res
     return null;
   }
 
-  const role = ariaLabel ? "img" : "presentation";
+  const role = ariaLabel ? 'img' : 'presentation';
   const ariaHidden = ariaLabel ? undefined : true;
 
   return (

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import Icon from '../../components/Icon'
 import UserSearchSection from '../../components/AdminPanel/UserSearch'
 import { EmailComposer } from '../../components/AdminPanel/EmailComposer'
 import AdminStats from '../../components/AdminPanel/Stats'
@@ -20,7 +21,7 @@ function AdminPanel() {
     try {
       const adminStatus = await adminService.checkAdminStatus()
       setIsAdmin(adminStatus)
-      
+
       if (adminStatus) {
         await loadAllUsers()
       }
@@ -66,7 +67,7 @@ function AdminPanel() {
 
   if (loading) {
     return (
-      <div className="admin-panel loading">
+      <div className="admin-panel loading" role="status" aria-live="polite">
         <div className="loading-spinner">
           <div className="spinner"></div>
           <p>Checking admin access...</p>
@@ -79,9 +80,9 @@ function AdminPanel() {
     return (
       <div className="admin-panel unauthorized">
         <div className="unauthorized-content">
-          <div className="unauthorized-icon">🚫</div>
-          <h1>Access Denied</h1>
-          <p>You don't have permission to access the admin panel.</p>
+          <Icon name="shieldOff" size={56} className="unauthorized-icon" aria-hidden />
+          <h1>Access denied</h1>
+          <p>You do not have permission to access the admin panel.</p>
           <p>Only authorized administrators can view this page.</p>
         </div>
       </div>
@@ -90,23 +91,28 @@ function AdminPanel() {
 
   return (
     <div className="admin-panel">
-      <div className="admin-header">
-        <h1>📋 Admin Panel</h1>
-        <p>Manage users and send custom email notifications</p>
-      </div>
+      <header className="admin-header">
+        <div className="admin-heading">
+          <Icon name="admin" size={28} className="admin-heading-icon" aria-hidden />
+          <div>
+            <h1>Admin panel</h1>
+            <p>Manage users, insights, and outbound messaging.</p>
+          </div>
+        </div>
+      </header>
 
       <div className="admin-content">
-        <div className="admin-section">
+        <section className="admin-section">
           <AdminStats users={users} />
-        </div>
+        </section>
 
-        <div className="admin-section">
-          <UserSearchSection 
+        <section className="admin-section">
+          <UserSearchSection
             users={users}
             onSearch={handleUserSearch}
             onSendEmail={handleSendEmail}
           />
-        </div>
+        </section>
 
         {showEmailComposer && (
           <EmailComposer
