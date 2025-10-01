@@ -1,6 +1,6 @@
-﻿import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { useWatchedClasses } from '../../contexts/WatchedClassesContext';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth.js';
+import { useWatchedClasses } from '../../hooks/useWatchedClasses.js';
 import Icon from '../../components/Icon';
 import './Dashboard.css';
 
@@ -56,7 +56,7 @@ function Dashboard() {
           </div>
           <div className="summary-content">
             <span className="summary-label">Tracked classes</span>
-            <span className="summary-value">{watchedLoading ? '—' : watchedCount}</span>
+            <span className="summary-value">{watchedLoading ? '�' : watchedCount}</span>
           </div>
         </div>
       </section>

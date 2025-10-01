@@ -35,7 +35,8 @@ function EmailComposer({ user, onCancel, onEmailSent }) {
       } else {
         setError(response.message || 'Failed to send email')
       }
-    } catch (error) {
+    } catch (err) {
+      console.error('Failed to send email:', err)
       setError('Failed to send email. Please try again.')
     } finally {
       setSending(false)
@@ -46,6 +47,9 @@ function EmailComposer({ user, onCancel, onEmailSent }) {
     setSubject(template.subject)
     setMessage(template.message)
   }
+
+  const recipientDisplayName = user?.name || (user?.email ? user.email.split('@')[0] : '')
+  const recipientInitial = (user?.name || user?.email || '?').charAt(0).toUpperCase()
 
   return (
     <div className="email-composer-overlay" role="dialog" aria-modal="true" aria-labelledby="email-composer-title">
@@ -66,12 +70,12 @@ function EmailComposer({ user, onCancel, onEmailSent }) {
               <img src={user.picture} alt="" />
             ) : (
               <div className="avatar-placeholder">
-                {(user?.name || user?.email).charAt(0).toUpperCase()}
+                {recipientInitial}
               </div>
             )}
           </div>
           <div className="recipient-details">
-            <h4>{user?.name || user?.email?.split('@')[0]}</h4>
+            <h4>{recipientDisplayName}</h4>
             <p>{user?.email}</p>
           </div>
         </div>

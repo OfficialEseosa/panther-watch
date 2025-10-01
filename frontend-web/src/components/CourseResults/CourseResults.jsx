@@ -1,10 +1,10 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import Icon from '../Icon';
 import './CourseResults.css';
 import { formatTime, getEnrollmentStatus, formatCreditHours, getWaitlistStatus } from '../../utils';
 import { renderDaysOfWeek } from '../../utils/scheduleComponents';
-import { useWatchedClasses } from '../../contexts/WatchedClassesContext';
-import { useTerms } from '../../contexts/TermsContext';
+import { useWatchedClasses } from '../../hooks/useWatchedClasses.js';
+import { useTerms } from '../../hooks/useTerms.js';
 import LoadingBar from '../LoadingBar';
 
 function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = false, onCourseRemoved, watchedCrns = [] }) {

@@ -1,15 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
+import { TermsContext } from './TermsContext.js'
 import { buildApiUrl } from '../config'
-
-const TermsContext = createContext()
-
-export const useTerms = () => {
-  const context = useContext(TermsContext)
-  if (!context) {
-    throw new Error('useTerms must be used within a TermsProvider')
-  }
-  return context
-}
 
 export const TermsProvider = ({ children }) => {
   const [terms, setTerms] = useState([])

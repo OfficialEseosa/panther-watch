@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Icon from '../../components/Icon'
 import UserSearchSection from '../../components/AdminPanel/UserSearch'
 import { EmailComposer } from '../../components/AdminPanel/EmailComposer'
@@ -13,11 +13,16 @@ function AdminPanel() {
   const [selectedUser, setSelectedUser] = useState(null)
   const [showEmailComposer, setShowEmailComposer] = useState(false)
 
-  useEffect(() => {
-    checkAdminStatus()
+  const loadAllUsers = useCallback(async () => {
+    try {
+      const allUsers = await adminService.getAllUsers()
+      setUsers(allUsers)
+    } catch (error) {
+      console.error('Error loading users:', error)
+    }
   }, [])
 
-  const checkAdminStatus = async () => {
+  const checkAdminStatus = useCallback(async () => {
     try {
       const adminStatus = await adminService.checkAdminStatus()
       setIsAdmin(adminStatus)
@@ -31,16 +36,11 @@ function AdminPanel() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [loadAllUsers])
 
-  const loadAllUsers = async () => {
-    try {
-      const allUsers = await adminService.getAllUsers()
-      setUsers(allUsers)
-    } catch (error) {
-      console.error('Error loading users:', error)
-    }
-  }
+  useEffect(() => {
+    checkAdminStatus()
+  }, [checkAdminStatus])
 
   const handleUserSearch = async (query) => {
     try {

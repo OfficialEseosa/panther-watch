@@ -1,8 +1,7 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
+import { WatchedClassesContext } from './WatchedClassesContext.js'
 import { watchedClassService } from '../config/watchedClassService.js'
-import { useAuth } from './AuthContext'
-
-const WatchedClassesContext = createContext({})
+import { useAuth } from '../hooks/useAuth.js'
 
 export function WatchedClassesProvider({ children }) {
   const { userInfo, isAuthenticated } = useAuth()
@@ -119,12 +118,4 @@ export function WatchedClassesProvider({ children }) {
       {children}
     </WatchedClassesContext.Provider>
   )
-}
-
-export function useWatchedClasses() {
-  const context = useContext(WatchedClassesContext)
-  if (context === undefined) {
-    throw new Error('useWatchedClasses must be used within a WatchedClassesProvider')
-  }
-  return context
 }

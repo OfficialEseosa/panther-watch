@@ -1,7 +1,6 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
+import { AuthContext } from './AuthContext.js'
 import { authService } from '../config/authService.js'
-
-const AuthContext = createContext({})
 
 export function AuthProvider({ children }) {
   const [userInfo, setUserInfo] = useState(null)
@@ -25,7 +24,7 @@ export function AuthProvider({ children }) {
 
     loadUserInfo()
 
-    const { data: { subscription } } = authService.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = authService.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN') {
         loadUserInfo()
       } else if (event === 'SIGNED_OUT') {
@@ -73,12 +72,4 @@ export function AuthProvider({ children }) {
       {children}
     </AuthContext.Provider>
   )
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
-  return context
 }

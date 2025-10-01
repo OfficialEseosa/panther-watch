@@ -1,8 +1,8 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth.js';
 import { authService } from '../../config/authService.js';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../hooks/useTheme.js';
 import CachedAvatar from '../CachedAvatar';
 import Icon from '../Icon';
 import pantherLogo from '../../assets/panther.png';

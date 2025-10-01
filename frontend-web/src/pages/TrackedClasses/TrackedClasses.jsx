@@ -1,6 +1,6 @@
-﻿import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useWatchedClasses } from '../../contexts/WatchedClassesContext'
+import { useWatchedClasses } from '../../hooks/useWatchedClasses.js'
 import CourseResults from '../../components/CourseResults'
 import './TrackedClasses.css'
 

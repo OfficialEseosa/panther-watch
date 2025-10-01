@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
@@ -7,10 +7,10 @@ import CourseResultsPage from './pages/CourseResults'
 import TrackedClasses from './pages/TrackedClasses'
 import AdminPanel from './pages/Admin'
 import DashboardLayout from './layouts/DashboardLayout'
-import { TermsProvider } from './contexts/TermsContext'
-import { AuthProvider } from './contexts/AuthContext'
-import { WatchedClassesProvider } from './contexts/WatchedClassesContext'
-import { ThemeProvider } from './contexts/ThemeContext'
+import { TermsProvider } from './contexts/TermsContext.jsx'
+import { AuthProvider } from './contexts/AuthContext.jsx'
+import { WatchedClassesProvider } from './contexts/WatchedClassesContext.jsx'
+import { ThemeProvider } from './contexts/ThemeContext.jsx'
 import { authService } from './config/authService.js'
 import './App.css'
 
@@ -37,7 +37,7 @@ function App() {
 
     checkAuth()
 
-    const { data: { subscription } } = authService.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = authService.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN') {
         setIsLoggedIn(true)
         setLoading(false)

@@ -1,11 +1,11 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { buildApiUrl } from '../../config';
 import './CourseResultsPage.css';
 import CourseResults from '../../components/CourseResults';
 import Icon from '../../components/Icon';
 import { getTermName } from '../../utils';
-import { useWatchedClasses } from '../../contexts/WatchedClassesContext';
+import { useWatchedClasses } from '../../hooks/useWatchedClasses.js';
 
 function CourseResultsPage() {
   const location = useLocation();

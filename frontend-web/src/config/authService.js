@@ -10,7 +10,7 @@ export class AuthService {
 
     this.handleOAuthCallback()
     
-    supabase.auth.onAuthStateChange((event, session) => {
+    supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN') {
         console.log('User signed in successfully')
         this.clearCache()
@@ -26,7 +26,7 @@ export class AuthService {
     // Check if we're in an OAuth callback
     if (window.location.hash.includes('access_token') || window.location.search.includes('code=')) {
       try {
-        const { data, error } = await supabase.auth.getSession()
+        const { error } = await supabase.auth.getSession()
         if (error) {
           console.error('OAuth callback error:', error.message)
         }

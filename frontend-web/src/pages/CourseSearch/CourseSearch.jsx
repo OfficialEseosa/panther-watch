@@ -1,6 +1,6 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useTerms } from '../../contexts/TermsContext'
+import { useTerms } from '../../hooks/useTerms.js'
 import SubjectAutocomplete from '../../components/SubjectAutocomplete'
 import './CourseSearch.css'
 
