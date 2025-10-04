@@ -121,8 +121,8 @@ textarea:focus {
 }
 
 .theme-dark {
-  --color-page-background: #0f1729;
-  --color-surface: #111f33;
+  --color-page-background: #11234e;
+  --color-surface: #0b1625;
   --color-surface-muted: #152a45;
   --color-border: #1e3352;
   --color-border-strong: #2f4a6d;
