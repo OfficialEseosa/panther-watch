@@ -88,9 +88,6 @@ function Home() {
               </p>
               <div className="hero-actions">
                 <button className="btn btn-primary btn-lg" onClick={handleLogin}>Get Started</button>
-                <button className="btn btn-secondary btn-lg" onClick={() => navigate('/course-search')}>
-                  <Icon name="search" size={18} aria-hidden /> Explore Courses
-                </button>
               </div>
               <div className="hero-highlights">
                 <div className="highlight">
