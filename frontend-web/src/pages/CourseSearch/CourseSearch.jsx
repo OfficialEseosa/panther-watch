@@ -48,22 +48,9 @@ function CourseSearch() {
       
       <div className="search-form-container">
         <form onSubmit={handleSubmit} className="course-search-form">
-          <label htmlFor="txtLevel">Choose a degree: </label>
-          <select id="txtLevel" name="txtLevel" onChange={(e) => handleChanges(e)} required>
-            <option value="">-- Select a degree --</option>
-            <option value="US">Bachelors (4 Year)</option>
-          </select>
-
-          <label htmlFor="txtSubject">Enter subjects:</label>
-          <SubjectAutocomplete
-            selectedTerm={value.txtTerm}
-            selectedSubjects={selectedSubjects}
-            onSubjectsChange={handleSubjectsChange}
-            required={true}
-          />
-
+          {/* Step 1: Choose term first */}
           <label htmlFor="txtTerm">Choose a term: </label>
-          <select id="txtTerm" name="txtTerm" onChange={(e) => handleChanges(e)} required>
+          <select id="txtTerm" name="txtTerm" value={value.txtTerm} onChange={(e) => handleChanges(e)} required>
             <option value="">-- Select a term --</option>
             {termsLoading && <option disabled>Loading terms...</option>}
             {termsError && <option disabled>Error loading terms</option>}
@@ -74,10 +61,32 @@ function CourseSearch() {
             ))}
           </select>
 
-          <label htmlFor="txtCourseNumber">Enter a course number:</label>
-          <input id="txtCourseNumber" name="txtCourseNumber" type="text" placeholder="e.g. 2720" onChange={handleChanges} required />
+          {/* Step 2: Show the rest once a term is selected */}
+          {value.txtTerm && (
+            <>
+              <label htmlFor="txtLevel">Choose a degree: </label>
+              <select id="txtLevel" name="txtLevel" value={value.txtLevel} onChange={(e) => handleChanges(e)} required>
+                <option value="">-- Select a degree --</option>
+                <option value="US">Bachelors (4 Year)</option>
+              </select>
 
-          <button type="submit">Search Classes</button>
+              <label htmlFor="txtSubject">Enter subjects:</label>
+              <SubjectAutocomplete
+                selectedTerm={value.txtTerm}
+                selectedSubjects={selectedSubjects}
+                onSubjectsChange={handleSubjectsChange}
+                required={true}
+              />
+
+              <label htmlFor="txtCourseNumber">Enter a course number:</label>
+              <input id="txtCourseNumber" name="txtCourseNumber" type="text" placeholder="e.g. 2720" value={value.txtCourseNumber} onChange={handleChanges} required />
+
+              <button type="submit">Search Classes</button>
+            </>
+          )}
+          {!value.txtTerm && (
+            <p className="term-gate-message">Please choose a term to continue.</p>
+          )}
         </form>
       </div>
     </div>

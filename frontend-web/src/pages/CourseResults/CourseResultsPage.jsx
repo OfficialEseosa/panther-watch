@@ -4,7 +4,7 @@ import { buildApiUrl } from '../../config';
 import './CourseResultsPage.css';
 import CourseResults from '../../components/CourseResults';
 import Icon from '../../components/Icon';
-import { getTermName } from '../../utils';
+import { useTerms } from '../../hooks/useTerms.js';
 import { useWatchedClasses } from '../../hooks/useWatchedClasses.js';
 
 function CourseResultsPage() {
@@ -15,6 +15,7 @@ function CourseResultsPage() {
   const [error, setError] = useState(null);
   const [searchParams, setSearchParams] = useState(null);
   const { watchedClasses } = useWatchedClasses();
+  const { getTermName } = useTerms();
 
   const watchedCrns = watchedClasses.map((wc) => wc.crn);
 
@@ -41,31 +42,43 @@ function CourseResultsPage() {
     setLoading(true);
     setError(null);
 
+    const params = new URLSearchParams(searchData);
+    const url = `${buildApiUrl('/courses/search')}?${params.toString()}`;
+
+    const attemptFetch = async (attempt) => {
+      try {
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+          credentials: 'include'
+        });
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        const json = await res.json();
+        if (json.success) {
+          return json.data || [];
+        }
+        throw new Error('Response marked unsuccessful');
+      } catch (err) {
+        if (attempt < 2) {
+          const backoff = 300 * Math.pow(2, attempt);
+          await new Promise((r) => setTimeout(r, backoff));
+          return attemptFetch(attempt + 1);
+        }
+        throw err;
+      }
+    };
+
     try {
-      const params = new URLSearchParams(searchData);
-      const res = await fetch(`${buildApiUrl('/courses/search')}?${params.toString()}`, {
-        method: 'GET',
-        headers: { Accept: 'application/json' },
-        credentials: 'include'
-      });
-
-      if (!res.ok) {
-        setError(`Search request failed (status ${res.status}). Please try again.`);
-        setCourses([]);
-        setLoading(false);
-        return;
-      }
-
-      const json = await res.json();
-
-      if (json.success) {
-        setCourses(json.data || []);
-      } else {
-        setError('Search failed. Please try again.');
-      }
+      const data = await attemptFetch(0);
+      setCourses(data);
     } catch (err) {
-      console.error('An error occurred:', err);
-      setError('An error occurred while searching. Please try again.');
+      console.error('Search failed:', err);
+      setCourses([]);
+      setError('Search failed. Please try again.');
     } finally {
       setLoading(false);
     }
