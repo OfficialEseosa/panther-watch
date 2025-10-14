@@ -125,7 +125,7 @@ function App() {
               />
               <Route
                 path="/"
-                element={<Home />}
+                element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <Home />}
               />
             </Routes>
           )}
