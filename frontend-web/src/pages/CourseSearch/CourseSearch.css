@@ -53,6 +53,11 @@
   transition: border-color var(--transition-base), box-shadow var(--transition-base);
 }
 
+.course-search-form input::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.7;
+}
+
 .course-search-form select:focus,
 .course-search-form input:focus {
   border-color: var(--color-primary-500);

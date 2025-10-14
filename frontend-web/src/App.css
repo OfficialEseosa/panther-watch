@@ -94,8 +94,14 @@ textarea {
   border: 1px solid var(--color-border);
   padding: 0.65rem 0.75rem;
   background: var(--color-surface);
-  color: inherit;
+  color: var(--color-text);
   transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.7;
 }
 
 input:focus,
@@ -149,6 +155,18 @@ textarea:focus {
 .theme-dark ::-webkit-scrollbar-thumb {
   background: rgba(148, 178, 218, 0.3);
 }
+
+.theme-dark select option {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.theme-dark input::placeholder,
+.theme-dark textarea::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.8;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;

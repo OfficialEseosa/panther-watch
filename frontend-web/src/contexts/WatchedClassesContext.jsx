@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { WatchedClassesContext } from './WatchedClassesContext.js'
 import { watchedClassService } from '../config/watchedClassService.js'
 import { useAuth } from '../hooks/useAuth.js'
@@ -43,7 +43,7 @@ export function WatchedClassesProvider({ children }) {
     }
   }
 
-  const loadWatchedClassesWithDetails = async () => {
+  const loadWatchedClassesWithDetails = useCallback(async () => {
     try {
       setError(null)
       const classesWithDetails = await watchedClassService.getWatchedClassesWithFullDetails()
@@ -55,7 +55,7 @@ export function WatchedClassesProvider({ children }) {
       setWatchedClassesWithDetails([])
       throw err
     }
-  }
+  }, [])
 
   const addWatchedClass = async (classData) => {
     try {
