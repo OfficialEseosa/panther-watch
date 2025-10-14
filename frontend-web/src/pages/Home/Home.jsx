@@ -44,7 +44,7 @@ function Home() {
       if (json && json.success === false) {
         throw new Error(json.message || 'Failed to join waitlist')
       }
-      setStatus({ loading: false, success: 'Thanks! You\'re on the list.', error: '' })
+      setStatus({ loading: false, success: 'Thanks! You’re on the list.', error: '' })
       setEmail('')
     } catch (err) {
       console.warn('Waitlist endpoint not available yet. Consider adding /api/waitlist on backend.', err)
