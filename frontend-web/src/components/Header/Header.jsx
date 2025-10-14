@@ -25,7 +25,7 @@ function Header({ onToggleSidebar }) {
   const handleLogout = async () => {
     try {
       await authService.logout();
-      navigate('/login', { replace: true });
+      navigate('/', { replace: true });
       window.location.reload();
     } catch (error) {
       console.error('Logout failed:', error);
