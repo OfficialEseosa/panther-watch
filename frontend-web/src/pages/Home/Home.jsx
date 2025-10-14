@@ -44,7 +44,7 @@ function Home() {
       if (json && json.success === false) {
         throw new Error(json.message || 'Failed to join waitlist')
       }
-      setStatus({ loading: false, success: 'Thanks! You\'re on the list.', error: '' })
+      setStatus({ loading: false, success: 'Thanks! You’re on the list.', error: '' })
       setEmail('')
     } catch (err) {
       console.warn('Waitlist endpoint not available yet. Consider adding /api/waitlist on backend.', err)
@@ -143,7 +143,7 @@ function Home() {
                 required
               />
               <button className="btn btn-primary btn-lg" type="submit" disabled={status.loading}>
-                {status.loading ? 'Submitting…' : 'Join Waitlist'}
+                {status.loading ? 'Submitting...' : 'Join Waitlist'}
               </button>
             </form>
             {status.error && <p className="form-error" role="alert">{status.error}</p>}
