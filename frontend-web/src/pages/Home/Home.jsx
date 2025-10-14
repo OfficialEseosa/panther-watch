@@ -146,7 +146,7 @@ function Home() {
                 required
               />
               <button className="btn btn-primary btn-lg" type="submit" disabled={status.loading}>
-                {status.loading ? 'Submitting…' : 'Join Waitlist'}
+                {status.loading ? 'Submitting...' : 'Join Waitlist'}
               </button>
             </form>
             {status.error && <p className="form-error" role="alert">{status.error}</p>}
