@@ -274,10 +274,6 @@
   width: 56px;
   height: 56px;
   border-radius: 14px;
-.feature-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -285,7 +281,11 @@
   color: var(--color-primary-600);
   margin-bottom: 0.5rem;
   transition: transform 0.2s ease;
-} color: var(--color-primary-300);
+}
+
+.theme-dark .feature-icon {
+  background: var(--color-primary-900);
+  color: var(--color-primary-300);
 }
 
 .feature h3 {
