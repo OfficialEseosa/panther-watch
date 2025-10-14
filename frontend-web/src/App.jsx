@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import Login from './pages/Login'
+import Home from './pages/Home'
 import Dashboard from './pages/Dashboard'
 import CourseSearch from './pages/CourseSearch'
 import CourseResultsPage from './pages/CourseResults'
@@ -74,22 +74,13 @@ function App() {
           ) : (
             <Routes>
               <Route
-                path="/login"
-                element={
-                  isLoggedIn ?
-                    <Navigate to="/dashboard" replace /> :
-                    <Login onLogin={handleLogin} />
-                }
-              />
-
-              <Route
                 path="/dashboard"
                 element={
                   isLoggedIn ?
                     <TermsProvider>
                       <DashboardLayout onLogout={handleLogout}><Dashboard /></DashboardLayout>
                     </TermsProvider> :
-                    <Navigate to="/login" replace />
+                    <Navigate to="/" replace />
                 }
               />
               <Route
@@ -99,7 +90,7 @@ function App() {
                     <TermsProvider>
                       <DashboardLayout onLogout={handleLogout}><CourseSearch /></DashboardLayout>
                     </TermsProvider> :
-                    <Navigate to="/login" replace />
+                    <Navigate to="/" replace />
                 }
               />
               <Route
@@ -109,7 +100,7 @@ function App() {
                     <TermsProvider>
                       <DashboardLayout onLogout={handleLogout}><CourseResultsPage /></DashboardLayout>
                     </TermsProvider> :
-                    <Navigate to="/login" replace />
+                    <Navigate to="/" replace />
                 }
               />
               <Route
@@ -119,7 +110,7 @@ function App() {
                     <TermsProvider>
                       <DashboardLayout onLogout={handleLogout}><TrackedClasses /></DashboardLayout>
                     </TermsProvider> :
-                    <Navigate to="/login" replace />
+                    <Navigate to="/" replace />
                 }
               />
               <Route
@@ -129,14 +120,12 @@ function App() {
                     <TermsProvider>
                       <DashboardLayout onLogout={handleLogout}><AdminPanel /></DashboardLayout>
                     </TermsProvider> :
-                    <Navigate to="/login" replace />
+                    <Navigate to="/" replace />
                 }
               />
               <Route
                 path="/"
-                element={
-                  <Navigate to={isLoggedIn ? '/dashboard' : '/login'} replace />
-                }
+                element={<Home />}
               />
             </Routes>
           )}
