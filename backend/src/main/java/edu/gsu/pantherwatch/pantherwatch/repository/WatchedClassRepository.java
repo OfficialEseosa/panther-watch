@@ -19,6 +19,8 @@ public interface WatchedClassRepository extends JpaRepository<WatchedClass, Long
     boolean existsByUserAndCrnAndTerm(User user, String crn, String term);
     
     void deleteByUserAndCrnAndTerm(User user, String crn, String term);
+
+    void deleteAllByUser(User user);
     
     long countByUser(User user);
 

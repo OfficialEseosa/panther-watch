@@ -2,11 +2,13 @@ package edu.gsu.pantherwatch.pantherwatch.service;
 
 import edu.gsu.pantherwatch.pantherwatch.model.User;
 import edu.gsu.pantherwatch.pantherwatch.repository.UserRepository;
+import edu.gsu.pantherwatch.pantherwatch.repository.WatchedClassRepository;
 import io.jsonwebtoken.Claims;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.Map;
 import java.util.UUID;
 
@@ -23,6 +25,9 @@ public class UserService {
     
     @Autowired
     private EmailService emailService;
+
+    @Autowired
+    private WatchedClassRepository watchedClassRepository;
 
     public User findByAuthUserId(UUID authUserId) {
         return userRepository.findById(authUserId).orElse(null);
@@ -66,6 +71,38 @@ public class UserService {
         } catch (Exception e) {
             logger.error("Failed to create user from Supabase auth for user {}: {}", authUserId, e.getMessage(), e);
             throw new RuntimeException("Failed to create user account");
+        }
+    }
+
+    @Transactional
+    public void deleteUserAccount(User user) {
+        if (user == null) {
+            throw new IllegalArgumentException("User cannot be null when deleting account");
+        }
+
+        String email = user.getEmail();
+        String name = user.getName();
+        String firstName = null;
+        if (name != null && !name.trim().isEmpty()) {
+            firstName = name.trim().split("\\s+")[0];
+        } else if (email != null && email.contains("@")) {
+            firstName = email.split("@")[0];
+        }
+
+        try {
+            logger.info("Deleting account and related data for user {}", user.getEmail());
+            watchedClassRepository.deleteAllByUser(user);
+            userRepository.delete(user);
+            logger.info("Successfully deleted account for user {}", user.getEmail());
+        } catch (Exception e) {
+            logger.error("Failed to delete user account for {}: {}", user.getEmail(), e.getMessage(), e);
+            throw new RuntimeException("Failed to delete user account");
+        }
+
+        try {
+            emailService.sendAccountDeletionEmail(email, firstName);
+        } catch (Exception e) {
+            logger.warn("Account deletion confirmation email failed for {}: {}", email, e.getMessage(), e);
         }
     }
 }
