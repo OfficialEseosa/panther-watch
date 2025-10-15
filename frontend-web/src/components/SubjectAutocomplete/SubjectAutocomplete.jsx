@@ -128,7 +128,7 @@ function SubjectAutocomplete({
                   type="button" 
                   className="remove-subject" 
                   onClick={(e) => {
-                    e.stopPropagation()
+                    e.stopPropagation();
                     removeSubject(subject.code)
                   }}
                   aria-label={`Remove ${subject.description}`}
