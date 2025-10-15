@@ -5,6 +5,9 @@ import lombok.Data;
 
 @Data
 public class CourseData {
+    @JsonProperty("term")
+    private String term;
+
     @JsonProperty("termDesc")
     private String termDesc;
 

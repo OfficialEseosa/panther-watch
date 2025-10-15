@@ -195,6 +195,7 @@ public class WatchedClassController {
 
                         for (CourseData course : searchResponse.getData()) {
                             if (watchedCrns.contains(course.getCourseReferenceNumber())) {
+                                course.setTerm(term);
                                 allCourseDetails.add(course);
                             }
                         }
