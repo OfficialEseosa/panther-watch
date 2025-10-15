@@ -129,7 +129,7 @@ function SubjectAutocomplete({
                   className="remove-subject" 
                   onClick={(e) => {
                     e.stopPropagation();
-                    removeSubject(subject.code)
+                    removeSubject(subject.code);
                   }}
                   aria-label={`Remove ${subject.description}`}
                   disabled={disabled}
