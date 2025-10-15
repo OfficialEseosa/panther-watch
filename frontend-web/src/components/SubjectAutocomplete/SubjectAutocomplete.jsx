@@ -113,41 +113,50 @@ function SubjectAutocomplete({
 
   return (
     <div className="subject-autocomplete-container">
-      {/* Selected subjects display */}
-      {selectedSubjects.length > 0 && (
-        <div className="selected-subjects">
-          {selectedSubjects.map(subject => (
-            <span key={subject.code} className="subject-tag">
-              {subject.description}
-              <button 
-                type="button" 
-                className="remove-subject" 
-                onClick={() => removeSubject(subject.code)}
-                aria-label={`Remove ${subject.description}`}
-              >
-                ×
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-      
-      {/* Subject search input */}
-      <div className="subject-input-container">
-        <input 
-          ref={subjectInputRef}
-          id="txtSubject" 
-          type="text" 
-          value={subjectSearch}
-          placeholder={
-            !selectedTerm 
-              ? "Select a term first to search subjects" 
-              : selectedSubjects.length > 0 
-                ? "Add another subject..." 
-                : "e.g. Computer Science"
-          }
-          onChange={handleSubjectInputChange}
-          onKeyDown={(e) => {
+      {/* Subject input wrapper with tags inside */}
+      <div 
+        className={`subject-input-wrapper ${disabled || !selectedTerm ? 'disabled' : ''}`}
+        onClick={() => subjectInputRef.current?.focus()}
+      >
+        {/* Selected subjects display inside input */}
+        {selectedSubjects.length > 0 && (
+          <div className="selected-subjects">
+            {selectedSubjects.map(subject => (
+              <span key={subject.code} className="subject-tag">
+                {subject.description}
+                <button 
+                  type="button" 
+                  className="remove-subject" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeSubject(subject.code);
+                  }}
+                  aria-label={`Remove ${subject.description}`}
+                  disabled={disabled}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        
+        {/* Subject search input */}
+        <div className="subject-input-container">
+          <input 
+            ref={subjectInputRef}
+            id="txtSubject" 
+            type="text" 
+            value={subjectSearch}
+            placeholder={
+              !selectedTerm 
+                ? "Select a term first" 
+                : selectedSubjects.length > 0 
+                  ? "Add another..." 
+                  : "e.g. Computer Science"
+            }
+            onChange={handleSubjectInputChange}
+            onKeyDown={(e) => {
             if (!showSuggestions || subjectSuggestions.length === 0) return
 
             switch (e.key) {
@@ -180,9 +189,12 @@ function SubjectAutocomplete({
               setShowSuggestions(true)
             }
           }}
-          disabled={disabled || !selectedTerm}
-          required={required && selectedSubjects.length === 0}
-        />
+            disabled={disabled || !selectedTerm}
+            required={required && selectedSubjects.length === 0}
+          />
+        </div>
+        
+        {/* Loading spinner */}
         {loadingSubjects && <div className="loading-spinner"></div>}
       </div>
 
