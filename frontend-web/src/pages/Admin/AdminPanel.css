@@ -39,12 +39,7 @@
   border-radius: 50%;
   border: 3px solid var(--color-border);
   border-top-color: var(--color-primary-600);
-  animation: spin-admin 0.8s linear infinite;
-}
-
-@keyframes spin-admin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  animation: spin 0.8s linear infinite;
 }
 
 .unauthorized-content {
