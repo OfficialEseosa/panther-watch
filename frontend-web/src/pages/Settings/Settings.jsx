@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useTheme } from '../../hooks/useTheme.js';
 import { authService } from '../../config/authService.js';
+import { buildApiUrl } from '../../config';
 import Icon from '../../components/Icon';
 import './Settings.css';
 
@@ -31,8 +32,17 @@ function Settings() {
   const handleDeleteAccount = async () => {
     setIsDeleting(true);
     try {
-      const response = await fetch('/api/users/me', {
+      const session = await authService.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(buildApiUrl('/users/me'), {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
         credentials: 'include',
       });
 

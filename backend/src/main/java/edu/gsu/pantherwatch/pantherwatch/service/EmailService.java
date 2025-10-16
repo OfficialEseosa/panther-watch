@@ -116,7 +116,7 @@ public class EmailService {
             CreateEmailOptions params = CreateEmailOptions.builder()
                     .from("PantherWatch <no-reply@class.pantherwatch.app>")
                     .to(toEmail)
-                    .subject("?? We're sorry to see you go")
+                    .subject("We're sorry to see you go")
                     .html(htmlContent)
                     .build();
 
