@@ -28,12 +28,12 @@ function Dashboard() {
       onClick: () => navigate('/tracked-classes')
     },
     {
-      id: 'analytics',
-      icon: 'analytics',
-      title: 'Insights & reports',
-      description: 'Usage analytics, notification history, and seat trends (coming soon).',
-      actionLabel: 'In development',
-      disabled: true
+      id: 'schedule',
+      icon: 'calendar',
+      title: 'Class schedule',
+      description: 'View and manage your weekly class schedule with calendar export.',
+      actionLabel: 'View schedule',
+      onClick: () => navigate('/schedule-builder')
     }
   ];
 
@@ -56,7 +56,7 @@ function Dashboard() {
           </div>
           <div className="summary-content">
             <span className="summary-label">Tracked classes</span>
-            <span className="summary-value">{watchedLoading ? '—' : watchedCount}</span>
+            <span className="summary-value">{watchedLoading ? 'ï¿½' : watchedCount}</span>
           </div>
         </div>
       </section>

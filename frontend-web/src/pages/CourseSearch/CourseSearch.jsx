@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTerms } from '../../hooks/useTerms.js'
 import SubjectAutocomplete from '../../components/SubjectAutocomplete'
@@ -6,10 +6,15 @@ import './CourseSearch.css'
 
 function CourseSearch() {
   const navigate = useNavigate()
+  
+  // Load saved preferences from localStorage
+  const savedDegreeLevel = localStorage.getItem('preferredDegreeLevel') || ''
+  const savedTerm = localStorage.getItem('preferredTerm') || ''
+  
   const [value, setValue] = useState({
-    txtLevel: '',
+    txtLevel: savedDegreeLevel,
     txtSubject: '',
-    txtTerm: '',
+    txtTerm: savedTerm,
     txtCourseNumber: ''
   })
   const [selectedSubjects, setSelectedSubjects] = useState([])
@@ -19,7 +24,13 @@ function CourseSearch() {
     const { name, value: newValue } = e.target
     setValue({...value, [name]: newValue})
 
+    // Save preferences to localStorage
+    if (name === 'txtLevel') {
+      localStorage.setItem('preferredDegreeLevel', newValue)
+    }
+    
     if (name === 'txtTerm') {
+      localStorage.setItem('preferredTerm', newValue)
       setSelectedSubjects([])
       setValue(prev => ({...prev, [name]: newValue, txtSubject: ''}))
     }
@@ -67,7 +78,10 @@ function CourseSearch() {
               <label htmlFor="txtLevel">Choose a degree: </label>
               <select id="txtLevel" name="txtLevel" value={value.txtLevel} onChange={(e) => handleChanges(e)} required>
                 <option value="">-- Select a degree --</option>
-                <option value="US">Bachelors (4 Year)</option>
+                <option value="UA">Associates (2-year undergraduate, Perimeter College students)</option>
+                <option value="US">Bachelors (4-year undergraduate students)</option>
+                <option value="GS">Graduate (Graduate level students)</option>
+                <option value="LW">Law (Graduate, College of Law students)</option>
               </select>
 
               <label htmlFor="txtSubject">Enter subjects:</label>

@@ -7,6 +7,7 @@ import CourseResultsPage from './pages/CourseResults'
 import TrackedClasses from './pages/TrackedClasses'
 import AdminPanel from './pages/Admin'
 import Settings from './pages/Settings'
+import ScheduleBuilder from './pages/ScheduleBuilder'
 import DashboardLayout from './layouts/DashboardLayout'
 import { TermsProvider } from './contexts/TermsContext.jsx'
 import { AuthProvider } from './contexts/AuthContext.jsx'
@@ -120,6 +121,16 @@ function App() {
                   isLoggedIn ?
                     <TermsProvider>
                       <DashboardLayout onLogout={handleLogout}><AdminPanel /></DashboardLayout>
+                    </TermsProvider> :
+                    <Navigate to="/" replace />
+                }
+              />
+              <Route
+                path="/schedule-builder"
+                element={
+                  isLoggedIn ?
+                    <TermsProvider>
+                      <DashboardLayout onLogout={handleLogout}><ScheduleBuilder /></DashboardLayout>
                     </TermsProvider> :
                     <Navigate to="/" replace />
                 }
