@@ -3,6 +3,49 @@
   flex-direction: column;
   min-height: 100vh;
   background: var(--color-page-background);
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Subtle background patterns */
+.home::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 800px;
+  background: 
+    radial-gradient(circle at 20% 50%, rgba(31, 95, 195, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(0, 57, 166, 0.06) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.home::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    repeating-linear-gradient(
+      90deg,
+      rgba(31, 95, 195, 0.02) 0px,
+      transparent 1px,
+      transparent 80px,
+      rgba(31, 95, 195, 0.02) 81px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(31, 95, 195, 0.02) 0px,
+      transparent 1px,
+      transparent 80px,
+      rgba(31, 95, 195, 0.02) 81px
+    );
+  pointer-events: none;
+  z-index: 0;
 }
 
 .container {
@@ -116,14 +159,31 @@
 /* Main Content */
 .home-main {
   flex: 1;
+  position: relative;
+  z-index: 1;
 }
 
 /* Hero Section */
 .hero-section {
   padding: 6rem 0 8rem;
-  background: var(--color-page-background);
+  background: transparent;
   border-bottom: 1px solid var(--color-border);
   position: relative;
+  z-index: 1;
+}
+
+.hero-section::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: radial-gradient(circle, rgba(31, 95, 195, 0.04) 1px, transparent 1px);
+  background-size: 20px 20px;
+  pointer-events: none;
+  opacity: 0.5;
+  z-index: 0;
 }
 
 .hero {
@@ -134,7 +194,33 @@
   max-width: 900px;
   margin: 0 auto;
   position: relative;
-  z-index: 1;
+  z-index: 2;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(31, 95, 195, 0.08) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: -1;
+  animation: pulse 8s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: translateX(-50%) scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateX(-50%) scale(1.1);
+    opacity: 0.8;
+  }
 }
 
 .hero-copy {
@@ -245,6 +331,20 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 2rem;
+  position: relative;
+}
+
+.features::before {
+  content: '';
+  position: absolute;
+  top: -4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120%;
+  height: calc(100% + 8rem);
+  background: radial-gradient(circle at center, rgba(31, 95, 195, 0.03) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: -1;
 }
 
 .feature {
@@ -302,103 +402,30 @@
   font-size: 0.9375rem;
 }
 
-/* Waitlist Section */
-.waitlist {
-  padding: 5rem 0 6rem;
-  background: var(--color-page-background);
-}
-
-.waitlist-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 3rem;
-  box-shadow: var(--shadow-md);
-  max-width: 800px;
-  margin: 0 auto;
-  transition: all 0.3s ease;
-  animation: fadeInUp 0.5s ease-out 0.3s both;
-}
-
-.waitlist-copy {
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-.waitlist-copy h2 {
-  margin: 0 0 0.75rem;
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--color-heading);
-}
-
-.waitlist-copy p {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: 1.0625rem;
-  line-height: 1.6;
-}
-
-.waitlist-form {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.5rem;
-  background: var(--color-surface-muted);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.waitlist-form .mail-icon {
-  color: var(--color-text-muted);
-  margin-left: 0.5rem;
-}
-
-.waitlist-form input {
-  flex: 1;
-  padding: 0.75rem 1rem;
-  border: none;
-  background: transparent;
-  font-size: 1rem;
-  color: var(--color-text);
-}
-
-.waitlist-form input:focus {
-  outline: none;
-  box-shadow: none;
-}
-
-.waitlist-form button {
-  flex-shrink: 0;
-}
-
-.form-error {
-  color: var(--color-danger);
-  margin: 1rem 0 0;
-  text-align: center;
-  font-size: 0.9375rem;
-}
-
-.form-success {
-  color: var(--color-success);
-  margin: 1rem 0 0;
-  text-align: center;
-  font-size: 0.9375rem;
-  font-weight: 500;
-}
-
 /* Footer */
 .home-footer {
-  padding: 2rem 0;
+  padding: 4rem 0 3rem;
   text-align: center;
   font-size: 0.9375rem;
+  position: relative;
+  z-index: 1;
+  margin-top: 3rem;
 }
 
 .home-footer p {
   margin: 0;
   color: var(--color-text-muted);
+}
+
+.home-footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-border), transparent);
 }
 
 /* Animations */
@@ -463,32 +490,6 @@
   .features {
     grid-template-columns: 1fr;
     gap: 1.5rem;
-  }
-
-  .waitlist-card {
-    padding: 2rem 1.5rem;
-  }
-
-  .waitlist-copy h2 {
-    font-size: 1.5rem;
-  }
-
-  .waitlist-form {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 1rem;
-  }
-
-  .waitlist-form .mail-icon {
-    display: none;
-  }
-
-  .waitlist-form input {
-    padding: 0.875rem 1rem;
-  }
-
-  .waitlist-form button {
-    width: 100%;
   }
 }
 

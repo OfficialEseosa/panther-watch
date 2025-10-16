@@ -6,6 +6,7 @@ import CourseSearch from './pages/CourseSearch'
 import CourseResultsPage from './pages/CourseResults'
 import TrackedClasses from './pages/TrackedClasses'
 import AdminPanel from './pages/Admin'
+import Settings from './pages/Settings'
 import DashboardLayout from './layouts/DashboardLayout'
 import { TermsProvider } from './contexts/TermsContext.jsx'
 import { AuthProvider } from './contexts/AuthContext.jsx'
@@ -122,6 +123,10 @@ function App() {
                     </TermsProvider> :
                     <Navigate to="/" replace />
                 }
+              />
+              <Route
+                path="/settings"
+                element={isLoggedIn ? <Settings /> : <Navigate to="/" replace />}
               />
               <Route
                 path="/"

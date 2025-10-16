@@ -33,6 +33,11 @@ function Header({ onToggleSidebar }) {
     }
   };
 
+  const handleSettingsClick = () => {
+    navigate('/settings');
+    setShowProfileDropdown(false);
+  };
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (!event.target.closest('.user-profile-container')) {
@@ -116,6 +121,14 @@ function Header({ onToggleSidebar }) {
                   >
                     <Icon name={themeIcon} size={18} className="dropdown-icon" aria-hidden />
                     {themeLabel}
+                  </button>
+                  <button
+                    type="button"
+                    className="dropdown-action dropdown-settings"
+                    onClick={handleSettingsClick}
+                  >
+                    <Icon name="settings" size={18} className="dropdown-icon" aria-hidden />
+                    Settings
                   </button>
                   <button type="button" className="dropdown-action dropdown-logout" onClick={handleLogout}>
                     <Icon name="logout" size={18} className="dropdown-icon" aria-hidden />

@@ -231,6 +231,19 @@
   color: var(--color-danger);
 }
 
+.dropdown-settings {
+  color: var(--color-heading);
+}
+
+.dropdown-settings:hover {
+  background: var(--color-surface-muted);
+  color: var(--color-primary-600);
+}
+
+.dropdown-logout {
+  color: var(--color-danger);
+}
+
 .dropdown-logout:hover {
   background: rgba(180, 35, 24, 0.12);
   color: var(--color-danger);
