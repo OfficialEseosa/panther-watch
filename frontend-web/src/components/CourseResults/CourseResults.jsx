@@ -124,14 +124,24 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
                   </h3>
                   <span className="course-crn">CRN {course.courseReferenceNumber}</span>
                 </div>
-                <button
-                  type="button"
-                  className={`watch-button ${isTrackedView ? 'state-remove' : isWatching ? 'state-active' : ''}`}
-                  onClick={() => handleWatchToggle(course)}
-                  disabled={isWatchLoading}
-                >
-                  {renderWatchButtonContent(isWatchLoading, isTrackedView, isWatching)}
-                </button>
+                <div className="course-actions">
+                  <button
+                    type="button"
+                    className="calendar-button"
+                    onClick={() => window.location.href = `/schedule-builder?add=${course.courseReferenceNumber}`}
+                    title="Add to schedule"
+                  >
+                    <Icon name="calendar" size={18} aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    className={`watch-button ${isTrackedView ? 'state-remove' : isWatching ? 'state-active' : ''}`}
+                    onClick={() => handleWatchToggle(course)}
+                    disabled={isWatchLoading}
+                  >
+                    {renderWatchButtonContent(isWatchLoading, isTrackedView, isWatching)}
+                  </button>
+                </div>
               </header>
 
               <div className="course-body">
