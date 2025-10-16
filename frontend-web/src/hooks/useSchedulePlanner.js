@@ -220,7 +220,7 @@ export function useSchedulePlanner(locationSearch) {
 
       return added;
     },
-    [selectedTerm]
+    [selectedTerm, isAuthenticated]
   );
 
   const isCourseScheduled = useCallback(
@@ -265,7 +265,7 @@ export function useSchedulePlanner(locationSearch) {
         return next;
       });
     },
-    [selectedTerm]
+    [selectedTerm, isAuthenticated]
   );
 
   const handleAddToCalendar = useCallback(() => {

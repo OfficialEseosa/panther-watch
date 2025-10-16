@@ -128,7 +128,7 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
                   <button
                     type="button"
                     className="calendar-button"
-                    onClick={() => window.location.href = `/schedule-builder?add=${crn}`}
+                    onClick={() => window.location.href = `/schedule-builder?add=${course.courseReferenceNumber}`}
                     title="Add to schedule"
                   >
                     <Icon name="calendar" size={18} aria-hidden />

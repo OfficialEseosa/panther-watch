@@ -24,7 +24,6 @@ function SubjectAutocomplete({
   const searchTimeoutRef = useRef(null)
 
   // Use single select mode if isSingleSelect is true
-  const currentValue = isSingleSelect ? value : null
   const currentSelectedSubjects = isSingleSelect ? [] : (selectedSubjects || [])
 
   // Debounced subject search

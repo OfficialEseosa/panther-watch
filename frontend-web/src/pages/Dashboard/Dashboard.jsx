@@ -56,7 +56,7 @@ function Dashboard() {
           </div>
           <div className="summary-content">
             <span className="summary-label">Tracked classes</span>
-            <span className="summary-value">{watchedLoading ? '�' : watchedCount}</span>
+            <span className="summary-value">{watchedLoading ? '…' : watchedCount}</span>
           </div>
         </div>
       </section>
