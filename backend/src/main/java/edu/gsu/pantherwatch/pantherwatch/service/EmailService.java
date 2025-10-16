@@ -109,6 +109,26 @@ public class EmailService {
         }
     }
 
+    public void sendAccountDeletionEmail(String toEmail, String firstName) {
+        try {
+            String htmlContent = buildAccountDeletionEmail(firstName);
+
+            CreateEmailOptions params = CreateEmailOptions.builder()
+                    .from("PantherWatch <no-reply@class.pantherwatch.app>")
+                    .to(toEmail)
+                    .subject("?? We're sorry to see you go")
+                    .html(htmlContent)
+                    .build();
+
+            CreateEmailResponse data = resend.emails().send(params);
+            log.info("Account deletion email sent successfully to {} with ID: {}", toEmail, data.getId());
+
+        } catch (ResendException e) {
+            log.error("Failed to send account deletion email to {}: {}", toEmail, e.getMessage(), e);
+            log.warn("Account deletion completed but farewell email could not be delivered");
+        }
+    }
+
     private String buildClassAvailabilityEmail(String userName, String courseTitle, String courseNumber, 
                                              String subject, String crn, String term) {
         String htmlTemplate = loadEmailTemplateWithCSS("class-availability.html", "class-availability.css");
@@ -123,5 +143,11 @@ public class EmailService {
     private String buildWelcomeEmail(String firstName) {
         String htmlTemplate = loadEmailTemplateWithCSS("welcome.html", "welcome.css");
         return String.format(htmlTemplate, firstName);
+    }
+
+    private String buildAccountDeletionEmail(String firstName) {
+        String nameForTemplate = firstName != null && !firstName.isBlank() ? firstName : "there";
+        String htmlTemplate = loadEmailTemplateWithCSS("account-goodbye.html", "account-goodbye.css");
+        return String.format(htmlTemplate, nameForTemplate);
     }
 }

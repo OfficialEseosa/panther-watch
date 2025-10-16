@@ -40,85 +40,38 @@ body {
 }
 
 .greeting {
-    font-size: 24px;
-    color: #152044;
-    margin-bottom: 20px;
+    font-size: 22px;
     font-weight: 600;
+    margin-bottom: 20px;
+    color: #152044;
 }
 
 .message {
     font-size: 16px;
     color: #4b5563;
-    margin-bottom: 28px;
+    margin-bottom: 20px;
     line-height: 1.7;
 }
 
-.features {
-    background-color: #e4eef9;
-    border-radius: 10px;
-    padding: 28px;
-    margin: 28px 0;
-    border-left: 4px solid #1f5fc3;
-}
-
-.features h3 {
-    color: #152044;
-    font-size: 18px;
-    margin: 0 0 20px 0;
-    font-weight: 600;
-}
-
-.feature-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.feature-list li {
-    padding: 12px 0;
-    border-bottom: 1px solid rgba(31, 95, 195, 0.15);
+.support {
     font-size: 15px;
     color: #4b5563;
-    line-height: 1.6;
-}
-
-.feature-list li:last-child {
-    border-bottom: none;
-}
-
-.feature-list li::before {
-    content: "✓ ";
-    margin-right: 10px;
-    color: #1f5fc3;
-    font-weight: 700;
-    font-size: 18px;
-}
-
-.feature-list li strong {
-    color: #152044;
-}
-
-.cta-section {
-    text-align: center;
-    margin: 36px 0 24px 0;
-}
-
-.cta-button {
-    display: inline-block;
-    background: linear-gradient(135deg, #0039a6 0%, #1f5fc3 100%);
-    color: white;
-    padding: 14px 32px;
-    text-decoration: none;
+    background-color: #e4eef9;
+    border-left: 4px solid #1f5fc3;
     border-radius: 8px;
-    font-weight: 600;
-    font-size: 16px;
-    transition: transform 0.2s, box-shadow 0.2s;
-    box-shadow: 0 4px 12px rgba(0, 57, 166, 0.25);
+    padding: 18px 20px;
+    margin-top: 28px;
 }
 
-.cta-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 57, 166, 0.35);
+.support a {
+    color: #0039a6;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.support a:hover {
+    color: #1f5fc3;
+    text-decoration: underline;
 }
 
 .footer {
