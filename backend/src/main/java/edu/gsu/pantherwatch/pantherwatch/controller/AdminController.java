@@ -6,6 +6,7 @@ import edu.gsu.pantherwatch.pantherwatch.api.UserSearchRequest;
 import edu.gsu.pantherwatch.pantherwatch.api.UserSearchResponse;
 import edu.gsu.pantherwatch.pantherwatch.model.User;
 import edu.gsu.pantherwatch.pantherwatch.service.AdminService;
+import edu.gsu.pantherwatch.pantherwatch.service.EmailService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ import java.util.List;
 public class AdminController {
     
     private final AdminService adminService;
+    private final EmailService emailService;
     
     @PostMapping("/users/search")
     public ResponseEntity<List<UserSearchResponse>> searchUsers(
@@ -116,6 +118,49 @@ public class AdminController {
         } catch (Exception e) {
             log.error("Error checking admin status", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(false);
+        }
+    }
+
+    @GetMapping("/emails/stats")
+    public ResponseEntity<java.util.Map<String, Long>> getEmailStats(HttpServletRequest request) {
+        try {
+            User currentUser = (User) request.getAttribute("currentUser");
+            
+            if (!adminService.isAdmin(currentUser.getEmail())) {
+                log.warn("Non-admin user {} attempted to access email stats", currentUser.getEmail());
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            
+            java.util.Map<String, Long> stats = emailService.getEmailUsageStats();
+            return ResponseEntity.ok(stats);
+            
+        } catch (Exception e) {
+            log.error("Error getting email stats", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping("/emails/cleanup")
+    public ResponseEntity<java.util.Map<String, Object>> cleanupEmailLogs(HttpServletRequest request) {
+        try {
+            User currentUser = (User) request.getAttribute("currentUser");
+            
+            if (!adminService.isAdmin(currentUser.getEmail())) {
+                log.warn("Non-admin user {} attempted to cleanup email logs", currentUser.getEmail());
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            
+            int deletedCount = emailService.cleanupOldEmailLogsNow();
+            
+            java.util.Map<String, Object> response = new java.util.HashMap<>();
+            response.put("deletedCount", deletedCount);
+            response.put("message", "Cleanup completed successfully");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("Error cleaning up email logs", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 }
