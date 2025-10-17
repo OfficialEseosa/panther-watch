@@ -21,4 +21,12 @@ public class RetrieveCourseInfoRequest {
 
     @JsonProperty("txt_term")
     private String txtTerm;
+
+    @JsonProperty("pageOffset")
+    @Builder.Default
+    private Integer pageOffset = 0;
+
+    @JsonProperty("pageMaxSize")
+    @Builder.Default
+    private Integer pageMaxSize = 10;
 }

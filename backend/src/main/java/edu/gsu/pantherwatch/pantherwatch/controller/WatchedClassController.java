@@ -184,6 +184,7 @@ public class WatchedClassController {
                             .txtSubject(subject)
                             .txtCourseNumber(courseNumber)
                             .txtTerm(term)
+                            .pageMaxSize(200)
                             .build();
 
                     RetrieveCourseInfoResponse searchResponse = pantherWatchService.searchCourses(searchRequest);

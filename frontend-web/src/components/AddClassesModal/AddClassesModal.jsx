@@ -1,5 +1,6 @@
 import Icon from '../Icon';
 import SubjectAutocomplete from '../SubjectAutocomplete';
+import { useNavigate } from 'react-router-dom';
 
 function AddClassesModal({
   isOpen,
@@ -22,9 +23,25 @@ function AddClassesModal({
   onNavigateToTracked,
   buildMeetingSummaries
 }) {
+  const navigate = useNavigate();
+
   if (!isOpen) {
     return null;
   }
+
+  const navigateToFullResults = () => {
+    if (searchResults.length > 0) {
+      const params = new URLSearchParams({
+        txtTerm: searchForm.term,
+        txtSubject: searchForm.subject,
+        txtCourseNumber: searchForm.courseNumber,
+        txtLevel: searchForm.level
+      });
+      
+      onClose();
+      navigate(`/course-results?${params.toString()}`);
+    }
+  };
 
   const renderMeetingDetails = (course) => {
     const summaries = buildMeetingSummaries(course);
@@ -111,34 +128,63 @@ function AddClassesModal({
     }
 
     return (
-      <div className="add-list" role="list">
-        {searchResults.map((course) => {
-          const scheduled = isCourseScheduled(course);
-          return (
-            <div
-              key={`${course.courseReferenceNumber}-${course.term}`}
-              className="add-list-item"
-              role="listitem"
-            >
-              <div className="add-list-info">
-                <div className="add-list-title">
-                  {course.subject} {course.courseNumber}{' '}
-                  <span className="add-list-crn">CRN {course.courseReferenceNumber}</span>
-                </div>
-                <div className="add-list-subtitle">{course.courseTitle}</div>
-                {renderMeetingDetails(course)}
-              </div>
-              <button
-                type="button"
-                className="modal-action-btn"
-                onClick={() => addCourseToSchedule(course)}
-                disabled={scheduled}
+      <div>
+        <div className="add-list" role="list">
+          {searchResults.map((course) => {
+            const scheduled = isCourseScheduled(course);
+            return (
+              <div
+                key={`${course.courseReferenceNumber}-${course.term}`}
+                className="add-list-item"
+                role="listitem"
               >
-                {scheduled ? 'Added' : 'Add'}
-              </button>
-            </div>
-          );
-        })}
+                <div className="add-list-info">
+                  <div className="add-list-title">
+                    {course.subject} {course.courseNumber}{' '}
+                    <span className="add-list-crn">CRN {course.courseReferenceNumber}</span>
+                  </div>
+                  <div className="add-list-subtitle">{course.courseTitle}</div>
+                  {renderMeetingDetails(course)}
+                </div>
+                <button
+                  type="button"
+                  className="modal-action-btn"
+                  onClick={() => addCourseToSchedule(course)}
+                  disabled={scheduled}
+                >
+                  {scheduled ? 'Added' : 'Add'}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+        {searchResults.length >= 5 && (
+          <div style={{
+            borderTop: '1px solid var(--border-color)',
+            padding: '16px',
+            textAlign: 'center',
+            marginTop: '8px'
+          }}>
+            <button
+              type="button"
+              className="modal-link"
+              onClick={navigateToFullResults}
+              style={{
+                fontSize: '14px',
+                marginBottom: '8px'
+              }}
+            >
+              Load more results →
+            </button>
+            <p style={{
+              fontSize: '12px',
+              color: 'var(--text-secondary)',
+              margin: '0'
+            }}>
+              Showing first 5 results. Click to see all courses.
+            </p>
+          </div>
+        )}
       </div>
     );
   };

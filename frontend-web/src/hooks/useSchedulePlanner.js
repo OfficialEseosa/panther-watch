@@ -311,7 +311,9 @@ export function useSchedulePlanner(locationSearch) {
           txtTerm: searchForm.term,
           txtSubject: searchForm.subject,
           txtCourseNumber: searchForm.courseNumber,
-          txtLevel: searchForm.level
+          txtLevel: searchForm.level,
+          pageOffset: 0,
+          pageMaxSize: 5 
         });
 
         const response = await fetch(`${buildApiUrl('/courses/search')}?${params.toString()}`, {
