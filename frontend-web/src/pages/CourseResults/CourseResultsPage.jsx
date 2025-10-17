@@ -170,7 +170,7 @@ function CourseResultsPage() {
           
           <span className="page-info">
             Page {currentPage}
-            {courses.length === resultsPerPage && ` • ${courses.length} results`}
+            {courses.length > 0 && ` • ${courses.length} results`}
           </span>
           
           <button 
