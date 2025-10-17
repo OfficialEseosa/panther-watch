@@ -110,7 +110,9 @@ const formatTimeForICS = (timeStr) => {
 
 const sanitizeDateForICS = (dateStr) => {
   if (!dateStr) return null;
-  return dateStr.replace(/[^0-9]/g, '');
+
+  const [month, day, year] = dateStr.split('/');
+  return `${year}${month.padStart(2, '0')}${day.padStart(2, '0')}`;
 };
 
 export const getMeetingDays = (meetingTime) => {
