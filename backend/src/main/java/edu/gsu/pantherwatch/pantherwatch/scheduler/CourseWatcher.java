@@ -60,6 +60,7 @@ public class CourseWatcher {
                     .txtTerm(term)
                     .txtCourseNumber("")
                     .txtSubject("")
+                    .pageMaxSize(200)
                     .build();
             
             RetrieveCourseInfoResponse response = pantherWatchService.searchCourses(request);

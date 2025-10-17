@@ -54,6 +54,57 @@
   color: var(--color-heading);
 }
 
+/* Pagination Controls */
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 24px;
+  margin-top: 20px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 500;
+  padding: 10px 16px;
+  transition: all var(--transition-base);
+  min-width: 100px;
+  justify-content: center;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--color-primary-50);
+  border-color: var(--color-primary-300);
+  color: var(--color-primary-600);
+  box-shadow: var(--shadow-sm);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--color-gray-100);
+  color: var(--color-gray-400);
+}
+
+.page-info {
+  font-weight: 600;
+  color: var(--color-heading);
+  font-size: 0.875rem;
+  text-align: center;
+  min-width: 120px;
+}
+
 @media (max-width: 768px) {
   .course-results-toolbar {
     flex-direction: column;
@@ -63,5 +114,20 @@
   .search-summary {
     text-align: left;
     width: 100%;
+  }
+
+  .pagination-controls {
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .pagination-btn {
+    min-width: 80px;
+    padding: 8px 12px;
+  }
+
+  .page-info {
+    min-width: 100px;
+    font-size: 0.8rem;
   }
 }

@@ -76,6 +76,8 @@ public class PantherWatchService {
                     .queryParam("txt_subject", request.getTxtSubject())
                     .queryParam("txt_courseNumber", request.getTxtCourseNumber())
                     .queryParam("txt_term", request.getTxtTerm())
+                    .queryParam("pageOffset", request.getPageOffset() != null ? request.getPageOffset() : 0)
+                    .queryParam("pageMaxSize", request.getPageMaxSize() != null ? request.getPageMaxSize() : 200)
                     .queryParam("sortColumn", SORT_COLUMN)
                     .queryParam("sortDirection", SORT_DIRECTION)
                     .build())
