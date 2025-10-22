@@ -81,6 +81,7 @@ public class UserService {
         }
 
         String email = user.getEmail();
+        UUID authUserId = user.getId();
         String name = user.getName();
         String firstName = null;
         if (name != null && !name.trim().isEmpty()) {
@@ -93,10 +94,26 @@ public class UserService {
             logger.info("Deleting account and related data for user {}", user.getEmail());
             watchedClassRepository.deleteAllByUser(user);
             userRepository.delete(user);
-            logger.info("Successfully deleted account for user {}", user.getEmail());
+            logger.info("Successfully deleted account from database for user {}", user.getEmail());
         } catch (Exception e) {
-            logger.error("Failed to delete user account for {}: {}", user.getEmail(), e.getMessage(), e);
+            logger.error("Failed to delete user account from database for {}: {}", user.getEmail(), e.getMessage(), e);
             throw new RuntimeException("Failed to delete user account");
+        }
+
+        // Delete user from Supabase Auth system
+        try {
+            if (authUserId != null) {
+                boolean deleted = supabaseAuthService.deleteUserFromAuth(authUserId);
+                if (deleted) {
+                    logger.info("Successfully deleted user {} from Supabase auth", email);
+                } else {
+                    logger.warn("Failed to delete user {} from Supabase auth (service key might not be configured)", email);
+                }
+            } else {
+                logger.warn("No auth user ID found for user {}, skipping Supabase auth deletion", email);
+            }
+        } catch (Exception e) {
+            logger.error("Error deleting user {} from Supabase auth: {}", email, e.getMessage(), e);
         }
 
         try {
