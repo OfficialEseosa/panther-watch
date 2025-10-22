@@ -25,6 +25,10 @@ function CachedAvatar({ src, alt, fallbackText, className }) {
   const [cachedSrc, setCachedSrc] = useState(null)
 
   useEffect(() => {
+    setImageLoaded(false)
+    setImageError(false)
+    setCachedSrc(null)
+    
     if (!src) {
       setImageError(true)
       return
