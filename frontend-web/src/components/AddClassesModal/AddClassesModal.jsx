@@ -1,6 +1,7 @@
 import Icon from '../Icon';
 import SubjectAutocomplete from '../SubjectAutocomplete';
 import { useNavigate } from 'react-router-dom';
+import { decodeHtmlEntities } from '../../utils';
 
 function AddClassesModal({
   isOpen,
@@ -92,7 +93,7 @@ function AddClassesModal({
                   {course.subject} {course.courseNumber}{' '}
                   <span className="add-list-crn">CRN {course.courseReferenceNumber}</span>
                 </div>
-                <div className="add-list-subtitle">{course.courseTitle}</div>
+                <div className="add-list-subtitle">{decodeHtmlEntities(course.courseTitle)}</div>
                 {renderMeetingDetails(course)}
               </div>
               <button
@@ -143,7 +144,7 @@ function AddClassesModal({
                     {course.subject} {course.courseNumber}{' '}
                     <span className="add-list-crn">CRN {course.courseReferenceNumber}</span>
                   </div>
-                  <div className="add-list-subtitle">{course.courseTitle}</div>
+                  <div className="add-list-subtitle">{decodeHtmlEntities(course.courseTitle)}</div>
                   {renderMeetingDetails(course)}
                 </div>
                 <button

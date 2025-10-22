@@ -149,9 +149,14 @@
   transition: background var(--transition-base);
 }
 
-.suggestion-item:hover:not(:disabled),
-.suggestion-item.highlighted {
+.suggestion-item:hover:not(:disabled) {
   background: var(--color-surface-muted);
+}
+
+.suggestion-item.highlighted {
+  background: var(--color-primary-50);
+  border-left: 3px solid var(--color-primary-500);
+  padding-left: 13px;
 }
 
 .suggestion-item:disabled {
