@@ -20,3 +20,6 @@ export {
   getActiveDays, 
   formatActiveDays 
 } from './scheduleUtils';
+
+// Text utilities
+export { decodeHtmlEntities } from './textUtils';

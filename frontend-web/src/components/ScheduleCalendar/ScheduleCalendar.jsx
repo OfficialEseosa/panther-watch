@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import Icon from '../Icon';
+import { decodeHtmlEntities } from '../../utils';
 
 function ScheduleCalendar({ days, timeSlots, getClassesForSlot, onRemove, formatMinutesToLabel }) {
   const [selectedClass, setSelectedClass] = useState(null);
@@ -118,7 +119,7 @@ function ScheduleCalendar({ days, timeSlots, getClassesForSlot, onRemove, format
             <div className="class-detail-body">
               <div className="class-detail-section">
                 <span className="class-detail-label">Course Title</span>
-                <span className="class-detail-value">{selectedClass.courseTitle}</span>
+                <span className="class-detail-value">{decodeHtmlEntities(selectedClass.courseTitle)}</span>
               </div>
               <div className="class-detail-section">
                 <span className="class-detail-label">CRN</span>

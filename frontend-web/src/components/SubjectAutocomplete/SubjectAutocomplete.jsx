@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { buildApiUrl } from '../../config/apiConfig'
+import { decodeHtmlEntities } from '../../utils'
 import './SubjectAutocomplete.css'
 
 function SubjectAutocomplete({ 
@@ -22,6 +23,7 @@ function SubjectAutocomplete({
   const subjectInputRef = useRef(null)
   const suggestionsRef = useRef(null)
   const searchTimeoutRef = useRef(null)
+  const highlightedItemRef = useRef(null)
 
   // Use single select mode if isSingleSelect is true
   const currentSelectedSubjects = isSingleSelect ? [] : (selectedSubjects || [])
@@ -132,6 +134,23 @@ function SubjectAutocomplete({
     setHighlightedIndex(-1)
   }, [selectedTerm])
 
+  // Scroll highlighted item into view
+  useEffect(() => {
+    if (highlightedItemRef.current) {
+      highlightedItemRef.current.scrollIntoView({
+        block: 'nearest',
+        behavior: 'smooth'
+      })
+    }
+  }, [highlightedIndex])
+
+  // Automatically highlight first item when suggestions appear
+  useEffect(() => {
+    if (showSuggestions && subjectSuggestions.length > 0) {
+      setHighlightedIndex(0)
+    }
+  }, [showSuggestions, subjectSuggestions.length])
+
   return (
     <div className="subject-autocomplete-container">
       {isSingleSelect ? (
@@ -144,6 +163,10 @@ function SubjectAutocomplete({
               value={subjectSearch || value || ''}
               placeholder={!selectedTerm ? "Select a term first" : placeholder || "Search for subject"}
               onChange={handleSubjectInputChange}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck="false"
               onKeyDown={(e) => {
                 if (!showSuggestions || subjectSuggestions.length === 0) return
 
@@ -189,12 +212,13 @@ function SubjectAutocomplete({
               {subjectSuggestions.map((subject, index) => (
                 <button
                   key={subject.code}
+                  ref={index === highlightedIndex ? highlightedItemRef : null}
                   type="button"
                   className={`suggestion-item ${index === highlightedIndex ? 'highlighted' : ''}`}
                   onClick={() => handleSubjectSelect(subject)}
                 >
                   <span className="subject-code">{subject.code}</span>
-                  <span className="subject-description">{subject.description}</span>
+                  <span className="subject-description">{decodeHtmlEntities(subject.description)}</span>
                 </button>
               ))}
             </div>
@@ -246,6 +270,10 @@ function SubjectAutocomplete({
                       : "e.g. Computer Science"
                 }
                 onChange={handleSubjectInputChange}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
                 onKeyDown={(e) => {
                   if (!showSuggestions || subjectSuggestions.length === 0) return
 
@@ -294,13 +322,14 @@ function SubjectAutocomplete({
               {subjectSuggestions.map((subject, index) => (
                 <button
                   key={subject.code}
+                  ref={index === highlightedIndex ? highlightedItemRef : null}
                   type="button"
                   className={`suggestion-item ${currentSelectedSubjects.find(s => s.code === subject.code) ? 'already-selected' : ''} ${index === highlightedIndex ? 'highlighted' : ''}`}
                   onClick={() => handleSubjectSelect(subject)}
                   disabled={currentSelectedSubjects.find(s => s.code === subject.code)}
                 >
                   <span className="subject-code">{subject.code}</span>
-                  <span className="subject-description">{subject.description}</span>
+                  <span className="subject-description">{decodeHtmlEntities(subject.description)}</span>
                 </button>
               ))}
             </div>

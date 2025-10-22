@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Icon from '../Icon';
 import './CourseResults.css';
-import { formatTime, getEnrollmentStatus, formatCreditHours, getWaitlistStatus } from '../../utils';
+import { formatTime, getEnrollmentStatus, formatCreditHours, getWaitlistStatus, decodeHtmlEntities } from '../../utils';
 import { renderDaysOfWeek } from '../../utils/scheduleComponents';
 import { useWatchedClasses } from '../../hooks/useWatchedClasses.js';
 import { useTerms } from '../../hooks/useTerms.js';
@@ -148,7 +148,7 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
                 <div className="course-info">
                   <div className="info-item">
                     <span className="info-label">Course title</span>
-                    <span className="info-value">{course.courseTitle}</span>
+                    <span className="info-value">{decodeHtmlEntities(course.courseTitle)}</span>
                   </div>
                   <div className="info-item">
                     <span className="info-label">Section</span>
