@@ -90,3 +90,33 @@
     padding: 24px;
   }
 }
+
+/* SubjectAutocomplete dropdown tone adjustments (lighter highlight) */
+.course-search-page {
+  /* Lighten the highlight used by SubjectAutocomplete */
+  --color-primary-50: rgba(31, 95, 195, 0.16);
+}
+
+.course-search-page .suggestions-dropdown {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.course-search-page .suggestion-item:hover:not(:disabled) {
+  background: rgba(31, 95, 195, 0.12);
+}
+
+.course-search-page .suggestion-item.highlighted {
+  background: var(--color-primary-50);
+  border-left-color: var(--color-primary-300);
+}
+
+/* Make subject code text white in dark theme for readability */
+.theme-dark .course-search-page .suggestion-item .subject-code {
+  color: #ffffff;
+}
+
+/* Make selected subject tag text white (and its × icon) in dark theme */
+.theme-dark .course-search-page .subject-tag {
+  color: #ffffff;
+}
