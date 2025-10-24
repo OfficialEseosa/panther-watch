@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWatchedClasses } from '../../hooks/useWatchedClasses.js'
 import CourseResults from '../../components/CourseResults'
+import LoadingBar from '../../components/LoadingBar'
 import './TrackedClasses.css'
 
 function TrackedClasses() {
@@ -37,6 +38,8 @@ function TrackedClasses() {
 
   return (
     <div className="tracked-classes-page">
+      {loading && <LoadingBar message="Loading tracked classes..." />}
+      
       <div className="page-header">
         <h2 className="page-title">Your Tracked Classes</h2>
 

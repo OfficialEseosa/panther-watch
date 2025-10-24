@@ -477,3 +477,24 @@
     justify-content: center;
   }
 }
+
+/* Dark Mode Enhancements */
+.theme-dark .action-button {
+  color: var(--color-heading);
+}
+
+.theme-dark .action-label {
+  color: var(--color-heading);
+}
+
+.theme-dark .action-description {
+  color: var(--color-text-muted);
+}
+
+.theme-dark .action-logout {
+  color: var(--color-heading);
+}
+
+.theme-dark .section-header svg {
+  color: var(--color-text);
+}

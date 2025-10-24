@@ -454,8 +454,32 @@
     padding: 1rem 0;
   }
 
+  .header-container {
+    gap: 1rem;
+  }
+
+  .brand {
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  .brand-logo {
+    width: 32px;
+    height: 32px;
+  }
+
   .brand-name {
-    font-size: 1.25rem;
+    font-size: 1.125rem;
+  }
+
+  .header-actions {
+    gap: 0.5rem;
+  }
+
+  .header-actions .btn-login {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    white-space: nowrap;
   }
 
   .floating-theme-toggle {
@@ -494,9 +518,22 @@
 }
 
 @media (max-width: 480px) {
+  .container {
+    padding: 0 1rem;
+  }
+
+  .brand-logo {
+    width: 28px;
+    height: 28px;
+  }
+
+  .brand-name {
+    font-size: 1rem;
+  }
+
   .header-actions .btn-login {
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8125rem;
   }
 
   .hero-highlights {

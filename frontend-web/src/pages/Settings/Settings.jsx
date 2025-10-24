@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useTheme } from '../../hooks/useTheme.js';
+import { useTutorial } from '../../hooks/useTutorial.js';
 import { authService } from '../../config/authService.js';
 import { buildApiUrl } from '../../config';
 import Icon from '../../components/Icon';
@@ -11,6 +12,7 @@ function Settings() {
   const navigate = useNavigate();
   const { userInfo } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { setShowTutorial } = useTutorial();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -60,6 +62,17 @@ function Settings() {
       setIsDeleting(false);
       setShowDeleteConfirm(false);
     }
+  };
+
+  const handleRestartTutorial = () => {
+    // Clear the tutorial seen flag
+    localStorage.removeItem('pantherwatch_tutorial_seen');
+    // Navigate to dashboard and show tutorial
+    navigate('/dashboard');
+    // Small delay to ensure navigation completes
+    setTimeout(() => {
+      setShowTutorial(true);
+    }, 100);
   };
 
   const isDark = theme === 'dark';
@@ -129,6 +142,25 @@ function Settings() {
                   <span className="toggle-slider"></span>
                 </button>
               </div>
+            </div>
+          </section>
+
+          {/* Help & Tutorial Section */}
+          <section className="settings-section">
+            <div className="section-header">
+              <Icon name="search" size={20} aria-hidden />
+              <h2 className="section-title">Help</h2>
+            </div>
+            <div className="settings-card">
+              <button type="button" className="action-button" onClick={handleRestartTutorial}>
+                <Icon name="dashboard" size={20} aria-hidden />
+                <div className="action-info">
+                  <div className="action-label">Restart Tutorial</div>
+                  <div className="action-description">
+                    View the interactive tutorial again to learn about features
+                  </div>
+                </div>
+              </button>
             </div>
           </section>
 

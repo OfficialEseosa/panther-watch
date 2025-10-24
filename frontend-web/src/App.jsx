@@ -13,6 +13,7 @@ import { TermsProvider } from './contexts/TermsContext.jsx'
 import { AuthProvider } from './contexts/AuthContext.jsx'
 import { WatchedClassesProvider } from './contexts/WatchedClassesContext.jsx'
 import { ThemeProvider } from './contexts/ThemeContext.jsx'
+import { TutorialProvider } from './contexts/TutorialContext.jsx'
 import { authService } from './config/authService.js'
 import './App.css'
 
@@ -64,87 +65,89 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <WatchedClassesProvider>
-          {loading ? (
-            <div style={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              height: '100vh'
-            }}>
-              Loading...
-            </div>
-          ) : (
-            <Routes>
-              <Route
-                path="/dashboard"
-                element={
-                  isLoggedIn ?
-                    <TermsProvider>
-                      <DashboardLayout onLogout={handleLogout}><Dashboard /></DashboardLayout>
-                    </TermsProvider> :
-                    <Navigate to="/" replace />
-                }
-              />
-              <Route
-                path="/course-search"
-                element={
-                  isLoggedIn ?
-                    <TermsProvider>
-                      <DashboardLayout onLogout={handleLogout}><CourseSearch /></DashboardLayout>
-                    </TermsProvider> :
-                    <Navigate to="/" replace />
-                }
-              />
-              <Route
-                path="/course-results"
-                element={
-                  isLoggedIn ?
-                    <TermsProvider>
-                      <DashboardLayout onLogout={handleLogout}><CourseResultsPage /></DashboardLayout>
-                    </TermsProvider> :
-                    <Navigate to="/" replace />
-                }
-              />
-              <Route
-                path="/tracked-classes"
-                element={
-                  isLoggedIn ?
-                    <TermsProvider>
-                      <DashboardLayout onLogout={handleLogout}><TrackedClasses /></DashboardLayout>
-                    </TermsProvider> :
-                    <Navigate to="/" replace />
-                }
-              />
-              <Route
-                path="/admin"
-                element={
-                  isLoggedIn ?
-                    <TermsProvider>
-                      <DashboardLayout onLogout={handleLogout}><AdminPanel /></DashboardLayout>
-                    </TermsProvider> :
-                    <Navigate to="/" replace />
-                }
-              />
-              <Route
-                path="/schedule-builder"
-                element={
-                  isLoggedIn ?
-                    <TermsProvider>
-                      <DashboardLayout onLogout={handleLogout}><ScheduleBuilder /></DashboardLayout>
-                    </TermsProvider> :
-                    <Navigate to="/" replace />
-                }
-              />
-              <Route
-                path="/settings"
-                element={isLoggedIn ? <Settings /> : <Navigate to="/" replace />}
-              />
-              <Route
-                path="/"
-                element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <Home />}
-              />
-            </Routes>
-          )}
+          <TutorialProvider>
+            {loading ? (
+              <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                height: '100vh'
+              }}>
+                Loading...
+              </div>
+            ) : (
+              <Routes>
+                <Route
+                  path="/dashboard"
+                  element={
+                    isLoggedIn ?
+                      <TermsProvider>
+                        <DashboardLayout onLogout={handleLogout}><Dashboard /></DashboardLayout>
+                      </TermsProvider> :
+                      <Navigate to="/" replace />
+                  }
+                />
+                <Route
+                  path="/course-search"
+                  element={
+                    isLoggedIn ?
+                      <TermsProvider>
+                        <DashboardLayout onLogout={handleLogout}><CourseSearch /></DashboardLayout>
+                      </TermsProvider> :
+                      <Navigate to="/" replace />
+                  }
+                />
+                <Route
+                  path="/course-results"
+                  element={
+                    isLoggedIn ?
+                      <TermsProvider>
+                        <DashboardLayout onLogout={handleLogout}><CourseResultsPage /></DashboardLayout>
+                      </TermsProvider> :
+                      <Navigate to="/" replace />
+                  }
+                />
+                <Route
+                  path="/tracked-classes"
+                  element={
+                    isLoggedIn ?
+                      <TermsProvider>
+                        <DashboardLayout onLogout={handleLogout}><TrackedClasses /></DashboardLayout>
+                      </TermsProvider> :
+                      <Navigate to="/" replace />
+                  }
+                />
+                <Route
+                  path="/admin"
+                  element={
+                    isLoggedIn ?
+                      <TermsProvider>
+                        <DashboardLayout onLogout={handleLogout}><AdminPanel /></DashboardLayout>
+                      </TermsProvider> :
+                      <Navigate to="/" replace />
+                  }
+                />
+                <Route
+                  path="/schedule-builder"
+                  element={
+                    isLoggedIn ?
+                      <TermsProvider>
+                        <DashboardLayout onLogout={handleLogout}><ScheduleBuilder /></DashboardLayout>
+                      </TermsProvider> :
+                      <Navigate to="/" replace />
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={isLoggedIn ? <Settings /> : <Navigate to="/" replace />}
+                />
+                <Route
+                  path="/"
+                  element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <Home />}
+                />
+              </Routes>
+            )}
+          </TutorialProvider>
         </WatchedClassesProvider>
       </AuthProvider>
     </ThemeProvider>
