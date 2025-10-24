@@ -14,14 +14,18 @@ function TrackedClasses() {
     error: contextError
   } = useWatchedClasses()
   const [error, setError] = useState('')
+  const [detailsLoading, setDetailsLoading] = useState(false)
 
   const loadWatchedClasses = useCallback(async () => {
     try {
       setError('')
+      setDetailsLoading(true)
       await loadWatchedClassesWithDetails()
     } catch (err) {
       console.error('Failed to load watched classes:', err)
       setError('Failed to load tracked classes. Please try again.')
+    } finally {
+      setDetailsLoading(false)
     }
   }, [loadWatchedClassesWithDetails])
 
@@ -43,7 +47,9 @@ function TrackedClasses() {
       <div className="page-header">
         <h2 className="page-title">Your Tracked Classes</h2>
 
-        {!hasTrackedClasses && !loading ? (
+        {detailsLoading ? (
+          <p className="page-description">Loading your tracked classes…</p>
+        ) : !hasTrackedClasses ? (
           <p className="page-description">
             You have not added any classes yet. Search for courses and add the sections you care about.
           </p>
@@ -71,7 +77,7 @@ function TrackedClasses() {
 
       <CourseResults
         courses={watchedClassesWithDetails}
-        loading={loading}
+        loading={detailsLoading}
         error={error || contextError}
         isTrackedView={true}
         onCourseRemoved={handleCourseRemoved}
