@@ -100,6 +100,6 @@ public class Announcement {
     }
     
     public boolean isExpired() {
-        return LocalDateTime.now().isAfter(expiresAt);
+        return expiresAt != null && LocalDateTime.now().isAfter(expiresAt);
     }
 }

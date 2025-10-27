@@ -29,6 +29,50 @@
   color: var(--color-text-muted);
 }
 
+.announcement-manager__error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #991b1b;
+}
+
+.announcement-manager__error svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.announcement-manager__error span {
+  flex: 1;
+  font-size: 14px;
+}
+
+.announcement-manager__error .error-close {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: #991b1b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s;
+}
+
+.announcement-manager__error .error-close:hover {
+  opacity: 0.7;
+}
+
+.announcement-manager__error .error-close svg {
+  width: 18px;
+  height: 18px;
+}
+
 .announcement-manager__form {
   background: var(--color-card-bg);
   border: 1px solid var(--color-border);
@@ -321,4 +365,81 @@
   .announcement-card__actions button {
     width: 100%;
   }
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-content {
+  background: var(--color-surface);
+  border-radius: 12px;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-heading);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.modal-close:hover {
+  color: var(--color-heading);
+}
+
+.modal-close svg {
+  width: 20px;
+  height: 20px;
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.modal-body p {
+  margin: 0;
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--color-border);
 }

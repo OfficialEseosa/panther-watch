@@ -9,6 +9,8 @@ export function AnnouncementManager() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
+  const [error, setError] = useState(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null)
   const [formData, setFormData] = useState({
     message: '',
     type: 'info',
@@ -38,6 +40,7 @@ export function AnnouncementManager() {
     e.preventDefault()
     
     try {
+      setError(null)
       const token = await authService.getAccessToken()
       const expiresAt = new Date(formData.expiresAt).toISOString()
       
@@ -65,7 +68,7 @@ export function AnnouncementManager() {
       await loadAnnouncements()
     } catch (error) {
       console.error('Failed to save announcement:', error)
-      alert('Failed to save announcement. Please try again.')
+      setError('Failed to save announcement. Please try again.')
     }
   }
 
@@ -82,28 +85,26 @@ export function AnnouncementManager() {
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this announcement?')) {
-      return
-    }
-
     try {
       const token = await authService.getAccessToken()
       await announcementService.deleteAnnouncement(id, token)
+      setDeleteConfirmId(null)
       await loadAnnouncements()
     } catch (error) {
       console.error('Failed to delete announcement:', error)
-      alert('Failed to delete announcement. Please try again.')
+      setError('Failed to delete announcement. Please try again.')
     }
   }
 
   const handleDeactivate = async (id) => {
     try {
+      setError(null)
       const token = await authService.getAccessToken()
       await announcementService.deactivateAnnouncement(id, token)
       await loadAnnouncements()
     } catch (error) {
       console.error('Failed to deactivate announcement:', error)
-      alert('Failed to deactivate announcement. Please try again.')
+      setError('Failed to deactivate announcement. Please try again.')
     }
   }
 
@@ -137,6 +138,7 @@ export function AnnouncementManager() {
           onClick={() => {
             setShowForm(!showForm)
             setEditingId(null)
+            setError(null)
             setFormData({
               message: '',
               type: 'info',
@@ -150,6 +152,16 @@ export function AnnouncementManager() {
           {showForm ? 'Cancel' : 'New Announcement'}
         </button>
       </div>
+
+      {error && (
+        <div className="announcement-manager__error">
+          <Icon name="alertTriangle" />
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="error-close">
+            <Icon name="close" />
+          </button>
+        </div>
+      )}
 
       {showForm && (
         <form className="announcement-manager__form" onSubmit={handleSubmit}>
@@ -254,10 +266,8 @@ export function AnnouncementManager() {
                   <Icon
                     name={
                       announcement.type === 'info'
-                        ? 'information-circle'
-                        : announcement.type === 'warning'
-                        ? 'warning'
-                        : 'close-circle'
+                        ? 'notifications'
+                        : 'alertTriangle'
                     }
                   />
                   <span>{announcement.type.toUpperCase()}</span>
@@ -313,7 +323,7 @@ export function AnnouncementManager() {
                 )}
                 <button
                   className="btn btn-small btn-danger"
-                  onClick={() => handleDelete(announcement.id)}
+                  onClick={() => setDeleteConfirmId(announcement.id)}
                 >
                   <Icon name="trash" />
                   Delete
@@ -323,6 +333,37 @@ export function AnnouncementManager() {
           ))
         )}
       </div>
+
+      {deleteConfirmId && (
+        <div className="modal-overlay" onClick={() => setDeleteConfirmId(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Delete Announcement</h3>
+              <button onClick={() => setDeleteConfirmId(null)} className="modal-close">
+                <Icon name="close" />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p>Are you sure you want to delete this announcement? This action cannot be undone.</p>
+            </div>
+            <div className="modal-footer">
+              <button
+                className="btn btn-secondary"
+                onClick={() => setDeleteConfirmId(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={() => handleDelete(deleteConfirmId)}
+              >
+                <Icon name="trash" />
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

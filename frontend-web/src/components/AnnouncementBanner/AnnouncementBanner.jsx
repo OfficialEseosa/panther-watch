@@ -27,11 +27,9 @@ export function AnnouncementBanner() {
   const loadAnnouncements = async () => {
     try {
       const data = await announcementService.getActiveAnnouncements()
-      console.log('Loaded announcements:', data)
       // Filter out dismissed announcements
       const activeDismissed = JSON.parse(localStorage.getItem('dismissed_announcements') || '[]')
       const filtered = data.filter(a => !activeDismissed.includes(a.id))
-      console.log('Filtered announcements after dismissals:', filtered)
       setAnnouncements(filtered)
       setDismissed(new Set(activeDismissed))
     } catch (error) {
