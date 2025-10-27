@@ -7,19 +7,37 @@ export class AuthService {
     this.sessionCache = null
     this.cacheTimestamp = null
     this.CACHE_DURATION = 60 * 60 * 1000
+    this.lastKnownUserId = null
 
     this.handleOAuthCallback()
     
-    supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') {
-        console.log('User signed in successfully')
-        this.clearCache()
-      } else if (event === 'SIGNED_OUT') {
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
         console.log('User signed out')
         this.clearLocalData()
-        this.clearCache()
+        return
+      }
+
+      const previousUserId = this.lastKnownUserId
+
+      if (['INITIAL_SESSION', 'SIGNED_IN', 'TOKEN_REFRESHED', 'USER_UPDATED'].includes(event)) {
+        this.updateCacheFromSession(session)
+      }
+
+      if (event === 'SIGNED_IN' && session?.user?.id && previousUserId !== session.user.id) {
+        console.log('User signed in successfully')
       }
     })
+  }
+
+  updateCacheFromSession(session) {
+    if (!session) return
+
+    this.sessionCache = session
+    this.userCache = session.user || null
+    this.userInfoCache = this.buildUserInfo(session.user)
+    this.cacheTimestamp = Date.now()
+    this.lastKnownUserId = session.user?.id || null
   }
 
   async handleOAuthCallback() {
@@ -62,6 +80,7 @@ export class AuthService {
     this.userCache = null
     this.sessionCache = null
     this.cacheTimestamp = null
+    this.lastKnownUserId = null
   }
 
   isCacheValid() {
@@ -79,6 +98,8 @@ export class AuthService {
 
       this.userCache = user
       this.cacheTimestamp = Date.now()
+      this.lastKnownUserId = user?.id || null
+      this.userInfoCache = this.buildUserInfo(user)
       
       return user
     } catch (error) {
@@ -96,8 +117,7 @@ export class AuthService {
       const { data: { session }, error } = await supabase.auth.getSession()
       if (error) throw error
 
-      this.sessionCache = session
-      this.cacheTimestamp = Date.now()
+      this.updateCacheFromSession(session)
       
       return session
     } catch (error) {
@@ -147,24 +167,33 @@ export class AuthService {
     const user = await this.getCurrentUser()
     if (!user) return null
 
-    let picture = user.user_metadata?.avatar_url || user.user_metadata?.picture
-
-    if (picture && picture.includes('googleusercontent.com')) {
-      picture = picture.replace(/[?&]s=\d+/, '').replace(/=s\d+(-c)?/, '=s96-c')
-    }
-    
-    const userInfo = {
-      provider: 'Google',
-      name: user.user_metadata?.full_name || user.email,
-      email: user.email,
-      picture: picture,
-      firstName: user.user_metadata?.full_name?.split(' ')[0] || user.user_metadata?.name?.split(' ')[0] || 'User'
-    }
+    const userInfo = this.buildUserInfo(user)
 
     this.userInfoCache = userInfo
     this.cacheTimestamp = Date.now()
     
     return userInfo
+  }
+
+  buildUserInfo(user) {
+    if (!user) return null
+
+    let picture = user.user_metadata?.avatar_url || user.user_metadata?.picture
+
+    if (picture && picture.includes('googleusercontent.com')) {
+      picture = picture.replace(/[?&]s=\d+/, '').replace(/=s\d+(-c)?/, '=s96-c')
+    }
+
+    const fullName = user.user_metadata?.full_name || user.user_metadata?.name
+    const firstName = fullName?.split(' ')[0] || user.email?.split('@')[0] || 'User'
+
+    return {
+      provider: user.app_metadata?.provider || 'Google',
+      name: fullName || user.email,
+      email: user.email,
+      picture: picture,
+      firstName
+    }
   }
 
   async getAccessToken() {
