@@ -635,9 +635,23 @@
   line-height: 1.5;
 }
 
+.empty-schedule .btn-secondary {
+  pointer-events: all;
+}
+
+.empty-schedule .btn-secondary svg {
+  flex-shrink: 0;
+  opacity: 1;
+  color: currentColor;
+  vertical-align: middle;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
 .btn-secondary {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   padding: 10px 20px;
   background: var(--color-surface);

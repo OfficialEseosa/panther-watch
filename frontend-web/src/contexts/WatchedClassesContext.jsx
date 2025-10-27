@@ -1,7 +1,28 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { WatchedClassesContext } from './WatchedClassesContext.js'
 import { watchedClassService } from '../config/watchedClassService.js'
 import { useAuth } from '../hooks/useAuth.js'
+
+const createDefaultClassDetail = (tracked) => ({
+  courseReferenceNumber: tracked.crn,
+  subject: tracked.subject,
+  subjectDescription: tracked.subject,
+  courseNumber: tracked.courseNumber,
+  courseTitle: tracked.courseTitle,
+  term: tracked.term,
+  sequenceNumber: tracked.sequenceNumber || '',
+  creditHourLow: null,
+  creditHourHigh: null,
+  seatsAvailable: 0,
+  enrollment: 0,
+  maximumEnrollment: 0,
+  waitCount: 0,
+  waitCapacity: 0,
+  waitAvailable: 0,
+  faculty: tracked.instructor ? [{ displayName: tracked.instructor }] : [],
+  meetingsFaculty: [],
+  isPartialData: true
+})
 
 export function WatchedClassesProvider({ children }) {
   const { userInfo, isAuthenticated } = useAuth()
@@ -10,6 +31,12 @@ export function WatchedClassesProvider({ children }) {
   const [watchedCount, setWatchedCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  const watchedClassesRef = useRef([])
+  
+  useEffect(() => {
+    watchedClassesRef.current = watchedClasses
+  }, [watchedClasses])
 
   useEffect(() => {
     if (isAuthenticated && userInfo) {
@@ -46,9 +73,58 @@ export function WatchedClassesProvider({ children }) {
   const loadWatchedClassesWithDetails = useCallback(async () => {
     try {
       setError(null)
-      const classesWithDetails = await watchedClassService.getWatchedClassesWithFullDetails()
-      setWatchedClassesWithDetails(classesWithDetails || [])
-      return classesWithDetails
+
+      // ALWAYS fetch both to ensure consistency and avoid race conditions
+      const [detailedClasses, baseClasses] = await Promise.all([
+        watchedClassService.getWatchedClassesWithFullDetails(),
+        watchedClassService.getWatchedClasses()
+      ])
+
+      // Update base classes state if we got data
+      if (Array.isArray(baseClasses) && baseClasses.length > 0) {
+        setWatchedClasses(baseClasses)
+        setWatchedCount(baseClasses.length)
+      }
+
+      const detailedArray = Array.isArray(detailedClasses) ? detailedClasses : []
+      const baseArray = Array.isArray(baseClasses) ? baseClasses : []
+
+      // Create detail map for O(1) lookups
+      const detailMap = new Map(
+        detailedArray
+          .filter(course => course && course.courseReferenceNumber)
+          .map(course => [course.courseReferenceNumber, { ...course, isPartialData: false }])
+      )
+
+      const merged = baseArray.map(tracked => {
+        const detail = detailMap.get(tracked.crn)
+        if (detail) {
+          detailMap.delete(tracked.crn)
+          return {
+            ...detail,
+            term: detail.term || tracked.term,
+            courseReferenceNumber: detail.courseReferenceNumber || tracked.crn
+          }
+        }
+
+        // No detail found, create fallback
+        return createDefaultClassDetail(tracked)
+      })
+
+      // Add any remaining detailed classes that weren't in base list
+      // (This handles edge case where detail API has classes not in base API)
+      detailMap.forEach(detail => {
+        merged.push({
+          ...detail,
+          isPartialData: false,
+          term: detail.term || null,
+          courseReferenceNumber: detail.courseReferenceNumber
+        })
+      })
+
+      console.log('Merged watched classes:', merged.length, 'classes')
+      setWatchedClassesWithDetails(merged)
+      return merged
     } catch (err) {
       console.error('Failed to load watched classes with details:', err)
       setError(err)

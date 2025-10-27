@@ -160,6 +160,35 @@
   color: var(--color-heading);
 }
 
+.partial-data-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(255, 177, 66, 0.1);
+  border: 1px solid rgba(255, 177, 66, 0.3);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  color: #c27b12;
+}
+
+.theme-dark .partial-data-notice {
+  background: rgba(255, 177, 66, 0.15);
+  border-color: rgba(255, 177, 66, 0.35);
+  color: #f5b547;
+}
+
+.partial-data-icon {
+  font-size: 1rem;
+  line-height: 1;
+  opacity: 0.9;
+}
+
+.partial-data-text {
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
 .enrollment-status {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));

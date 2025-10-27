@@ -166,6 +166,13 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
                   </div>
                 </div>
 
+                {course.isPartialData && (
+                  <div className="partial-data-notice">
+                    <span className="partial-data-icon">ⓘ</span>
+                    <span className="partial-data-text">Limited enrollment data</span>
+                  </div>
+                )}
+
                 <div className="enrollment-status">
                   <div className="enrollment-item">
                     <span className={`enrollment-number ${getEnrollmentStatus(course.seatsAvailable, course.maximumEnrollment)}`}>
