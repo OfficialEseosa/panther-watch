@@ -19,6 +19,41 @@ export function AnnouncementManager() {
     createdBy: ''
   })
 
+  const normalizeDatetimeForApi = (value) => {
+    if (!value) {
+      return null
+    }
+    const trimmedValue = value.trim()
+    if (trimmedValue.length === 16) {
+      return `${trimmedValue}:00`
+    }
+    return trimmedValue
+  }
+
+  const formatDateForInput = (value) => {
+    if (!value || typeof value !== 'string') {
+      return ''
+    }
+    const trimmedValue = value.trim()
+    if (!trimmedValue) {
+      return ''
+    }
+    const isoMatch = trimmedValue.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/)
+    if (isoMatch) {
+      return isoMatch[1]
+    }
+    const parsed = new Date(trimmedValue)
+    if (Number.isNaN(parsed.getTime())) {
+      return ''
+    }
+    const year = parsed.getFullYear()
+    const month = `${parsed.getMonth() + 1}`.padStart(2, '0')
+    const day = `${parsed.getDate()}`.padStart(2, '0')
+    const hours = `${parsed.getHours()}`.padStart(2, '0')
+    const minutes = `${parsed.getMinutes()}`.padStart(2, '0')
+    return `${year}-${month}-${day}T${hours}:${minutes}`
+  }
+
   useEffect(() => {
     loadAnnouncements()
   }, [])
@@ -42,8 +77,8 @@ export function AnnouncementManager() {
     try {
       setError(null)
       const token = await authService.getAccessToken()
-      const expiresAt = new Date(formData.expiresAt).toISOString()
-      
+      const expiresAt = normalizeDatetimeForApi(formData.expiresAt)
+
       const announcementData = {
         ...formData,
         expiresAt
@@ -74,11 +109,11 @@ export function AnnouncementManager() {
 
   const handleEdit = (announcement) => {
     setFormData({
-      message: announcement.message,
-      type: announcement.type,
-      expiresAt: announcement.expiresAt.substring(0, 16),
-      active: announcement.active,
-      createdBy: announcement.createdBy
+      message: announcement.message || '',
+      type: announcement.type || 'info',
+      expiresAt: formatDateForInput(announcement.expiresAt),
+      active: Boolean(announcement.active),
+      createdBy: announcement.createdBy || ''
     })
     setEditingId(announcement.id)
     setShowForm(true)
@@ -108,8 +143,27 @@ export function AnnouncementManager() {
     }
   }
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString('en-US', {
+  const handleActivate = async (id) => {
+    try {
+      setError(null)
+      const token = await authService.getAccessToken()
+      await announcementService.activateAnnouncement(id, token)
+      await loadAnnouncements()
+    } catch (error) {
+      console.error('Failed to activate announcement:', error)
+      setError('Failed to activate announcement. Please try again.')
+    }
+  }
+
+  const formatDate = (dateString, fallback = 'N/A') => {
+    if (!dateString) {
+      return fallback
+    }
+    const parsed = new Date(dateString)
+    if (Number.isNaN(parsed.getTime())) {
+      return fallback
+    }
+    return parsed.toLocaleString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -119,7 +173,14 @@ export function AnnouncementManager() {
   }
 
   const isExpired = (expiresAt) => {
-    return new Date(expiresAt) < new Date()
+    if (!expiresAt) {
+      return false
+    }
+    const expiryDate = new Date(expiresAt)
+    if (Number.isNaN(expiryDate.getTime())) {
+      return false
+    }
+    return expiryDate < new Date()
   }
 
   if (loading) {
@@ -293,7 +354,7 @@ export function AnnouncementManager() {
                   </div>
                   <div>
                     <Icon name="time" />
-                    <span>Expires: {formatDate(announcement.expiresAt)}</span>
+                    <span>Expires: {formatDate(announcement.expiresAt, 'No expiration')}</span>
                   </div>
                   {announcement.createdBy && (
                     <div>
@@ -312,13 +373,22 @@ export function AnnouncementManager() {
                   <Icon name="create" />
                   Edit
                 </button>
-                {announcement.active && !isExpired(announcement.expiresAt) && (
+                {announcement.active && (
                   <button
                     className="btn btn-small btn-warning"
                     onClick={() => handleDeactivate(announcement.id)}
                   >
                     <Icon name="pause" />
                     Deactivate
+                  </button>
+                )}
+                {!announcement.active && (
+                  <button
+                    className="btn btn-small btn-success"
+                    onClick={() => handleActivate(announcement.id)}
+                  >
+                    <Icon name="play" />
+                    Activate
                   </button>
                 )}
                 <button

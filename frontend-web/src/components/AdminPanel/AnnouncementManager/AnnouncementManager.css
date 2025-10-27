@@ -309,6 +309,15 @@
   background: #e08e00;
 }
 
+.btn-success {
+  background: #2d9f4a;
+  color: white;
+}
+
+.btn-success:hover {
+  background: #1f7c39;
+}
+
 .btn-danger {
   background: #e74c3c;
   color: white;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Icon from '../Icon'
 import { announcementService } from '../../config/announcementService'
 import './AnnouncementBanner.css'
@@ -7,13 +7,37 @@ export function AnnouncementBanner() {
   const [announcements, setAnnouncements] = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [dismissed, setDismissed] = useState(new Set())
+  const bannerRef = useRef(null)
+
+  const loadAnnouncements = useCallback(async () => {
+    try {
+      const data = await announcementService.getActiveAnnouncements()
+      const activeDismissed = JSON.parse(localStorage.getItem('dismissed_announcements') || '[]')
+      const filtered = data.filter(a => !activeDismissed.includes(a.id))
+      setAnnouncements(filtered)
+      setDismissed(new Set(activeDismissed))
+    } catch (error) {
+      console.error('Failed to load announcements:', error)
+    }
+  }, [])
 
   useEffect(() => {
     loadAnnouncements()
-    // Refresh every 5 minutes
     const interval = setInterval(loadAnnouncements, 5 * 60 * 1000)
     return () => clearInterval(interval)
-  }, [])
+  }, [loadAnnouncements])
+
+  useEffect(() => {
+    const subscription = announcementService.subscribeToUpdates(() => {
+      loadAnnouncements()
+    })
+
+    return () => {
+      if (subscription?.close) {
+        subscription.close()
+      }
+    }
+  }, [loadAnnouncements])
 
   useEffect(() => {
     if (announcements.length > 1) {
@@ -24,18 +48,40 @@ export function AnnouncementBanner() {
     }
   }, [announcements.length])
 
-  const loadAnnouncements = async () => {
-    try {
-      const data = await announcementService.getActiveAnnouncements()
-      // Filter out dismissed announcements
-      const activeDismissed = JSON.parse(localStorage.getItem('dismissed_announcements') || '[]')
-      const filtered = data.filter(a => !activeDismissed.includes(a.id))
-      setAnnouncements(filtered)
-      setDismissed(new Set(activeDismissed))
-    } catch (error) {
-      console.error('Failed to load announcements:', error)
+  useEffect(() => {
+    const root = document.documentElement
+
+    if (announcements.length === 0) {
+      root.style.setProperty('--announcement-banner-height', '0px')
+      return
     }
-  }
+
+    const updateHeight = () => {
+      if (bannerRef.current) {
+        root.style.setProperty('--announcement-banner-height', `${bannerRef.current.offsetHeight}px`)
+      }
+    }
+
+    updateHeight()
+
+    let observer = null
+    if (bannerRef.current && typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => updateHeight())
+      observer.observe(bannerRef.current)
+    }
+
+    return () => {
+      if (observer) {
+        observer.disconnect()
+      }
+    }
+  }, [announcements])
+
+  useEffect(() => {
+    return () => {
+      document.documentElement.style.setProperty('--announcement-banner-height', '0px')
+    }
+  }, [])
 
   const handleDismiss = (id) => {
     const newDismissed = new Set(dismissed)
@@ -66,7 +112,10 @@ export function AnnouncementBanner() {
   }[currentAnnouncement.type] || 'notifications'
 
   return (
-    <div className={`announcement-banner announcement-banner--${currentAnnouncement.type}`}>
+    <div
+      ref={bannerRef}
+      className={`announcement-banner announcement-banner--${currentAnnouncement.type}`}
+    >
       <div className="announcement-banner__content">
         <Icon name={typeIcon} className="announcement-banner__icon" />
         <div className="announcement-banner__message">

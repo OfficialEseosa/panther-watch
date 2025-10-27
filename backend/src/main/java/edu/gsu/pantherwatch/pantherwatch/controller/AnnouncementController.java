@@ -2,13 +2,16 @@ package edu.gsu.pantherwatch.pantherwatch.controller;
 
 import edu.gsu.pantherwatch.pantherwatch.model.Announcement;
 import edu.gsu.pantherwatch.pantherwatch.model.User;
+import edu.gsu.pantherwatch.pantherwatch.service.AnnouncementEventService;
 import edu.gsu.pantherwatch.pantherwatch.service.AnnouncementService;
 import edu.gsu.pantherwatch.pantherwatch.service.AdminService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.HashMap;
 import java.util.List;
@@ -23,6 +26,9 @@ public class AnnouncementController {
     
     @Autowired
     private AdminService adminService;
+
+    @Autowired
+    private AnnouncementEventService announcementEventService;
     
     // Public endpoint - get active announcements
     @GetMapping("/active")
@@ -39,6 +45,11 @@ public class AnnouncementController {
             errorResponse.put("message", "Failed to fetch announcements: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
+    }
+
+    @GetMapping(path = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter streamAnnouncements() {
+        return announcementEventService.subscribe();
     }
     
     // Admin endpoints - check if user is admin
@@ -78,6 +89,7 @@ public class AnnouncementController {
             }
             
             Announcement created = announcementService.createAnnouncement(announcement);
+            announcementEventService.broadcastChange();
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("data", created);
@@ -103,6 +115,7 @@ public class AnnouncementController {
             }
             
             Announcement updated = announcementService.updateAnnouncement(id, announcement);
+            announcementEventService.broadcastChange();
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("data", updated);
@@ -128,6 +141,7 @@ public class AnnouncementController {
             }
             
             announcementService.deleteAnnouncement(id);
+            announcementEventService.broadcastChange();
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Announcement deleted successfully");
@@ -152,6 +166,7 @@ public class AnnouncementController {
             }
             
             announcementService.deactivateAnnouncement(id);
+            announcementEventService.broadcastChange();
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Announcement deactivated successfully");
@@ -160,6 +175,31 @@ public class AnnouncementController {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("success", false);
             errorResponse.put("message", "Failed to deactivate announcement: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    @PatchMapping("/{id}/activate")
+    public ResponseEntity<?> activateAnnouncement(@PathVariable Long id, HttpServletRequest request) {
+        try {
+            User user = (User) request.getAttribute("currentUser");
+            if (user == null || !adminService.isAdmin(user.getEmail())) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("success", false);
+                errorResponse.put("message", "Unauthorized: Admin access required");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+            }
+
+            announcementService.activateAnnouncement(id);
+            announcementEventService.broadcastChange();
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Announcement activated successfully");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "Failed to activate announcement: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }

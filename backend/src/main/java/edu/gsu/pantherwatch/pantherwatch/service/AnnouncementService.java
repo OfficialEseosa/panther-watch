@@ -59,4 +59,13 @@ public class AnnouncementService {
                 announcementRepository.save(announcement);
             });
     }
+
+    @Transactional
+    public void activateAnnouncement(Long id) {
+        announcementRepository.findById(id)
+            .ifPresent(announcement -> {
+                announcement.setActive(true);
+                announcementRepository.save(announcement);
+            });
+    }
 }
