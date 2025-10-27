@@ -14,6 +14,7 @@ import { AuthProvider } from './contexts/AuthContext.jsx'
 import { WatchedClassesProvider } from './contexts/WatchedClassesContext.jsx'
 import { ThemeProvider } from './contexts/ThemeContext.jsx'
 import { TutorialProvider } from './contexts/TutorialContext.jsx'
+import { AnnouncementBanner } from './components/AnnouncementBanner'
 import { authService } from './config/authService.js'
 import './App.css'
 
@@ -66,6 +67,7 @@ function App() {
       <AuthProvider>
         <WatchedClassesProvider>
           <TutorialProvider>
+            <AnnouncementBanner />
             {loading ? (
               <div style={{
                 display: 'flex',

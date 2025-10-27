@@ -104,6 +104,47 @@
   font-size: 0.98rem;
 }
 
+.admin-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 0 4px;
+  overflow-x: auto;
+}
+
+.admin-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  white-space: nowrap;
+}
+
+.admin-tab:hover {
+  background: var(--color-surface-muted);
+  border-color: var(--color-primary-300);
+  box-shadow: var(--shadow-xs);
+}
+
+.admin-tab.active {
+  background: var(--color-primary-600);
+  border-color: var(--color-primary-600);
+  color: white;
+  box-shadow: var(--shadow-sm);
+}
+
+.admin-tab svg {
+  width: 18px;
+  height: 18px;
+}
+
 .admin-content {
   display: flex;
   flex-direction: column;
@@ -121,6 +162,20 @@
 @media (max-width: 768px) {
   .admin-panel {
     padding: 4px 0 32px;
+  }
+
+  .admin-tabs {
+    padding: 0 2px;
+  }
+
+  .admin-tab {
+    padding: 8px 14px;
+    font-size: 0.85rem;
+  }
+
+  .admin-tab svg {
+    width: 16px;
+    height: 16px;
   }
 
   .admin-header,

@@ -1,0 +1,124 @@
+.announcement-banner {
+  width: 100%;
+  padding: 12px 20px;
+  position: relative;
+  z-index: 1000;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.announcement-banner--info {
+  background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+  color: white;
+}
+
+.announcement-banner--warning {
+  background: linear-gradient(135deg, #f5a623 0%, #e08e00 100%);
+  color: white;
+}
+
+.announcement-banner--error {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: white;
+}
+
+.announcement-banner__content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+}
+
+.announcement-banner__icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.announcement-banner__message {
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.announcement-banner__indicator {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0 8px;
+}
+
+.announcement-banner__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0;
+}
+
+.announcement-banner__dot.active {
+  background: white;
+  width: 8px;
+  height: 8px;
+}
+
+.announcement-banner__dot:hover {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.announcement-banner__close {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.announcement-banner__close:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.announcement-banner__close svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .announcement-banner {
+    padding: 10px 16px;
+  }
+
+  .announcement-banner__message {
+    font-size: 13px;
+    white-space: normal;
+  }
+
+  .announcement-banner__indicator {
+    display: none;
+  }
+}
