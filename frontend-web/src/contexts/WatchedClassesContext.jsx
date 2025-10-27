@@ -1,28 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { WatchedClassesContext } from './WatchedClassesContext.js'
 import { watchedClassService } from '../config/watchedClassService.js'
 import { useAuth } from '../hooks/useAuth.js'
 
-const createDefaultClassDetail = (tracked) => ({
-  courseReferenceNumber: tracked.crn,
-  subject: tracked.subject,
-  subjectDescription: tracked.subject,
-  courseNumber: tracked.courseNumber,
-  courseTitle: tracked.courseTitle,
-  term: tracked.term,
-  sequenceNumber: tracked.sequenceNumber || '',
-  creditHourLow: null,
-  creditHourHigh: null,
-  seatsAvailable: 0,
-  enrollment: 0,
-  maximumEnrollment: 0,
-  waitCount: 0,
-  waitCapacity: 0,
-  waitAvailable: 0,
-  faculty: tracked.instructor ? [{ displayName: tracked.instructor }] : [],
-  meetingsFaculty: [],
-  isPartialData: true
-})
+const DETAIL_MAX_ATTEMPTS = 5
+const DETAIL_RETRY_DELAY_MS = 2000
+
+const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
 export function WatchedClassesProvider({ children }) {
   const { userInfo, isAuthenticated } = useAuth()
@@ -31,12 +15,6 @@ export function WatchedClassesProvider({ children }) {
   const [watchedCount, setWatchedCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-
-  const watchedClassesRef = useRef([])
-  
-  useEffect(() => {
-    watchedClassesRef.current = watchedClasses
-  }, [watchedClasses])
 
   useEffect(() => {
     if (isAuthenticated && userInfo) {
@@ -74,57 +52,56 @@ export function WatchedClassesProvider({ children }) {
     try {
       setError(null)
 
-      // ALWAYS fetch both to ensure consistency and avoid race conditions
-      const [detailedClasses, baseClasses] = await Promise.all([
-        watchedClassService.getWatchedClassesWithFullDetails(),
-        watchedClassService.getWatchedClasses()
-      ])
-
-      // Update base classes state if we got data
-      if (Array.isArray(baseClasses) && baseClasses.length > 0) {
+      let baseClasses = watchedClasses
+      if (!Array.isArray(baseClasses) || baseClasses.length === 0) {
+        const latestBase = await watchedClassService.getWatchedClasses()
+        baseClasses = Array.isArray(latestBase) ? latestBase : []
         setWatchedClasses(baseClasses)
         setWatchedCount(baseClasses.length)
       }
 
-      const detailedArray = Array.isArray(detailedClasses) ? detailedClasses : []
-      const baseArray = Array.isArray(baseClasses) ? baseClasses : []
+      const expectedCount = Array.isArray(baseClasses) ? baseClasses.length : 0
+      let bestResult = []
+      let attempt = 0
+      let lastError = null
 
-      // Create detail map for O(1) lookups
-      const detailMap = new Map(
-        detailedArray
-          .filter(course => course && course.courseReferenceNumber)
-          .map(course => [course.courseReferenceNumber, { ...course, isPartialData: false }])
-      )
+      while (attempt < DETAIL_MAX_ATTEMPTS) {
+        attempt += 1
+        try {
+          const detailedClasses = await watchedClassService.getWatchedClassesWithFullDetails()
+          const detailArray = Array.isArray(detailedClasses) ? detailedClasses : []
 
-      const merged = baseArray.map(tracked => {
-        const detail = detailMap.get(tracked.crn)
-        if (detail) {
-          detailMap.delete(tracked.crn)
-          return {
-            ...detail,
-            term: detail.term || tracked.term,
-            courseReferenceNumber: detail.courseReferenceNumber || tracked.crn
+          if (detailArray.length > bestResult.length) {
+            bestResult = detailArray
+          }
+
+          if (expectedCount === 0) {
+            bestResult = detailArray
+            break
+          }
+
+          if (detailArray.length >= expectedCount) {
+            bestResult = detailArray
+            break
+          }
+        } catch (err) {
+          lastError = err
+          if (attempt === DETAIL_MAX_ATTEMPTS) {
+            throw err
           }
         }
 
-        // No detail found, create fallback
-        return createDefaultClassDetail(tracked)
-      })
+        if (attempt < DETAIL_MAX_ATTEMPTS) {
+          await wait(DETAIL_RETRY_DELAY_MS)
+        }
+      }
 
-      // Add any remaining detailed classes that weren't in base list
-      // (This handles edge case where detail API has classes not in base API)
-      detailMap.forEach(detail => {
-        merged.push({
-          ...detail,
-          isPartialData: false,
-          term: detail.term || null,
-          courseReferenceNumber: detail.courseReferenceNumber
-        })
-      })
+      if (expectedCount > 0 && bestResult.length < expectedCount) {
+        throw lastError || new Error('Tracked class details were unavailable after multiple attempts.')
+      }
 
-      console.log('Merged watched classes:', merged.length, 'classes')
-      setWatchedClassesWithDetails(merged)
-      return merged
+      setWatchedClassesWithDetails(bestResult)
+      return bestResult
     } catch (err) {
       console.error('Failed to load watched classes with details:', err)
       setError(err)
