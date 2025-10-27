@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import Sidebar from '../../components/Sidebar'
 import Header from '../../components/Header'
+import { AnnouncementBanner } from '../../components/AnnouncementBanner'
 import './DashboardLayout.css'
 
 function DashboardLayout({ children }) {
@@ -16,6 +17,7 @@ function DashboardLayout({ children }) {
   return (
     <div className="dashboard-layout">
       <Header onToggleSidebar={toggleSidebar} />
+      <AnnouncementBanner />
       
       <div className="dashboard-content">
         <Sidebar 

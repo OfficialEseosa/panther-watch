@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Icon from '../../components/Icon'
 import UserSearchSection from '../../components/AdminPanel/UserSearch'
 import { EmailComposer } from '../../components/AdminPanel/EmailComposer'
+import { AnnouncementManager } from '../../components/AdminPanel/AnnouncementManager'
 import AdminStats from '../../components/AdminPanel/Stats'
 import { adminService } from '../../config/adminService'
 import './AdminPanel.css'
@@ -9,6 +10,7 @@ import './AdminPanel.css'
 function AdminPanel() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('stats')
   const [users, setUsers] = useState([])
   const [selectedUser, setSelectedUser] = useState(null)
   const [showEmailComposer, setShowEmailComposer] = useState(false)
@@ -96,23 +98,57 @@ function AdminPanel() {
           <Icon name="admin" size={28} className="admin-heading-icon" aria-hidden />
           <div>
             <h1>Admin panel</h1>
-            <p>Manage users, insights, and outbound messaging.</p>
+            <p>Manage users, insights, announcements, and outbound messaging.</p>
           </div>
         </div>
       </header>
 
-      <div className="admin-content">
-        <section className="admin-section">
-          <AdminStats users={users} />
-        </section>
+      <div className="admin-tabs">
+        <button
+          className={`admin-tab ${activeTab === 'stats' ? 'active' : ''}`}
+          onClick={() => setActiveTab('stats')}
+        >
+          <Icon name="stats-chart" />
+          Statistics
+        </button>
+        <button
+          className={`admin-tab ${activeTab === 'users' ? 'active' : ''}`}
+          onClick={() => setActiveTab('users')}
+        >
+          <Icon name="people" />
+          Users
+        </button>
+        <button
+          className={`admin-tab ${activeTab === 'announcements' ? 'active' : ''}`}
+          onClick={() => setActiveTab('announcements')}
+        >
+          <Icon name="notifications" />
+          Announcements
+        </button>
+      </div>
 
-        <section className="admin-section">
-          <UserSearchSection
-            users={users}
-            onSearch={handleUserSearch}
-            onSendEmail={handleSendEmail}
-          />
-        </section>
+      <div className="admin-content">
+        {activeTab === 'stats' && (
+          <section className="admin-section">
+            <AdminStats users={users} />
+          </section>
+        )}
+
+        {activeTab === 'users' && (
+          <section className="admin-section">
+            <UserSearchSection
+              users={users}
+              onSearch={handleUserSearch}
+              onSendEmail={handleSendEmail}
+            />
+          </section>
+        )}
+
+        {activeTab === 'announcements' && (
+          <section className="admin-section">
+            <AnnouncementManager />
+          </section>
+        )}
 
         {showEmailComposer && (
           <EmailComposer
