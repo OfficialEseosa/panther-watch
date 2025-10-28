@@ -15,8 +15,6 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.*;
 import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api/watched-classes")
@@ -27,10 +25,6 @@ public class WatchedClassController {
     
     @Autowired
     private PantherWatchService pantherWatchService;
-
-    private static final Logger log = LoggerFactory.getLogger(WatchedClassController.class);
-    private static final int COURSE_DETAIL_MAX_ATTEMPTS = 5;
-    private static final long COURSE_DETAIL_RETRY_DELAY_MS = 2000L;
 
     @GetMapping
     public ResponseEntity<Map<String, Object>> getWatchedClasses(HttpServletRequest request) {
@@ -176,14 +170,6 @@ public class WatchedClassController {
                     .collect(Collectors.groupingBy(wc -> 
                         wc.getSubject() + "|" + wc.getCourseNumber() + "|" + wc.getTerm()));
 
-            Map<String, Set<String>> crnGroupMap = new HashMap<>();
-            groupedClasses.forEach((key, value) -> {
-                Set<String> crnSet = value.stream()
-                        .map(WatchedClassResponse::getCrn)
-                        .collect(Collectors.toCollection(LinkedHashSet::new));
-                crnGroupMap.put(key, crnSet);
-            });
-
             List<CourseData> allCourseDetails = new ArrayList<>();
 
             for (Map.Entry<String, List<WatchedClassResponse>> entry : groupedClasses.entrySet()) {
@@ -201,22 +187,21 @@ public class WatchedClassController {
                             .pageMaxSize(200)
                             .build();
 
-                    CourseData[] courseResults = fetchCourseDetailsWithRetry(searchRequest, subject, courseNumber, term);
+                    RetrieveCourseInfoResponse searchResponse = pantherWatchService.searchCourses(searchRequest);
 
-                    if (courseResults != null && courseResults.length > 0) {
-                        Set<String> watchedCrns = crnGroupMap.getOrDefault(entry.getKey(), Collections.emptySet());
+                    if (searchResponse.isSuccess() && searchResponse.getData() != null) {
+                        Set<String> watchedCrns = classesForThisCourse.stream()
+                                .map(WatchedClassResponse::getCrn)
+                                .collect(Collectors.toSet());
 
-                        for (CourseData course : courseResults) {
-                            if (course != null && watchedCrns.contains(course.getCourseReferenceNumber())) {
+                        for (CourseData course : searchResponse.getData()) {
+                            if (watchedCrns.contains(course.getCourseReferenceNumber())) {
                                 course.setTerm(term);
                                 allCourseDetails.add(course);
                             }
                         }
-                    } else {
-                        log.warn("No course detail data returned for {} {} term {} after retries", subject, courseNumber, term);
                     }
                 } catch (Exception e) {
-                    log.error("Failed to fetch course details for {} {} term {}", subject, courseNumber, term, e);
                 }
             }
 
@@ -234,48 +219,5 @@ public class WatchedClassController {
 
             return ResponseEntity.badRequest().body(errorResponse);
         }
-    }
-
-    private CourseData[] fetchCourseDetailsWithRetry(RetrieveCourseInfoRequest request, String subject, String courseNumber, String term) {
-        CourseData[] lastResult = null;
-        Exception lastException = null;
-
-        for (int attempt = 1; attempt <= COURSE_DETAIL_MAX_ATTEMPTS; attempt++) {
-            try {
-                RetrieveCourseInfoResponse searchResponse = pantherWatchService.searchCourses(request);
-                if (searchResponse != null && searchResponse.isSuccess() && searchResponse.getData() != null && searchResponse.getData().length > 0) {
-                    return searchResponse.getData();
-                }
-
-                lastResult = (searchResponse != null) ? searchResponse.getData() : null;
-                log.debug("Course detail attempt {} yielded {} results for {} {} term {}", attempt,
-                        lastResult != null ? lastResult.length : 0, subject, courseNumber, term);
-            } catch (Exception e) {
-                lastException = e;
-                log.warn("Course detail attempt {} failed for {} {} term {}", attempt, subject, courseNumber, term, e);
-            }
-
-            if (attempt < COURSE_DETAIL_MAX_ATTEMPTS) {
-                try {
-                    Thread.sleep(COURSE_DETAIL_RETRY_DELAY_MS);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    log.warn("Course detail retry interrupted for {} {} term {}", subject, courseNumber, term);
-                    break;
-                }
-
-                try {
-                    pantherWatchService.resetRequestForm();
-                } catch (Exception resetException) {
-                    log.debug("Failed to reset course search form before retry for {} {} term {}", subject, courseNumber, term, resetException);
-                }
-            }
-        }
-
-        if (lastException != null) {
-            log.error("Unable to retrieve course details for {} {} term {} after retries", subject, courseNumber, term, lastException);
-        }
-
-        return lastResult;
     }
 }
