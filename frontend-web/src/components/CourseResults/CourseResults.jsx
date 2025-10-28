@@ -8,7 +8,6 @@ import { useTerms } from '../../hooks/useTerms.js';
 import LoadingBar from '../LoadingBar';
 
 function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = false, onCourseRemoved, watchedCrns = [] }) {
-  const [watchingStatus, setWatchingStatus] = useState({});
   const [watchLoading, setWatchLoading] = useState({});
   const { getTermName: getTermNameFromContext } = useTerms();
   const { addWatchedClass, removeWatchedClass } = useWatchedClasses();
@@ -21,11 +20,10 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
     try {
       setWatchLoading((prev) => ({ ...prev, [key]: true }));
 
-      const isCurrentlyWatching = watchingStatus[key] || isTrackedView;
+      const isCurrentlyWatching = watchedCrns.includes(crn);
 
       if (isCurrentlyWatching || isTrackedView) {
         await removeWatchedClass(crn, courseTerm);
-        setWatchingStatus((prev) => ({ ...prev, [key]: false }));
 
         if (isTrackedView && onCourseRemoved) {
           onCourseRemoved(course);
@@ -41,7 +39,6 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
         };
 
         await addWatchedClass(watchData);
-        setWatchingStatus((prev) => ({ ...prev, [key]: true }));
       }
     } catch (err) {
       console.error('Failed to toggle watch status:', err);
@@ -110,9 +107,7 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
           const crn = course.courseReferenceNumber;
           const courseTerm = course.term || selectedTerm;
           const key = `${crn}-${courseTerm}`;
-          const isWatchingFromState = watchingStatus[key];
-          const isWatchingFromProps = watchedCrns.includes(crn);
-          const isWatching = isWatchingFromState !== undefined ? isWatchingFromState : isWatchingFromProps;
+          const isWatching = watchedCrns.includes(crn);
           const isWatchLoading = watchLoading[key];
 
           return (
