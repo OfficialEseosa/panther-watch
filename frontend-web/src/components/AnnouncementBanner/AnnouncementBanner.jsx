@@ -28,18 +28,6 @@ export function AnnouncementBanner() {
   }, [loadAnnouncements])
 
   useEffect(() => {
-    const subscription = announcementService.subscribeToUpdates(() => {
-      loadAnnouncements()
-    })
-
-    return () => {
-      if (subscription?.close) {
-        subscription.close()
-      }
-    }
-  }, [loadAnnouncements])
-
-  useEffect(() => {
     if (announcements.length > 1) {
       const timer = setInterval(() => {
         setCurrentIndex((prev) => (prev + 1) % announcements.length)

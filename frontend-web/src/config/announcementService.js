@@ -152,42 +152,6 @@ class AnnouncementService {
       throw error
     }
   }
-
-  subscribeToUpdates(onUpdate, onError) {
-    if (typeof window === 'undefined' || typeof window.EventSource === 'undefined') {
-      return null
-    }
-
-    try {
-      const eventSource = new EventSource(`${API_BASE_URL}/announcements/stream`)
-      const handler = () => {
-        if (typeof onUpdate === 'function') {
-          onUpdate()
-        }
-      }
-
-      eventSource.addEventListener('announcements-updated', handler)
-      eventSource.onerror = (event) => {
-        console.error('Announcement stream error:', event)
-        if (typeof onError === 'function') {
-          onError(event)
-        }
-      }
-
-      return {
-        close() {
-          eventSource.removeEventListener('announcements-updated', handler)
-          eventSource.close()
-        }
-      }
-    } catch (error) {
-      console.error('Failed to subscribe to announcement updates:', error)
-      if (typeof onError === 'function') {
-        onError(error)
-      }
-      return null
-    }
-  }
 }
 
 export const announcementService = new AnnouncementService()
