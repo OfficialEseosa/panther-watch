@@ -68,6 +68,14 @@
   font-weight: 600;
 }
 
+/* Improve CRN visibility in dark mode */
+.theme-dark .course-crn {
+  /* Use a lighter, higher-contrast chip with clear text */
+  background: rgba(70, 104, 168, 0.28); /* based on --color-primary-300 */
+  border: 1px solid var(--color-primary-300);
+  color: var(--color-heading); /* near-white text for contrast */
+}
+
 .course-actions {
   display: flex;
   align-items: center;
