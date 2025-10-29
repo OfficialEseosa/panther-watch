@@ -4,8 +4,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.http.HttpHeaders;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import edu.gsu.pantherwatch.pantherwatch.api.GetSubjectRequest;
 import edu.gsu.pantherwatch.pantherwatch.api.GetSubjectResponse;
@@ -17,6 +21,7 @@ import reactor.core.publisher.Mono;
 @Service
 public class PantherWatchService {
     private static final Duration TIMEOUT = Duration.ofMillis(10000);
+    private static final Duration SESSION_TTL = Duration.ofMinutes(15);
     private static final String SORT_COLUMN = "subjectDescription";
     private static final String SORT_DIRECTION = "asc";
     private static final int DEFAULT_OFFSET = 1;
@@ -27,18 +32,59 @@ public class PantherWatchService {
     private static final String RESET_PATH = "/classSearch/resetDataForm";
     private static final String TERMS_PATH = "/classSearch/getTerms";
     private static final String SUBJECT_PATH = "/classSearch/get_subject";
+    private static final String SAMPLE_TERM = "202601";
+    private static final String SAMPLE_SUBJECT = "CSC";
+    private static final String SAMPLE_COURSE_NUMBER = "2720";
+
+    private final ConcurrentHashMap<String, BannerSession> sessionCache = new ConcurrentHashMap<>();
 
     public PantherWatchService(WebClient webClient) {
         this.webClient = webClient;
     }
 
     public RetrieveCourseInfoResponse searchCourses(RetrieveCourseInfoRequest request) {
-        String sessionCookies = declareTermAndGetCookies(request.getTxtTerm());
+        if (request == null || request.getTxtTerm() == null || request.getTxtTerm().isBlank()) {
+            throw new IllegalArgumentException("Term is required for course search");
+        }
 
-        return searchCoursesWithCookies(request, sessionCookies);
+        String term = request.getTxtTerm();
+
+        for (int attempt = 0; attempt < 2; attempt++) {
+            BannerSession session = obtainSession(term);
+            synchronized (session) {
+                String cookies = declareTerm(term, session.getCookies());
+                session.updateCookies(cookies);
+
+                RetrieveCourseInfoResponse response = searchCoursesWithCookies(request, cookies);
+
+                if (!shouldValidateNullData(response)) {
+                    resetRequestForm(cookies);
+                    session.markUsed();
+                    return response;
+                }
+
+                ValidationResult validation = validateSessionCookies(cookies);
+                cookies = validation.cookies();
+
+                if (!validation.valid()) {
+                    sessionCache.remove(term, session);
+                    continue;
+                }
+
+                cookies = declareTerm(term, cookies);
+                session.updateCookies(cookies);
+
+                RetrieveCourseInfoResponse retryResponse = searchCoursesWithCookies(request, cookies);
+                resetRequestForm(cookies);
+                session.markUsed();
+                return retryResponse != null ? retryResponse : response;
+            }
+        }
+
+        throw new RuntimeException("Unable to retrieve course information after refreshing session");
     }
     
-    private String declareTermAndGetCookies(String term) {
+    private String declareTerm(String term, String existingCookies) {
         return webClient
                 .post()
                 .uri(uriBuilder -> uriBuilder
@@ -46,18 +92,19 @@ public class PantherWatchService {
                     .build())
                 .contentType(org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED)
                 .bodyValue(String.format("term=%s", term))
+                .headers(headers -> {
+                    if (existingCookies != null && !existingCookies.isBlank()) {
+                        headers.add(HttpHeaders.COOKIE, existingCookies);
+                    }
+                })
                 .exchangeToMono(response -> {
                     if (response.statusCode().is2xxSuccessful() || response.statusCode().value() == 302) {
                         var setCookieHeaders = response.headers().header(HttpHeaders.SET_COOKIE);
-                        if (!setCookieHeaders.isEmpty()) {
-                            String combinedCookies = setCookieHeaders.stream()
-                                    .map(cookie -> cookie.split(";", 2)[0])
-                                    .reduce((a, b) -> a + "; " + b)
-                                    .orElse("");
-                            return Mono.just(combinedCookies);
-                        } else {
-                            return Mono.error(new RuntimeException("No session cookies received from term declaration"));
+                        String mergedCookies = mergeCookies(existingCookies, setCookieHeaders);
+                        if (mergedCookies == null || mergedCookies.isBlank()) {
+                            return Mono.error(new RuntimeException("No session cookies available after term declaration"));
                         }
+                        return Mono.just(mergedCookies);
                     } else {
                         return response.createException()
                                 .flatMap(exception -> Mono.error(
@@ -95,12 +142,17 @@ public class PantherWatchService {
                 .block(TIMEOUT);
     }
 
-    public boolean resetRequestForm() {
-        return webClient
+    private void resetRequestForm(String cookies) {
+        if (cookies == null || cookies.isBlank()) {
+            return;
+        }
+        try {
+            webClient
                 .get()
                 .uri(uriBuilder -> uriBuilder
                     .path(RESET_PATH)
                     .build())
+                .header(HttpHeaders.COOKIE, cookies)
                 .exchangeToMono(response -> {
                     if (response.statusCode().is2xxSuccessful()) {
                         return Mono.just(true);
@@ -112,6 +164,8 @@ public class PantherWatchService {
                     }
                 })
                 .block(TIMEOUT);
+        } catch (Exception ignored) {
+        }
     }
 
     public List<Terms> fetchAvailableTerms() {
@@ -161,4 +215,121 @@ public class PantherWatchService {
         
         return Arrays.asList(subjectsArray);
     }
+
+    private BannerSession obtainSession(String term) {
+        return sessionCache.compute(term, (key, existing) -> {
+            if (existing == null || existing.isExpired()) {
+                String cookies = declareTerm(term, null);
+                return new BannerSession(cookies);
+            }
+            return existing;
+        });
+    }
+
+    private boolean shouldValidateNullData(RetrieveCourseInfoResponse response) {
+        return response != null && response.isSuccess() && response.getData() == null;
+    }
+
+    private ValidationResult validateSessionCookies(String cookies) {
+        try {
+            String updatedCookies = declareTerm(SAMPLE_TERM, cookies);
+
+            RetrieveCourseInfoRequest sampleRequest = RetrieveCourseInfoRequest.builder()
+                    .txtSubject(SAMPLE_SUBJECT)
+                    .txtCourseNumber(SAMPLE_COURSE_NUMBER)
+                    .txtTerm(SAMPLE_TERM)
+                    .pageOffset(0)
+                    .pageMaxSize(5)
+                    .build();
+
+            RetrieveCourseInfoResponse sampleResponse = searchCoursesWithCookies(sampleRequest, updatedCookies);
+            boolean valid = sampleResponse != null
+                    && sampleResponse.isSuccess()
+                    && sampleResponse.getData() != null
+                    && sampleResponse.getData().length > 0;
+
+            return new ValidationResult(valid, updatedCookies);
+        } catch (Exception e) {
+            return new ValidationResult(false, cookies);
+        }
+    }
+
+    private String mergeCookies(String existingCookies, List<String> setCookieHeaders) {
+        LinkedHashMap<String, String> cookieMap = toCookieMap(existingCookies);
+        if (setCookieHeaders != null) {
+            for (String header : setCookieHeaders) {
+                if (header == null || header.isBlank()) {
+                    continue;
+                }
+                String[] parts = header.split(";", 2);
+                String nameValue = parts[0].trim();
+                int separatorIndex = nameValue.indexOf('=');
+                if (separatorIndex <= 0 || separatorIndex == nameValue.length() - 1) {
+                    continue;
+                }
+                String name = nameValue.substring(0, separatorIndex);
+                String value = nameValue.substring(separatorIndex + 1);
+                cookieMap.put(name, value);
+            }
+        }
+        if (cookieMap.isEmpty()) {
+            return null;
+        }
+        return cookieMap.entrySet().stream()
+                .map(entry -> entry.getKey() + "=" + entry.getValue())
+                .collect(Collectors.joining("; "));
+    }
+
+    private LinkedHashMap<String, String> toCookieMap(String existingCookies) {
+        LinkedHashMap<String, String> cookieMap = new LinkedHashMap<>();
+        if (existingCookies == null || existingCookies.isBlank()) {
+            return cookieMap;
+        }
+        String[] segments = existingCookies.split(";");
+        for (String segment : segments) {
+            if (segment == null || segment.isBlank()) {
+                continue;
+            }
+            String trimmed = segment.trim();
+            int separatorIndex = trimmed.indexOf('=');
+            if (separatorIndex <= 0 || separatorIndex == trimmed.length() - 1) {
+                continue;
+            }
+            String name = trimmed.substring(0, separatorIndex);
+            String value = trimmed.substring(separatorIndex + 1);
+            cookieMap.put(name, value);
+        }
+        return cookieMap;
+    }
+
+    private static final class BannerSession {
+        private String cookies;
+        private Instant lastUsed;
+
+        BannerSession(String cookies) {
+            this.cookies = cookies;
+            this.lastUsed = Instant.now();
+        }
+
+        String getCookies() {
+            return cookies;
+        }
+
+        void updateCookies(String cookies) {
+            if (cookies != null && !cookies.isBlank()) {
+                this.cookies = cookies;
+            }
+            this.lastUsed = Instant.now();
+        }
+
+        void markUsed() {
+            this.lastUsed = Instant.now();
+        }
+
+        boolean isExpired() {
+            return lastUsed.plus(PantherWatchService.SESSION_TTL).isBefore(Instant.now());
+        }
+    }
+
+    private record ValidationResult(boolean valid, String cookies) { }
 }
