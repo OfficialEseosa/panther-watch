@@ -2,6 +2,7 @@ import Icon from '../Icon';
 import SubjectAutocomplete from '../SubjectAutocomplete';
 import { useNavigate } from 'react-router-dom';
 import { decodeHtmlEntities } from '../../utils';
+import { isOnlineCourse } from '../../pages/ScheduleBuilder/utils.js';
 
 function AddClassesModal({
   isOpen,
@@ -14,6 +15,7 @@ function AddClassesModal({
   detailsLoading,
   isCourseScheduled,
   addCourseToSchedule,
+  removeCourseFromSchedule,
   searchForm,
   onSearchInputChange,
   onSearchSubmit,
@@ -82,6 +84,7 @@ function AddClassesModal({
       <div className="add-list" role="list">
         {trackedClasses.map((course) => {
           const scheduled = isCourseScheduled(course);
+          const isOnline = isOnlineCourse(course);
           return (
             <div
               key={course.courseReferenceNumber}
@@ -92,18 +95,37 @@ function AddClassesModal({
                 <div className="add-list-title">
                   {course.subject} {course.courseNumber}{' '}
                   <span className="add-list-crn">CRN {course.courseReferenceNumber}</span>
+                  {isOnline && <span className="online-badge">Online</span>}
                 </div>
                 <div className="add-list-subtitle">{decodeHtmlEntities(course.courseTitle)}</div>
                 {renderMeetingDetails(course)}
               </div>
-              <button
-                type="button"
-                className="modal-action-btn"
-                onClick={() => addCourseToSchedule(course)}
-                disabled={scheduled}
-              >
-                {scheduled ? 'Added' : 'Add'}
-              </button>
+              {isOnline ? (
+                <button
+                  type="button"
+                  className="modal-action-btn"
+                  disabled
+                  title="Online classes cannot be added to schedule"
+                >
+                  Online
+                </button>
+              ) : scheduled ? (
+                <button
+                  type="button"
+                  className="modal-action-btn remove"
+                  onClick={() => removeCourseFromSchedule(course.courseReferenceNumber)}
+                >
+                  Remove
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="modal-action-btn"
+                  onClick={() => addCourseToSchedule(course)}
+                >
+                  Add
+                </button>
+              )}
             </div>
           );
         })}
@@ -133,6 +155,7 @@ function AddClassesModal({
         <div className="add-list" role="list">
           {searchResults.map((course) => {
             const scheduled = isCourseScheduled(course);
+            const isOnline = isOnlineCourse(course);
             return (
               <div
                 key={`${course.courseReferenceNumber}-${course.term}`}
@@ -143,18 +166,37 @@ function AddClassesModal({
                   <div className="add-list-title">
                     {course.subject} {course.courseNumber}{' '}
                     <span className="add-list-crn">CRN {course.courseReferenceNumber}</span>
+                    {isOnline && <span className="online-badge">Online</span>}
                   </div>
                   <div className="add-list-subtitle">{decodeHtmlEntities(course.courseTitle)}</div>
                   {renderMeetingDetails(course)}
                 </div>
-                <button
-                  type="button"
-                  className="modal-action-btn"
-                  onClick={() => addCourseToSchedule(course)}
-                  disabled={scheduled}
-                >
-                  {scheduled ? 'Added' : 'Add'}
-                </button>
+                {isOnline ? (
+                  <button
+                    type="button"
+                    className="modal-action-btn"
+                    disabled
+                    title="Online classes cannot be added to schedule"
+                  >
+                    Online
+                  </button>
+                ) : scheduled ? (
+                  <button
+                    type="button"
+                    className="modal-action-btn remove"
+                    onClick={() => removeCourseFromSchedule(course.courseReferenceNumber)}
+                  >
+                    Remove
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="modal-action-btn"
+                    onClick={() => addCourseToSchedule(course)}
+                  >
+                    Add
+                  </button>
+                )}
               </div>
             );
           })}

@@ -329,6 +329,24 @@
   color: var(--color-heading);
 }
 
+.online-badge-inline {
+  display: inline-block;
+  margin-left: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.theme-dark .online-badge-inline {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
 @media (max-width: 768px) {
   .courses-grid {
     grid-template-columns: 1fr;
