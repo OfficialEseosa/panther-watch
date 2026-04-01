@@ -95,23 +95,4 @@ public class UserScheduleController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * POST /api/schedule/sync - Sync entire schedule from client (batch update)
-     * Request body: { "202601": ["12345", "67890"], "202602": ["11111"] }
-     */
-    @PostMapping("/sync")
-    public ResponseEntity<Map<String, List<ScheduleEntryResponse>>> syncSchedule(
-            HttpServletRequest request,
-            @RequestBody Map<String, List<String>> scheduleByTerm) {
-        User currentUser = (User) request.getAttribute("currentUser");
-        if (currentUser == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        Map<String, List<ScheduleEntryResponse>> syncedSchedule = scheduleService.syncSchedule(
-            currentUser.getId(),
-            scheduleByTerm
-        );
-        return ResponseEntity.ok(syncedSchedule);
-    }
 }

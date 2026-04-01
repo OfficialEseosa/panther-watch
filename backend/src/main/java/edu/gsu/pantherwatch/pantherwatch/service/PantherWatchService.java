@@ -1,5 +1,6 @@
 package edu.gsu.pantherwatch.pantherwatch.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.http.HttpHeaders;
@@ -19,8 +20,9 @@ import edu.gsu.pantherwatch.pantherwatch.api.Terms;
 import reactor.core.publisher.Mono;
 
 @Service
+@Slf4j
 public class PantherWatchService {
-    private static final Duration TIMEOUT = Duration.ofMillis(10000);
+    private static final Duration TIMEOUT = Duration.ofMillis(20000);
     private static final Duration SESSION_TTL = Duration.ofMinutes(15);
     private static final String SORT_COLUMN = "subjectDescription";
     private static final String SORT_DIRECTION = "asc";
@@ -32,10 +34,6 @@ public class PantherWatchService {
     private static final String RESET_PATH = "/classSearch/resetDataForm";
     private static final String TERMS_PATH = "/classSearch/getTerms";
     private static final String SUBJECT_PATH = "/classSearch/get_subject";
-    private static final String SAMPLE_TERM = "202601";
-    private static final String SAMPLE_SUBJECT = "CSC";
-    private static final String SAMPLE_COURSE_NUMBER = "2720";
-
     private final ConcurrentHashMap<String, BannerSession> sessionCache = new ConcurrentHashMap<>();
 
     public PantherWatchService(WebClient webClient) {
@@ -49,7 +47,7 @@ public class PantherWatchService {
 
         String term = request.getTxtTerm();
 
-        for (int attempt = 0; attempt < 2; attempt++) {
+        for (int attempt = 0; attempt < 3; attempt++) {
             BannerSession session = obtainSession(term);
             synchronized (session) {
                 String cookies = declareTerm(term, session.getCookies());
@@ -63,7 +61,7 @@ public class PantherWatchService {
                     return response;
                 }
 
-                ValidationResult validation = validateSessionCookies(cookies);
+                ValidationResult validation = validateSessionCookies(cookies, term);
                 cookies = validation.cookies();
 
                 if (!validation.valid()) {
@@ -76,8 +74,15 @@ public class PantherWatchService {
 
                 RetrieveCourseInfoResponse retryResponse = searchCoursesWithCookies(request, cookies);
                 resetRequestForm(cookies);
-                session.markUsed();
-                return retryResponse != null ? retryResponse : response;
+
+                if (!shouldValidateNullData(retryResponse)) {
+                    session.markUsed();
+                    return retryResponse != null ? retryResponse : response;
+                }
+
+                // Retry also returned null data — discard session and loop for a fresh one
+                log.warn("Retry search also returned null data for term {}. Discarding session (attempt {}).", term, attempt + 1);
+                sessionCache.remove(term, session);
             }
         }
 
@@ -164,7 +169,8 @@ public class PantherWatchService {
                     }
                 })
                 .block(TIMEOUT);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            log.debug("Failed to reset request form", e);
         }
     }
 
@@ -230,25 +236,10 @@ public class PantherWatchService {
         return response != null && response.isSuccess() && response.getData() == null;
     }
 
-    private ValidationResult validateSessionCookies(String cookies) {
+    private ValidationResult validateSessionCookies(String cookies, String term) {
         try {
-            String updatedCookies = declareTerm(SAMPLE_TERM, cookies);
-
-            RetrieveCourseInfoRequest sampleRequest = RetrieveCourseInfoRequest.builder()
-                    .txtSubject(SAMPLE_SUBJECT)
-                    .txtCourseNumber(SAMPLE_COURSE_NUMBER)
-                    .txtTerm(SAMPLE_TERM)
-                    .pageOffset(0)
-                    .pageMaxSize(5)
-                    .build();
-
-            RetrieveCourseInfoResponse sampleResponse = searchCoursesWithCookies(sampleRequest, updatedCookies);
-            boolean valid = sampleResponse != null
-                    && sampleResponse.isSuccess()
-                    && sampleResponse.getData() != null
-                    && sampleResponse.getData().length > 0;
-
-            return new ValidationResult(valid, updatedCookies);
+            String updatedCookies = declareTerm(term, cookies);
+            return new ValidationResult(true, updatedCookies);
         } catch (Exception e) {
             return new ValidationResult(false, cookies);
         }

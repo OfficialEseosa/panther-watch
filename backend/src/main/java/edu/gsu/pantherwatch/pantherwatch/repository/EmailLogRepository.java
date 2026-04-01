@@ -21,6 +21,14 @@ public interface EmailLogRepository extends JpaRepository<EmailLog, Long> {
             @Param("cutoffDate") LocalDateTime cutoffDate
     );
 
+    @Query("SELECT e FROM EmailLog e WHERE e.email = :email AND e.emailType = :emailType AND e.crn = :crn AND e.sentAt > :cutoffDate ORDER BY e.sentAt DESC")
+    Optional<EmailLog> findRecentEmailByTypeEmailAndCrn(
+            @Param("email") String email,
+            @Param("emailType") EmailLog.EmailType emailType,
+            @Param("crn") String crn,
+            @Param("cutoffDate") LocalDateTime cutoffDate
+    );
+
     @Query("SELECT COUNT(e) FROM EmailLog e WHERE e.sentAt > :cutoffDate")
     long countEmailsSentSince(@Param("cutoffDate") LocalDateTime cutoffDate);
 
