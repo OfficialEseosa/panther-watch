@@ -6,7 +6,6 @@ import { renderDaysOfWeek } from '../../utils/scheduleComponents';
 import { useWatchedClasses } from '../../hooks/useWatchedClasses.js';
 import { useTerms } from '../../hooks/useTerms.js';
 import LoadingBar from '../LoadingBar';
-import { isOnlineCourse } from '../../pages/ScheduleBuilder/utils.js';
 
 function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = false, onCourseRemoved, watchedCrns = [] }) {
   const [watchLoading, setWatchLoading] = useState({});
@@ -110,7 +109,6 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
           const key = `${crn}-${courseTerm}`;
           const isWatching = watchedCrns.includes(crn);
           const isWatchLoading = watchLoading[key];
-          const isOnline = isOnlineCourse(course);
 
           return (
             <article key={course.courseReferenceNumber} className="course-card">
@@ -118,7 +116,6 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
                 <div className="course-title-section">
                   <h3 className="course-title">
                     {course.subjectDescription} ({course.subject} {course.courseNumber})
-                    {isOnline && <span className="online-badge-inline">Online</span>}
                   </h3>
                   <span className="course-crn">CRN {course.courseReferenceNumber}</span>
                 </div>

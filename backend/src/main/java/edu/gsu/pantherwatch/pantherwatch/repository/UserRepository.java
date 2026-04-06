@@ -14,14 +14,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     
     Optional<User> findByEmail(String email);
 
-    @Query(value = "SELECT u FROM User u WHERE " +
+    @Query("SELECT u FROM User u WHERE " +
            "LOWER(u.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-           "LOWER(u.email) LIKE LOWER(CONCAT('%', :searchTerm, '%'))" +
-           " ORDER BY u.createdAt DESC")
-    List<User> searchByNameOrEmail(@Param("searchTerm") String searchTerm,
-                                   org.springframework.data.domain.Pageable pageable);
-
-    default List<User> searchByNameOrEmail(String searchTerm) {
-        return searchByNameOrEmail(searchTerm, org.springframework.data.domain.PageRequest.of(0, 50));
-    }
+           "LOWER(u.email) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
+    List<User> searchByNameOrEmail(@Param("searchTerm") String searchTerm);
 }

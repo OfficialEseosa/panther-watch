@@ -14,16 +14,12 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class CourseWatcher {
-
-    private static final ExecutorService watcherPool = Executors.newFixedThreadPool(4);
-
+    
     private final WatchedClassRepository watchedClassRepository;
     private final PantherWatchService pantherWatchService;
     private final EmailService emailService;
@@ -50,22 +46,20 @@ public class CourseWatcher {
     }
     
     private CompletableFuture<Void> checkCourseAvailabilityAsync(Object[] crnTermPair) {
-        return CompletableFuture.runAsync(() -> checkCourseAvailability(crnTermPair), watcherPool);
+        return CompletableFuture.runAsync(() -> checkCourseAvailability(crnTermPair));
     }
     
     private void checkCourseAvailability(Object[] crnTermPair) {
         String crn = (String) crnTermPair[0];
         String term = (String) crnTermPair[1];
-        String subject = (String) crnTermPair[2];
-        String courseNumber = (String) crnTermPair[3];
-
+        
         try {
-            log.debug("Checking availability for CRN: {} ({} {}) in term: {}", crn, subject, courseNumber, term);
+            log.debug("Checking availability for CRN: {} in term: {}", crn, term);
 
             RetrieveCourseInfoRequest request = RetrieveCourseInfoRequest.builder()
                     .txtTerm(term)
-                    .txtCourseNumber(courseNumber != null ? courseNumber : "")
-                    .txtSubject(subject != null ? subject : "")
+                    .txtCourseNumber("")
+                    .txtSubject("")
                     .pageMaxSize(200)
                     .build();
             

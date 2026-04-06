@@ -33,9 +33,6 @@ public class EmailLog {
     @Column(length = 500)
     private String subject;
 
-    @Column(length = 10)
-    private String crn;
-
     public enum EmailType {
         WELCOME,
         GOODBYE,

@@ -138,7 +138,6 @@ function ScheduleBuilder() {
         detailsLoading={detailsLoading}
         isCourseScheduled={isCourseScheduled}
         addCourseToSchedule={addCourseToSchedule}
-        removeCourseFromSchedule={handleRemoveFromSchedule}
         searchForm={searchForm}
         onSearchInputChange={handleSearchInputChange}
         onSearchSubmit={handleSearchSubmit}

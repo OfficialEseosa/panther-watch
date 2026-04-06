@@ -16,4 +16,6 @@ public interface UserScheduleRepository extends JpaRepository<UserSchedule, Long
     Optional<UserSchedule> findByUserIdAndTermCodeAndCrn(UUID userId, String termCode, String crn);
     
     void deleteByUserIdAndTermCodeAndCrn(UUID userId, String termCode, String crn);
+    
+    void deleteByUserId(UUID userId);
 }

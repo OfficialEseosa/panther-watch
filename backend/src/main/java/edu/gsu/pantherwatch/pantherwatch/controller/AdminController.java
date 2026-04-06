@@ -140,4 +140,27 @@ public class AdminController {
         }
     }
 
+    @PostMapping("/emails/cleanup")
+    public ResponseEntity<java.util.Map<String, Object>> cleanupEmailLogs(HttpServletRequest request) {
+        try {
+            User currentUser = (User) request.getAttribute("currentUser");
+            
+            if (!adminService.isAdmin(currentUser.getEmail())) {
+                log.warn("Non-admin user {} attempted to cleanup email logs", currentUser.getEmail());
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            
+            int deletedCount = emailService.cleanupOldEmailLogsNow();
+            
+            java.util.Map<String, Object> response = new java.util.HashMap<>();
+            response.put("deletedCount", deletedCount);
+            response.put("message", "Cleanup completed successfully");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("Error cleaning up email logs", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 }

@@ -8,8 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "watched_classes",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "crn", "term"}))
+@Table(name = "watched_classes")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

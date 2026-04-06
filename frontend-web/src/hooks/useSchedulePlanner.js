@@ -3,7 +3,12 @@ import { useWatchedClasses } from './useWatchedClasses.js';
 import { useTerms } from './useTerms.js';
 import { useAuth } from './useAuth.js';
 import { buildApiUrl } from '../config';
-import { authService } from '../config/authService.js';
+import {
+  loadFromLocalStorage,
+  saveToLocalStorage,
+  addCourse,
+  removeCourse
+} from '../config/scheduleService.js';
 import {
   DAYS,
   TIME_SLOTS,
@@ -38,8 +43,7 @@ export function useSchedulePlanner(locationSearch) {
   const pendingCrnRef = useRef(null);
 
   const [selectedTerm, setSelectedTerm] = useState(null);
-  const [scheduleByTerm, setScheduleByTerm] = useState({});
-  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [scheduleByTerm, setScheduleByTerm] = useState(() => loadFromLocalStorage());
   const [detailsLoading, setDetailsLoading] = useState(false);
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -54,103 +58,10 @@ export function useSchedulePlanner(locationSearch) {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState('');
 
-  // Fetch full schedule from backend with course details
-  const loadScheduleFromBackend = useCallback(async () => {
-    if (!isAuthenticated) {
-      setScheduleByTerm({});
-      setScheduleLoading(false);
-      return;
-    }
-
-    setScheduleLoading(true);
-    try {
-      // Get CRNs grouped by term from backend
-      const token = await authService.getAccessToken();
-      const response = await fetch(buildApiUrl('/schedule'), {
-        method: 'GET',
-        credentials: 'include',
-        headers: { 
-          'Accept': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to load schedule: ${response.status}`);
-      }
-
-      const scheduleData = await response.json();
-      
-      // scheduleData is { "202601": [{id, termCode, crn, addedAt}, ...], ... }
-      // We need to fetch full course details for each CRN
-      const scheduleWithDetails = {};
-
-      for (const [termCode, entries] of Object.entries(scheduleData)) {
-        if (!entries || entries.length === 0) continue;
-
-        // Group CRNs by subject/courseNumber to minimize API calls
-        const courseGroups = new Map();
-        
-        for (const entry of entries) {
-          // We'll need to fetch each course individually since we only have CRNs
-          // Store CRN for now, we'll fetch details next
-          if (!scheduleWithDetails[termCode]) {
-            scheduleWithDetails[termCode] = [];
-          }
-          scheduleWithDetails[termCode].push({ crn: entry.crn, termCode });
-        }
-      }
-
-      // Now fetch course details for all CRNs
-      for (const [termCode, entries] of Object.entries(scheduleWithDetails)) {
-        const detailedCourses = [];
-
-        for (const entry of entries) {
-          try {
-            // Search for this specific CRN
-            const params = new URLSearchParams({
-              txtTerm: termCode,
-              txtCRN: entry.crn,
-              pageMaxSize: 1
-            });
-
-            const courseResponse = await fetch(
-              `${buildApiUrl('/courses/search')}?${params.toString()}`,
-              {
-                method: 'GET',
-                headers: { Accept: 'application/json' },
-                credentials: 'include'
-              }
-            );
-
-            if (courseResponse.ok) {
-              const payload = await courseResponse.json();
-              if (payload?.success && payload?.data && payload.data.length > 0) {
-                const course = { ...payload.data[0], term: termCode };
-                detailedCourses.push(course);
-              }
-            }
-          } catch (error) {
-            console.error(`Failed to fetch details for CRN ${entry.crn}:`, error);
-          }
-        }
-
-        scheduleWithDetails[termCode] = detailedCourses;
-      }
-
-      setScheduleByTerm(scheduleWithDetails);
-    } catch (error) {
-      console.error('Failed to load schedule from backend:', error);
-      setScheduleByTerm({});
-    } finally {
-      setScheduleLoading(false);
-    }
-  }, [isAuthenticated]);
-
-  // Load schedule on mount and when authentication changes
+  // Save to localStorage whenever schedule changes
   useEffect(() => {
-    loadScheduleFromBackend();
-  }, [loadScheduleFromBackend]);
+    saveToLocalStorage(scheduleByTerm);
+  }, [scheduleByTerm]);
 
   useEffect(() => {
     setSearchForm((prev) => {
@@ -273,56 +184,43 @@ export function useSchedulePlanner(locationSearch) {
   );
 
   const addCourseToSchedule = useCallback(
-    async (course) => {
+    (course) => {
       if (!course) return false;
-      if (!isAuthenticated) {
-        console.warn('Cannot add course to schedule: User not authenticated');
-        return false;
-      }
-      
       const termCode = course.term || selectedTerm;
       if (!termCode) return false;
 
-      // Check if already exists
-      const current = scheduleByTerm[termCode] || [];
-      const exists = current.some(
-        (item) => item.courseReferenceNumber === course.courseReferenceNumber
-      );
-      if (exists) return false;
+      let added = false;
+      const normalizedCourse = { ...course, term: termCode };
 
-      try {
-        // Add to backend
-        const token = await authService.getAccessToken();
-        const response = await fetch(buildApiUrl('/schedule'), {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Authorization': token ? `Bearer ${token}` : ''
-          },
-          body: JSON.stringify({ termCode, crn: course.courseReferenceNumber })
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to add course: ${response.status}`);
+      setScheduleByTerm((prev) => {
+        const current = prev[termCode] || [];
+        const exists = current.some(
+          (item) => item.courseReferenceNumber === normalizedCourse.courseReferenceNumber
+        );
+        if (exists) {
+          return prev;
         }
-
-        // Update local state
-        const normalizedCourse = { ...course, term: termCode };
-        setScheduleByTerm((prev) => ({
+        added = true;
+        return {
           ...prev,
-          [termCode]: [...(prev[termCode] || []), normalizedCourse]
-        }));
+          [termCode]: [...current, normalizedCourse]
+        };
+      });
 
+      if (added) {
         setSelectedTerm((prevTerm) => (prevTerm === termCode ? prevTerm : termCode));
-        return true;
-      } catch (error) {
-        console.error('Failed to add course to schedule:', error);
-        return false;
+        
+        // Sync with database in background if authenticated (optimistic update - UI already updated)
+        if (isAuthenticated) {
+          addCourse(termCode, normalizedCourse.courseReferenceNumber).catch(error => {
+            console.error('Failed to sync add to database:', error);
+          });
+        }
       }
+
+      return added;
     },
-    [selectedTerm, scheduleByTerm, isAuthenticated]
+    [selectedTerm, isAuthenticated]
   );
 
   const isCourseScheduled = useCallback(
@@ -339,47 +237,33 @@ export function useSchedulePlanner(locationSearch) {
   );
 
   const handleRemoveFromSchedule = useCallback(
-    async (crn) => {
-      if (!selectedTerm || !isAuthenticated) {
-        console.warn('Cannot remove course: User not authenticated');
-        return;
-      }
+    (crn) => {
+      if (!selectedTerm) return;
       
-      try {
-        // Remove from backend
-        const token = await authService.getAccessToken();
-        const response = await fetch(buildApiUrl(`/schedule/${selectedTerm}/${crn}`), {
-          method: 'DELETE',
-          credentials: 'include',
-          headers: { 
-            'Accept': 'application/json',
-            'Authorization': token ? `Bearer ${token}` : ''
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to remove course: ${response.status}`);
+      setScheduleByTerm((prev) => {
+        const current = prev[selectedTerm] || [];
+        const updated = current.filter(
+          (course) => course.courseReferenceNumber !== crn
+        );
+        if (updated.length === current.length) {
+          return prev;
         }
-
-        // Update local state
-        setScheduleByTerm((prev) => {
-          const current = prev[selectedTerm] || [];
-          const updated = current.filter(
-            (course) => course.courseReferenceNumber !== crn
-          );
-          
-          const next = { ...prev };
-          if (updated.length > 0) {
-            next[selectedTerm] = updated;
-          } else {
-            delete next[selectedTerm];
-          }
-          
-          return next;
-        });
-      } catch (error) {
-        console.error('Failed to remove course from schedule:', error);
-      }
+        const next = { ...prev };
+        if (updated.length > 0) {
+          next[selectedTerm] = updated;
+        } else {
+          delete next[selectedTerm];
+        }
+        
+        // Sync with database in background if authenticated (optimistic update - UI already updated)
+        if (isAuthenticated) {
+          removeCourse(selectedTerm, crn).catch(error => {
+            console.error('Failed to sync remove to database:', error);
+          });
+        }
+        
+        return next;
+      });
     },
     [selectedTerm, isAuthenticated]
   );
@@ -522,7 +406,7 @@ export function useSchedulePlanner(locationSearch) {
     resetSearchState
   ]);
 
-  const isLoading = termsLoading || watchedLoading || detailsLoading || scheduleLoading || !selectedTerm;
+  const isLoading = termsLoading || watchedLoading || detailsLoading || !selectedTerm;
   const hasScheduleEntries = scheduleClasses.length > 0;
   const selectedTermLabel = selectedTerm ? getTermName(selectedTerm) : '';
 
@@ -543,7 +427,6 @@ export function useSchedulePlanner(locationSearch) {
     detailsLoading,
     isLoading,
     formatMinutesToLabel,
-    scheduleLoading,
 
     // actions
     setSelectedTerm,

@@ -54,39 +54,25 @@ public class EmailService {
         }
     }
 
-    public void sendClassAvailabilityNotification(String toEmail, String userName, String courseTitle,
+    public void sendClassAvailabilityNotification(String toEmail, String userName, String courseTitle, 
                                                 String courseNumber, String subject, String crn, String term) {
-        if (wasClassAvailabilityEmailRecentlySent(toEmail, crn)) {
-            log.info("Skipping availability email to {} for CRN {} - already sent within the last 24 hours", toEmail, crn);
-            return;
-        }
-
         try {
             String htmlContent = buildClassAvailabilityEmail(userName, courseTitle, courseNumber, subject, crn, term);
-            String emailSubject = "🎉 Class Spot Available: " + subject + " " + courseNumber;
-
+            
             CreateEmailOptions params = CreateEmailOptions.builder()
                     .from("PantherWatch <no-reply@class.pantherwatch.app>")
                     .to(toEmail)
-                    .subject(emailSubject)
+                    .subject("🎉 Class Spot Available: " + subject + " " + courseNumber)
                     .html(htmlContent)
                     .build();
 
             CreateEmailResponse data = resend.emails().send(params);
             log.info("Email sent successfully to {} for course {} with ID: {}", toEmail, crn, data.getId());
-
-            logEmailSent(toEmail, EmailLog.EmailType.CLASS_AVAILABILITY, emailSubject, crn);
-
+            
         } catch (ResendException e) {
             log.error("Failed to send email to {} for course {}: {}", toEmail, crn, e.getMessage(), e);
             throw new RuntimeException("Failed to send email notification", e);
         }
-    }
-
-    private boolean wasClassAvailabilityEmailRecentlySent(String email, String crn) {
-        LocalDateTime oneDayAgo = LocalDateTime.now().minusHours(24);
-        return emailLogRepository.findRecentEmailByTypeEmailAndCrn(
-                email, EmailLog.EmailType.CLASS_AVAILABILITY, crn, oneDayAgo).isPresent();
     }
 
     public void sendCustomEmail(String toEmail, String userName, String subject, String message) {
@@ -127,16 +113,11 @@ public class EmailService {
      * @param subject The email subject
      */
     private void logEmailSent(String email, EmailLog.EmailType emailType, String subject) {
-        logEmailSent(email, emailType, subject, null);
-    }
-
-    private void logEmailSent(String email, EmailLog.EmailType emailType, String subject, String crn) {
         try {
             EmailLog emailLog = EmailLog.builder()
                     .email(email)
                     .emailType(emailType)
                     .subject(subject)
-                    .crn(crn)
                     .sentAt(LocalDateTime.now())
                     .build();
             emailLogRepository.save(emailLog);

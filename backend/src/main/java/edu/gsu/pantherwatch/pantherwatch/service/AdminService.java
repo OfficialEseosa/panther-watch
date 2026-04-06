@@ -11,10 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import jakarta.annotation.PostConstruct;
-
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -24,28 +21,25 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class AdminService {
-
+    
     private final UserRepository userRepository;
     private final WatchedClassRepository watchedClassRepository;
     private final EmailService emailService;
-
+    
     @Value("${admin.emails:}")
     private String adminEmails;
-
-    private Set<String> adminEmailSet = Collections.emptySet();
-
-    @PostConstruct
-    void initAdminEmails() {
-        if (adminEmails != null && !adminEmails.isBlank()) {
-            adminEmailSet = Arrays.stream(adminEmails.split(","))
-                    .map(String::trim)
-                    .map(String::toLowerCase)
-                    .collect(Collectors.toUnmodifiableSet());
-        }
-    }
-
+    
     public boolean isAdmin(String email) {
-        return email != null && adminEmailSet.contains(email.toLowerCase());
+        if (adminEmails == null || adminEmails.trim().isEmpty()) {
+            return false;
+        }
+        
+        Set<String> adminEmailSet = Arrays.stream(adminEmails.split(","))
+                .map(String::trim)
+                .map(String::toLowerCase)
+                .collect(Collectors.toSet());
+        
+        return adminEmailSet.contains(email.toLowerCase());
     }
     
     public List<UserSearchResponse> searchUsers(String searchTerm) {

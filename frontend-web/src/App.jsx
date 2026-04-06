@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Home from './pages/Home'
 import Dashboard from './pages/Dashboard'
@@ -7,8 +7,6 @@ import CourseResultsPage from './pages/CourseResults'
 import TrackedClasses from './pages/TrackedClasses'
 import AdminPanel from './pages/Admin'
 import Settings from './pages/Settings'
-import PrivacyPolicy from './pages/PrivacyPolicy'
-import TermsOfService from './pages/TermsOfService'
 import ScheduleBuilder from './pages/ScheduleBuilder'
 import DashboardLayout from './layouts/DashboardLayout'
 import { TermsProvider } from './contexts/TermsContext.jsx'
@@ -147,14 +145,6 @@ function App() {
                   path="/"
                   element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <Home />}
                 />
-                <Route
-                  path="/privacy"
-                  element={<PrivacyPolicy />}
-                />
-                <Route
-                  path="/terms"
-                  element={<TermsOfService />}
-                />
               </Routes>
             )}
           </TutorialProvider>
@@ -165,6 +155,3 @@ function App() {
 }
 
 export default App
-
-
-

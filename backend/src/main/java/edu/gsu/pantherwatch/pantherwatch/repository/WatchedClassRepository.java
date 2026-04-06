@@ -24,7 +24,7 @@ public interface WatchedClassRepository extends JpaRepository<WatchedClass, Long
     
     long countByUser(User user);
 
-    @Query("SELECT DISTINCT w.crn, w.term, w.subject, w.courseNumber FROM WatchedClass w")
+    @Query("SELECT DISTINCT w.crn, w.term FROM WatchedClass w")
     List<Object[]> findAllUniqueCrnTermPairs();
 
     List<WatchedClass> findByCrnAndTerm(String crn, String term);

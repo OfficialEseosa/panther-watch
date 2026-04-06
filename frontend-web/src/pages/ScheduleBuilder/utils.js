@@ -246,8 +246,7 @@ export const buildMeetingSummaries = (course) => {
     });
   });
 
-  // Only show "Schedule TBA" for non-online courses
-  if (!summaries.length && !isOnlineCourse(course)) {
+  if (!summaries.length) {
     summaries.push({
       id: `${course.courseReferenceNumber}-tba`,
       dayLabel: 'Schedule TBA',
@@ -256,38 +255,5 @@ export const buildMeetingSummaries = (course) => {
     });
   }
 
-  // For online courses with no schedule, show "Asynchronous"
-  if (!summaries.length && isOnlineCourse(course)) {
-    summaries.push({
-      id: `${course.courseReferenceNumber}-async`,
-      dayLabel: 'Asynchronous',
-      timeLabel: '',
-      location: ''
-    });
-  }
-
   return summaries;
-};
-
-/**
- * Checks if a course is online based on campus description or building description
- * @param {Object} course - Course object
- * @returns {boolean} True if course is online
- */
-export const isOnlineCourse = (course) => {
-  // Check campusDescription
-  if (course?.campusDescription && 
-      course.campusDescription.toLowerCase().includes('online')) {
-    return true;
-  }
-
-  // Check all meeting locations
-  if (course?.meetingsFaculty && Array.isArray(course.meetingsFaculty)) {
-    return course.meetingsFaculty.some(meeting => {
-      const buildingDesc = meeting?.meetingTime?.buildingDescription;
-      return buildingDesc && buildingDesc.toLowerCase().includes('online');
-    });
-  }
-
-  return false;
 };

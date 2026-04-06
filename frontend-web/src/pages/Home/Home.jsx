@@ -92,18 +92,9 @@ function Home() {
 
       <footer className="home-footer container">
         <p> {new Date().getFullYear()} PantherWatch. Not affiliated with Georgia State University.</p>
-        <nav className="home-footer-links">
-          <a href="/privacy">Privacy Policy</a>
-          <span aria-hidden>•</span>
-          <a href="/terms">Terms of Service</a>
-        </nav>
       </footer>
     </div>
   )
 }
 
 export default Home
-
-
-
-

@@ -60,11 +60,6 @@ function SubjectAutocomplete({
     setSubjectSearch(inputValue)
     setHighlightedIndex(-1) // Reset highlighting
     
-    // In single select mode, if clearing the input, also clear the value
-    if (isSingleSelect && inputValue === '') {
-      onChange('')
-    }
-    
     // Clear previous timeout
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current)
@@ -165,7 +160,7 @@ function SubjectAutocomplete({
             <input 
               ref={subjectInputRef}
               type="text" 
-              value={subjectSearch || (value && !subjectSearch ? value : '')}
+              value={subjectSearch || value || ''}
               placeholder={!selectedTerm ? "Select a term first" : placeholder || "Search for subject"}
               onChange={handleSubjectInputChange}
               autoComplete="off"
@@ -173,14 +168,7 @@ function SubjectAutocomplete({
               autoCapitalize="off"
               spellCheck="false"
               onKeyDown={(e) => {
-                if (!showSuggestions || subjectSuggestions.length === 0) {
-                  // Allow clearing with Backspace or Delete even when suggestions are not shown
-                  if ((e.key === 'Backspace' || e.key === 'Delete') && value && !subjectSearch) {
-                    e.preventDefault()
-                    onChange('')
-                  }
-                  return
-                }
+                if (!showSuggestions || subjectSuggestions.length === 0) return
 
                 switch (e.key) {
                   case 'ArrowDown':
