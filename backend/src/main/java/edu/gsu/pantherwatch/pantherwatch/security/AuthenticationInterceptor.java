@@ -3,6 +3,9 @@ package edu.gsu.pantherwatch.pantherwatch.security;
 import edu.gsu.pantherwatch.pantherwatch.model.User;
 import edu.gsu.pantherwatch.pantherwatch.service.SupabaseAuthService;
 import edu.gsu.pantherwatch.pantherwatch.service.UserService;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.security.SignatureException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -59,11 +62,17 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
             logger.debug("Authentication successful for user: {}", user.getEmail());
             return true;
             
-        } catch (Exception e) {
-            logger.error("Authentication failed for request {}: {}", request.getRequestURI(), e.getMessage());
+        } catch (ExpiredJwtException | MalformedJwtException | SignatureException e) {
+            logger.warn("Authentication failed for request {}: {}", request.getRequestURI(), e.getMessage());
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
             response.getWriter().write("{\"success\": false, \"message\": \"Invalid or expired token\"}");
+            return false;
+        } catch (Exception e) {
+            logger.error("Unexpected error during authentication for request {}", request.getRequestURI(), e);
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"success\": false, \"message\": \"Internal server error\"}");
             return false;
         }
     }

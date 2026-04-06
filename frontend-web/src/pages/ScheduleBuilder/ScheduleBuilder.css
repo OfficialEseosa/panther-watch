@@ -300,6 +300,35 @@
   cursor: not-allowed;
 }
 
+.modal-action-btn.remove {
+  background: rgba(180, 35, 24, 0.08);
+  border-color: rgba(180, 35, 24, 0.35);
+  color: var(--color-danger);
+}
+
+.modal-action-btn.remove:hover:not(:disabled) {
+  background: rgba(180, 35, 24, 0.15);
+  border-color: rgba(180, 35, 24, 0.5);
+}
+
+.online-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.theme-dark .online-badge {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
 .modal-loading,
 .modal-empty,
 .modal-error {
@@ -505,17 +534,16 @@
 
 /* Class Block */
 .class-block {
-  position: relative;
+  position: absolute;
   background: var(--color-primary-100);
   border: 2px solid var(--color-primary-400);
   border-radius: var(--radius-sm);
   padding: 8px;
-  margin: 2px;
   cursor: pointer;
   transition: all var(--transition-base);
-  height: calc(100% - 4px);
   overflow: hidden;
   outline: none;
+  z-index: 1;
 }
 
 .class-block:hover {

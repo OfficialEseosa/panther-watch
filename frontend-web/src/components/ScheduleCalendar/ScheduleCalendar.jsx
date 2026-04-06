@@ -62,40 +62,57 @@ function ScheduleCalendar({ days, timeSlots, getClassesForSlot, onRemove, format
                 const classesInSlot = getClassesForSlot(day, slot.startMinutes);
                 return (
                   <div key={`${day}-${slot.label}`} className="time-slot">
-                    {classesInSlot.map((classBlock) => (
-                      <div
-                        key={classBlock.meetingId}
-                        className="class-block"
-                        onClick={() => handleClassClick(classBlock)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            handleClassClick(classBlock);
-                          }
-                        }}
-                      >
-                        <div className="class-block-content">
-                          <div className="class-code">{classBlock.courseCode}</div>
-                          <div className="class-time">
-                            {formatMinutesToLabel(classBlock.startMinutes)} -{' '}
-                            {formatMinutesToLabel(classBlock.endMinutes)}
+                    {classesInSlot.map((classBlock) => {
+                      // Calculate position and height based on actual start/end times
+                      const slotHeight = 80; // Height of one time slot in pixels
+                      const minutesFromSlotStart = classBlock.startMinutes - slot.startMinutes;
+                      const topPosition = (minutesFromSlotStart / 60) * slotHeight;
+                      const durationMinutes = classBlock.endMinutes - classBlock.startMinutes;
+                      const blockHeight = (durationMinutes / 60) * slotHeight;
+
+                      return (
+                        <div
+                          key={classBlock.meetingId}
+                          className="class-block"
+                          style={{
+                            position: 'absolute',
+                            top: `${topPosition}px`,
+                            height: `${blockHeight}px`,
+                            left: '4px',
+                            right: '4px',
+                            margin: 0
+                          }}
+                          onClick={() => handleClassClick(classBlock)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handleClassClick(classBlock);
+                            }
+                          }}
+                        >
+                          <div className="class-block-content">
+                            <div className="class-code">{classBlock.courseCode}</div>
+                            <div className="class-time">
+                              {formatMinutesToLabel(classBlock.startMinutes)} -{' '}
+                              {formatMinutesToLabel(classBlock.endMinutes)}
+                            </div>
+                            <div className="class-location">{classBlock.location}</div>
+                            <button
+                              className="remove-class-btn"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                onRemove(classBlock.crn);
+                              }}
+                              title="Remove from schedule"
+                            >
+                              <Icon name="x" size={14} />
+                            </button>
                           </div>
-                          <div className="class-location">{classBlock.location}</div>
-                          <button
-                            className="remove-class-btn"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              onRemove(classBlock.crn);
-                            }}
-                            title="Remove from schedule"
-                          >
-                            <Icon name="x" size={14} />
-                          </button>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 );
               })}

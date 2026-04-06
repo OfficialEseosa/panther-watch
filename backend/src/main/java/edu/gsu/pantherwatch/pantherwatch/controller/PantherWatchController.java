@@ -23,9 +23,7 @@ public class PantherWatchController {
 
     @GetMapping("/search")
     public RetrieveCourseInfoResponse retrieveCourseInfo(@ModelAttribute RetrieveCourseInfoRequest request) {
-        RetrieveCourseInfoResponse response = pantherWatchService.searchCourses(request);
-        pantherWatchService.resetRequestForm();
-        return response;
+        return pantherWatchService.searchCourses(request);
     }
 
     @GetMapping("/terms")

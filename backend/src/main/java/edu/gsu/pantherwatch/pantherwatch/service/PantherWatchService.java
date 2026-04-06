@@ -1,14 +1,15 @@
 package edu.gsu.pantherwatch.pantherwatch.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.http.HttpHeaders;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import edu.gsu.pantherwatch.pantherwatch.api.GetSubjectRequest;
@@ -19,9 +20,10 @@ import edu.gsu.pantherwatch.pantherwatch.api.Terms;
 import reactor.core.publisher.Mono;
 
 @Service
+@Slf4j
 public class PantherWatchService {
-    private static final Logger logger = LoggerFactory.getLogger(PantherWatchService.class);
-    private static final Duration TIMEOUT = Duration.ofMillis(10000);
+    private static final Duration TIMEOUT = Duration.ofMillis(20000);
+    private static final Duration SESSION_TTL = Duration.ofMinutes(15);
     private static final String SORT_COLUMN = "subjectDescription";
     private static final String SORT_DIRECTION = "asc";
     private static final int DEFAULT_OFFSET = 1;
@@ -32,21 +34,62 @@ public class PantherWatchService {
     private static final String RESET_PATH = "/classSearch/resetDataForm";
     private static final String TERMS_PATH = "/classSearch/getTerms";
     private static final String SUBJECT_PATH = "/classSearch/get_subject";
+    private final ConcurrentHashMap<String, BannerSession> sessionCache = new ConcurrentHashMap<>();
 
     public PantherWatchService(WebClient webClient) {
         this.webClient = webClient;
     }
 
     public RetrieveCourseInfoResponse searchCourses(RetrieveCourseInfoRequest request) {
-        logger.info("Starting course search for subject={} course={} term={}",
-                request.getTxtSubject(), request.getTxtCourseNumber(), request.getTxtTerm());
-        String sessionCookies = declareTermAndGetCookies(request.getTxtTerm());
+        if (request == null || request.getTxtTerm() == null || request.getTxtTerm().isBlank()) {
+            throw new IllegalArgumentException("Term is required for course search");
+        }
 
-        return searchCoursesWithCookies(request, sessionCookies);
+        String term = request.getTxtTerm();
+
+        for (int attempt = 0; attempt < 3; attempt++) {
+            BannerSession session = obtainSession(term);
+            synchronized (session) {
+                String cookies = declareTerm(term, session.getCookies());
+                session.updateCookies(cookies);
+
+                RetrieveCourseInfoResponse response = searchCoursesWithCookies(request, cookies);
+
+                if (!shouldValidateNullData(response)) {
+                    resetRequestForm(cookies);
+                    session.markUsed();
+                    return response;
+                }
+
+                ValidationResult validation = validateSessionCookies(cookies, term);
+                cookies = validation.cookies();
+
+                if (!validation.valid()) {
+                    sessionCache.remove(term, session);
+                    continue;
+                }
+
+                cookies = declareTerm(term, cookies);
+                session.updateCookies(cookies);
+
+                RetrieveCourseInfoResponse retryResponse = searchCoursesWithCookies(request, cookies);
+                resetRequestForm(cookies);
+
+                if (!shouldValidateNullData(retryResponse)) {
+                    session.markUsed();
+                    return retryResponse != null ? retryResponse : response;
+                }
+
+                // Retry also returned null data — discard session and loop for a fresh one
+                log.warn("Retry search also returned null data for term {}. Discarding session (attempt {}).", term, attempt + 1);
+                sessionCache.remove(term, session);
+            }
+        }
+
+        throw new RuntimeException("Unable to retrieve course information after refreshing session");
     }
     
-    private String declareTermAndGetCookies(String term) {
-        logger.info("Declaring term {} to obtain session cookies", term);
+    private String declareTerm(String term, String existingCookies) {
         return webClient
                 .post()
                 .uri(uriBuilder -> uriBuilder
@@ -54,21 +97,19 @@ public class PantherWatchService {
                     .build())
                 .contentType(org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED)
                 .bodyValue(String.format("term=%s", term))
+                .headers(headers -> {
+                    if (existingCookies != null && !existingCookies.isBlank()) {
+                        headers.add(HttpHeaders.COOKIE, existingCookies);
+                    }
+                })
                 .exchangeToMono(response -> {
                     if (response.statusCode().is2xxSuccessful() || response.statusCode().value() == 302) {
                         var setCookieHeaders = response.headers().header(HttpHeaders.SET_COOKIE);
-                        if (!setCookieHeaders.isEmpty()) {
-                            logger.info("Term declaration succeeded with {} Set-Cookie header(s): {}",
-                                    setCookieHeaders.size(), summarizeCookies(setCookieHeaders));
-                            String combinedCookies = setCookieHeaders.stream()
-                                    .map(cookie -> cookie.split(";", 2)[0])
-                                    .reduce((a, b) -> a + "; " + b)
-                                    .orElse("");
-                            return Mono.just(combinedCookies);
-                        } else {
-                            logger.warn("Term declaration succeeded but no Set-Cookie headers were returned");
-                            return Mono.error(new RuntimeException("No session cookies received from term declaration"));
+                        String mergedCookies = mergeCookies(existingCookies, setCookieHeaders);
+                        if (mergedCookies == null || mergedCookies.isBlank()) {
+                            return Mono.error(new RuntimeException("No session cookies available after term declaration"));
                         }
+                        return Mono.just(mergedCookies);
                     } else {
                         logger.error("HTTP error in term declaration: {}", response.statusCode().value());
                         return response.createException()
@@ -92,13 +133,17 @@ public class PantherWatchService {
         return initialResult.body();
     }
 
-    public boolean resetRequestForm() {
-        logger.info("Resetting remote class search form");
-        return webClient
+    private void resetRequestForm(String cookies) {
+        if (cookies == null || cookies.isBlank()) {
+            return;
+        }
+        try {
+            webClient
                 .get()
                 .uri(uriBuilder -> uriBuilder
                     .path(RESET_PATH)
                     .build())
+                .header(HttpHeaders.COOKIE, cookies)
                 .exchangeToMono(response -> {
                     logger.info("Reset form response status: {}", response.statusCode().value());
                     if (response.statusCode().is2xxSuccessful()) {
@@ -112,6 +157,9 @@ public class PantherWatchService {
                     }
                 })
                 .block(TIMEOUT);
+        } catch (Exception e) {
+            log.debug("Failed to reset request form", e);
+        }
     }
 
     public List<Terms> fetchAvailableTerms() {
@@ -162,66 +210,31 @@ public class PantherWatchService {
         return Arrays.asList(subjectsArray);
     }
 
-    private CourseSearchResult executeCourseSearch(RetrieveCourseInfoRequest request, String cookies, boolean isRetry) {
-        logger.info("Performing course search{} with cookies: {}", isRetry ? " (retry)" : "", summarizeCookieHeader(cookies));
-        return webClient
-                .get()
-                .uri(uriBuilder -> uriBuilder
-                    .path(RETRIEVE_INFO_PATH)
-                    .queryParam("txt_subject", request.getTxtSubject())
-                    .queryParam("txt_courseNumber", request.getTxtCourseNumber())
-                    .queryParam("txt_term", request.getTxtTerm())
-                    .queryParam("pageOffset", request.getPageOffset() != null ? request.getPageOffset() : 0)
-                    .queryParam("pageMaxSize", request.getPageMaxSize() != null ? request.getPageMaxSize() : 200)
-                    .queryParam("sortColumn", SORT_COLUMN)
-                    .queryParam("sortDirection", SORT_DIRECTION)
-                    .build())
-                .header(HttpHeaders.COOKIE, cookies != null ? cookies : "")
-                .exchangeToMono(response -> {
-                    var setCookieHeaders = response.headers().header(HttpHeaders.SET_COOKIE);
-                    if (!setCookieHeaders.isEmpty()) {
-                        logger.info("Course search response set additional cookies: {}", summarizeCookies(setCookieHeaders));
-                    }
-                    logger.info("Course search response status: {}", response.statusCode().value());
-                    if (response.statusCode().is2xxSuccessful()) {
-                        final CookieMergeResult mergeResult = mergeCookies(cookies, setCookieHeaders);
-                        return response.bodyToMono(RetrieveCourseInfoResponse.class)
-                                .map(body -> {
-                                    logger.info("Course search success flag: {}", body.isSuccess());
-                                    if (body.getData() == null) {
-                                        logger.warn("Course search returned null data");
-                                    } else {
-                                        logger.info("Course search returned {} result(s)", body.getData().length);
-                                    }
-                                    return new CourseSearchResult(body, mergeResult.header(), mergeResult.modified());
-                                });
-                    } else {
-                        logger.error("HTTP error in course search: {}", response.statusCode().value());
-                        return response.createException()
-                                .flatMap(exception -> Mono.error(
-                                    new RuntimeException("HTTP error in course search: " + response.statusCode().value())
-                                ));
-                    }
-                })
-                .block(TIMEOUT);
+    private BannerSession obtainSession(String term) {
+        return sessionCache.compute(term, (key, existing) -> {
+            if (existing == null || existing.isExpired()) {
+                String cookies = declareTerm(term, null);
+                return new BannerSession(cookies);
+            }
+            return existing;
+        });
     }
 
-    private boolean shouldRetry(CourseSearchResult result) {
-        if (result == null || result.body() == null) {
-            return false;
-        }
-        if (!result.body().isSuccess()) {
-            return false;
-        }
-        if (result.body().getData() != null) {
-            return false;
-        }
-        return result.receivedNewCookies();
+    private boolean shouldValidateNullData(RetrieveCourseInfoResponse response) {
+        return response != null && response.isSuccess() && response.getData() == null;
     }
 
-    private CookieMergeResult mergeCookies(String existingCookies, List<String> setCookieHeaders) {
+    private ValidationResult validateSessionCookies(String cookies, String term) {
+        try {
+            String updatedCookies = declareTerm(term, cookies);
+            return new ValidationResult(true, updatedCookies);
+        } catch (Exception e) {
+            return new ValidationResult(false, cookies);
+        }
+    }
+
+    private String mergeCookies(String existingCookies, List<String> setCookieHeaders) {
         LinkedHashMap<String, String> cookieMap = toCookieMap(existingCookies);
-        boolean modified = false;
         if (setCookieHeaders != null) {
             for (String header : setCookieHeaders) {
                 if (header == null || header.isBlank()) {
@@ -235,29 +248,28 @@ public class PantherWatchService {
                 }
                 String name = nameValue.substring(0, separatorIndex);
                 String value = nameValue.substring(separatorIndex + 1);
-                String previous = cookieMap.put(name, value);
-                if (!value.equals(previous)) {
-                    modified = true;
-                }
+                cookieMap.put(name, value);
             }
         }
-        String mergedHeader = cookieMap.entrySet().stream()
+        if (cookieMap.isEmpty()) {
+            return null;
+        }
+        return cookieMap.entrySet().stream()
                 .map(entry -> entry.getKey() + "=" + entry.getValue())
                 .collect(Collectors.joining("; "));
-        return new CookieMergeResult(mergedHeader, modified);
     }
 
-    private LinkedHashMap<String, String> toCookieMap(String cookieHeaderValue) {
+    private LinkedHashMap<String, String> toCookieMap(String existingCookies) {
         LinkedHashMap<String, String> cookieMap = new LinkedHashMap<>();
-        if (cookieHeaderValue == null || cookieHeaderValue.isBlank()) {
+        if (existingCookies == null || existingCookies.isBlank()) {
             return cookieMap;
         }
-        String[] segments = cookieHeaderValue.split(";");
+        String[] segments = existingCookies.split(";");
         for (String segment : segments) {
-            String trimmed = segment.trim();
-            if (trimmed.isEmpty()) {
+            if (segment == null || segment.isBlank()) {
                 continue;
             }
+            String trimmed = segment.trim();
             int separatorIndex = trimmed.indexOf('=');
             if (separatorIndex <= 0 || separatorIndex == trimmed.length() - 1) {
                 continue;
@@ -269,43 +281,34 @@ public class PantherWatchService {
         return cookieMap;
     }
 
-    private record CourseSearchResult(
-            RetrieveCourseInfoResponse body,
-            String effectiveCookies,
-            boolean receivedNewCookies) { }
+    private static final class BannerSession {
+        private String cookies;
+        private Instant lastUsed;
 
-    private record CookieMergeResult(String header, boolean modified) { }
+        BannerSession(String cookies) {
+            this.cookies = cookies;
+            this.lastUsed = Instant.now();
+        }
 
-    private String summarizeCookies(List<String> cookieHeaders) {
-        return cookieHeaders.stream()
-                .map(this::summarizeCookie)
-                .collect(Collectors.joining("; "));
+        String getCookies() {
+            return cookies;
+        }
+
+        void updateCookies(String cookies) {
+            if (cookies != null && !cookies.isBlank()) {
+                this.cookies = cookies;
+            }
+            this.lastUsed = Instant.now();
+        }
+
+        void markUsed() {
+            this.lastUsed = Instant.now();
+        }
+
+        boolean isExpired() {
+            return lastUsed.plus(PantherWatchService.SESSION_TTL).isBefore(Instant.now());
+        }
     }
 
-    private String summarizeCookieHeader(String cookieHeaderValue) {
-        if (cookieHeaderValue == null || cookieHeaderValue.isBlank()) {
-            return "<none>";
-        }
-        return Arrays.stream(cookieHeaderValue.split(";\\s*"))
-                .map(this::summarizeCookie)
-                .collect(Collectors.joining("; "));
-    }
-
-    private String summarizeCookie(String cookieHeader) {
-        if (cookieHeader == null || cookieHeader.isBlank()) {
-            return "<empty>";
-        }
-        String[] parts = cookieHeader.split(";", 2);
-        String nameValue = parts[0];
-        int separatorIndex = nameValue.indexOf('=');
-        if (separatorIndex > 0 && separatorIndex < nameValue.length() - 1) {
-            String name = nameValue.substring(0, separatorIndex);
-            String value = nameValue.substring(separatorIndex + 1);
-            String shortenedValue = value.length() <= 8
-                    ? value
-                    : value.substring(0, 4) + "..." + value.substring(value.length() - 4);
-            return name + "=" + shortenedValue;
-        }
-        return nameValue;
-    }
+    private record ValidationResult(boolean valid, String cookies) { }
 }
