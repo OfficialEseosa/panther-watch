@@ -65,7 +65,7 @@ public class EmailService {
         String emailSubject = "Class Spot Available: " + subject + " " + courseNumber + " (CRN " + crn + ")";
 
         boolean alreadySent = emailLogRepository
-                .findRecentEmailByTypeEmailAndSubject(toEmail, EmailLog.EmailType.CLASS_AVAILABILITY, subjectMarker, cooldownCutoff)
+                .findRecentEmailByTypeAndEmailAndSubject(toEmail, EmailLog.EmailType.CLASS_AVAILABILITY, subjectMarker, cooldownCutoff)
                 .isPresent();
         if (alreadySent) {
             log.info("Skipping availability email to {} for CRN {} (within {} cooldown)", toEmail, crn, CLASS_AVAILABILITY_COOLDOWN);

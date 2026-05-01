@@ -22,7 +22,7 @@ public interface EmailLogRepository extends JpaRepository<EmailLog, Long> {
     );
 
     @Query("SELECT e FROM EmailLog e WHERE e.email = :email AND e.emailType = :emailType AND e.subject LIKE :subjectLike AND e.sentAt > :cutoffDate ORDER BY e.sentAt DESC")
-    Optional<EmailLog> findRecentEmailByTypeEmailAndSubject(
+    Optional<EmailLog> findRecentEmailByTypeAndEmailAndSubject(
             @Param("email") String email,
             @Param("emailType") EmailLog.EmailType emailType,
             @Param("subjectLike") String subjectLike,

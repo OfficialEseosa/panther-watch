@@ -74,8 +74,12 @@ public class PantherWatchService {
     }
 
     private void sleepBackoff(int attempt) {
+        // Exponential backoff with jitter: 200ms, 400ms, 800ms... +/-25% randomized.
+        long base = 200L * (1L << Math.min(attempt - 1, 5));
+        long jitter = (long) (base * 0.5 * Math.random()) - (long) (base * 0.25);
+        long delay = Math.max(50L, base + jitter);
         try {
-            Thread.sleep(200L * attempt);
+            Thread.sleep(delay);
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
         }

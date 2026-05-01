@@ -14,12 +14,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.annotation.PreDestroy;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @RestController
@@ -28,6 +32,21 @@ import java.util.stream.Collectors;
 public class WatchedClassController {
 
     private static final long FULL_DETAILS_OVERALL_TIMEOUT_SECONDS = 25;
+
+    // Dedicated bounded pool for /full-details fan-out. Using ForkJoinPool.commonPool()
+    // (the default for supplyAsync) is unsafe here because fetchGroupDetails performs
+    // blocking WebClient .block() calls and can starve the common pool under load.
+    private final ExecutorService fullDetailsExecutor = Executors.newFixedThreadPool(16, r -> {
+        Thread t = new Thread(r, "full-details-" + FULL_DETAILS_THREAD_COUNTER.incrementAndGet());
+        t.setDaemon(true);
+        return t;
+    });
+    private static final AtomicInteger FULL_DETAILS_THREAD_COUNTER = new AtomicInteger();
+
+    @PreDestroy
+    public void shutdownExecutor() {
+        fullDetailsExecutor.shutdownNow();
+    }
 
     @Autowired
     private WatchedClassService watchedClassService;
@@ -191,7 +210,9 @@ public class WatchedClassController {
                             wc.getSubject() + "|" + wc.getCourseNumber() + "|" + wc.getTerm()));
 
             List<CompletableFuture<Map<String, CourseData>>> futures = groupedClasses.entrySet().stream()
-                    .map(entry -> CompletableFuture.supplyAsync(() -> fetchGroupDetails(entry.getKey(), entry.getValue())))
+                    .map(entry -> CompletableFuture.supplyAsync(
+                            () -> fetchGroupDetails(entry.getKey(), entry.getValue()),
+                            fullDetailsExecutor))
                     .toList();
 
             CompletableFuture<Void> all = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
@@ -199,9 +220,11 @@ public class WatchedClassController {
                 all.get(FULL_DETAILS_OVERALL_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             } catch (TimeoutException te) {
                 log.warn("full-details overall timeout reached; returning partial data with placeholders");
+                cancelPending(futures);
             } catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();
                 log.warn("full-details interrupted; returning partial data");
+                cancelPending(futures);
             } catch (ExecutionException ee) {
                 log.warn("full-details execution exception (continuing with available data): {}", ee.getMessage());
             }
@@ -247,7 +270,18 @@ public class WatchedClassController {
             response.put("message", "Failed to get watched classes with full details");
             response.put("data", Collections.emptyList());
             response.put("count", 0);
-            return ResponseEntity.ok(response);
+            // Real server-side failure — surface a 5xx so monitoring/clients can react.
+            // Note: handled per-group failures inside the try block return 200 with placeholders;
+            // only an outer-level crash reaches this branch.
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    private void cancelPending(List<CompletableFuture<Map<String, CourseData>>> futures) {
+        for (CompletableFuture<Map<String, CourseData>> f : futures) {
+            if (!f.isDone()) {
+                f.cancel(true);
+            }
         }
     }
 

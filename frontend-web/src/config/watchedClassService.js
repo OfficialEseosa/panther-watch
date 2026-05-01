@@ -5,6 +5,9 @@ const REQUEST_TIMEOUT_MS = 30_000
 const FULL_DETAILS_TIMEOUT_MS = 35_000
 const RETRY_ATTEMPTS = 3
 const RETRY_BACKOFF_MS = 400
+// Hard ceiling for serving stale cache during backend outages. Beyond this we
+// throw rather than show day-old tracked classes as if they were current.
+const STALE_FALLBACK_MAX_MS = 24 * 60 * 60 * 1000
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
@@ -25,6 +28,10 @@ export class WatchedClassService {
 
   isCacheValid() {
     return this.cacheTimestamp && (Date.now() - this.cacheTimestamp) < this.CACHE_DURATION
+  }
+
+  isCacheWithinStaleWindow() {
+    return this.cacheTimestamp && (Date.now() - this.cacheTimestamp) < STALE_FALLBACK_MAX_MS
   }
 
   async makeAuthenticatedRequest(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
@@ -84,9 +91,10 @@ export class WatchedClassService {
       return data
     } catch (error) {
       console.error('Get watched classes error:', error)
-      // If we have a previously-good cache, prefer that over throwing — the UI
-      // should never go blank because of a transient backend hiccup.
-      if (Array.isArray(this.watchedClassesCache)) {
+      // If we have a recent cache, prefer that over throwing — the UI should not
+      // go blank for a transient backend hiccup. But never serve cache older than
+      // STALE_FALLBACK_MAX_MS; at that point the user deserves the real error.
+      if (Array.isArray(this.watchedClassesCache) && this.isCacheWithinStaleWindow()) {
         return this.watchedClassesCache
       }
       throw error
@@ -170,7 +178,7 @@ export class WatchedClassService {
       return count
     } catch (error) {
       console.error('Get watch count error:', error)
-      if (typeof this.watchedCountCache === 'number') {
+      if (typeof this.watchedCountCache === 'number' && this.isCacheWithinStaleWindow()) {
         return this.watchedCountCache
       }
       return 0
