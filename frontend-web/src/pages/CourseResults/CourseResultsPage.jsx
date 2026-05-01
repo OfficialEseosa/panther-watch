@@ -15,7 +15,6 @@ function CourseResultsPage() {
   const [error, setError] = useState(null);
   const [searchParams, setSearchParams] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalResults, setTotalResults] = useState(0);
   const [hasMorePages, setHasMorePages] = useState(false);
   const { watchedClasses } = useWatchedClasses();
   const { getTermName } = useTerms();

@@ -16,11 +16,3 @@ export const API_BASE_URL = API_CONFIG[environment].baseURL
 
 // Convenience function for building API URLs
 export const buildApiUrl = (endpoint) => `${API_BASE_URL}${endpoint}`
-
-// Export environment info for debugging
-export const getCurrentEnvironment = () => ({
-  environment,
-  baseURL: API_BASE_URL,
-  hostname: window.location.hostname,
-  isProduction
-})

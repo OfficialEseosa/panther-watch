@@ -54,21 +54,39 @@ public class EmailService {
         }
     }
 
-    public void sendClassAvailabilityNotification(String toEmail, String userName, String courseTitle, 
+    private static final java.time.Duration CLASS_AVAILABILITY_COOLDOWN = java.time.Duration.ofHours(6);
+
+    public void sendClassAvailabilityNotification(String toEmail, String userName, String courseTitle,
                                                 String courseNumber, String subject, String crn, String term) {
+        // Per-(recipient, CRN) cooldown to stop the 5-minute scheduler from re-spamming
+        // the same user every cycle while a course remains open.
+        LocalDateTime cooldownCutoff = LocalDateTime.now().minus(CLASS_AVAILABILITY_COOLDOWN);
+        String subjectMarker = "%CRN " + crn + "%";
+        String emailSubject = "Class Spot Available: " + subject + " " + courseNumber + " (CRN " + crn + ")";
+
+        boolean alreadySent = emailLogRepository
+                .findRecentEmailByTypeEmailAndSubject(toEmail, EmailLog.EmailType.CLASS_AVAILABILITY, subjectMarker, cooldownCutoff)
+                .isPresent();
+        if (alreadySent) {
+            log.info("Skipping availability email to {} for CRN {} (within {} cooldown)", toEmail, crn, CLASS_AVAILABILITY_COOLDOWN);
+            return;
+        }
+
         try {
             String htmlContent = buildClassAvailabilityEmail(userName, courseTitle, courseNumber, subject, crn, term);
-            
+
             CreateEmailOptions params = CreateEmailOptions.builder()
                     .from("PantherWatch <no-reply@class.pantherwatch.app>")
                     .to(toEmail)
-                    .subject("🎉 Class Spot Available: " + subject + " " + courseNumber)
+                    .subject(emailSubject)
                     .html(htmlContent)
                     .build();
 
             CreateEmailResponse data = resend.emails().send(params);
             log.info("Email sent successfully to {} for course {} with ID: {}", toEmail, crn, data.getId());
-            
+
+            logEmailSent(toEmail, EmailLog.EmailType.CLASS_AVAILABILITY, emailSubject);
+
         } catch (ResendException e) {
             log.error("Failed to send email to {} for course {}: {}", toEmail, crn, e.getMessage(), e);
             throw new RuntimeException("Failed to send email notification", e);

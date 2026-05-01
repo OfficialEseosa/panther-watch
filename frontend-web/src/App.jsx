@@ -52,10 +52,6 @@ function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  const handleLogin = () => {
-    setIsLoggedIn(true)
-  }
-
   const handleLogout = async () => {
     await authService.logout()
     setIsLoggedIn(false)
