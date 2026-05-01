@@ -1,13 +1,23 @@
 import { API_BASE_URL } from './apiConfig.js'
 import { authService } from './authService.js'
 
+const REQUEST_TIMEOUT_MS = 30_000
+const FULL_DETAILS_TIMEOUT_MS = 35_000
+const RETRY_ATTEMPTS = 3
+const RETRY_BACKOFF_MS = 400
+// Hard ceiling for serving stale cache during backend outages. Beyond this we
+// throw rather than show day-old tracked classes as if they were current.
+const STALE_FALLBACK_MAX_MS = 24 * 60 * 60 * 1000
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
 export class WatchedClassService {
   constructor() {
     this.baseUrl = `${API_BASE_URL}/watched-classes`
     this.watchedClassesCache = null
     this.watchedCountCache = null
     this.cacheTimestamp = null
-    this.CACHE_DURATION = 60 * 60 * 1000
+    this.CACHE_DURATION = 5 * 60 * 1000
   }
 
   clearCache() {
@@ -20,38 +30,73 @@ export class WatchedClassService {
     return this.cacheTimestamp && (Date.now() - this.cacheTimestamp) < this.CACHE_DURATION
   }
 
-  async makeAuthenticatedRequest(url, options = {}) {
+  isCacheWithinStaleWindow() {
+    return this.cacheTimestamp && (Date.now() - this.cacheTimestamp) < STALE_FALLBACK_MAX_MS
+  }
+
+  async makeAuthenticatedRequest(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
     const token = await authService.getAccessToken()
-    
-    return fetch(url, {
-      ...options,
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': token ? `Bearer ${token}` : '',
-        ...options.headers
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
+    try {
+      return await fetch(url, {
+        ...options,
+        credentials: 'include',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+          ...options.headers
+        }
+      })
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
+  async requestJsonWithRetry(url, options = {}, { timeoutMs = REQUEST_TIMEOUT_MS, attempts = RETRY_ATTEMPTS } = {}) {
+    let lastError
+    for (let i = 0; i < attempts; i++) {
+      try {
+        const response = await this.makeAuthenticatedRequest(url, options, timeoutMs)
+        const result = await response.json().catch(() => ({}))
+        if (!response.ok) {
+          throw new Error(result.message || `HTTP ${response.status}`)
+        }
+        return result
+      } catch (err) {
+        lastError = err
+        if (i < attempts - 1) {
+          await sleep(RETRY_BACKOFF_MS * Math.pow(2, i))
+        }
       }
-    })
+    }
+    throw lastError
   }
 
   async getWatchedClasses() {
+    if (Array.isArray(this.watchedClassesCache) && this.isCacheValid()) {
+      return this.watchedClassesCache
+    }
+
     try {
-      if (this.watchedClassesCache && this.isCacheValid()) {
-        return this.watchedClassesCache
+      const result = await this.requestJsonWithRetry(this.baseUrl)
+      const data = Array.isArray(result.data) ? result.data : []
+      // Only cache real data — never cache empty arrays from a transient error,
+      // and never cache nullish payloads. This avoids the "stale null sticks for an hour" bug.
+      if (data.length > 0) {
+        this.watchedClassesCache = data
+        this.cacheTimestamp = Date.now()
       }
-
-      const response = await this.makeAuthenticatedRequest(this.baseUrl)
-      const result = await response.json()
-      
-      if (!response.ok) {
-        throw new Error(result.message || 'Failed to get watched classes')
-      }
-      this.watchedClassesCache = result.data
-      this.cacheTimestamp = Date.now()
-
-      return result.data
+      return data
     } catch (error) {
       console.error('Get watched classes error:', error)
+      // If we have a recent cache, prefer that over throwing — the UI should not
+      // go blank for a transient backend hiccup. But never serve cache older than
+      // STALE_FALLBACK_MAX_MS; at that point the user deserves the real error.
+      if (Array.isArray(this.watchedClassesCache) && this.isCacheWithinStaleWindow()) {
+        return this.watchedClassesCache
+      }
       throw error
     }
   }
@@ -64,7 +109,7 @@ export class WatchedClassService {
       })
 
       const result = await response.json()
-      
+
       if (!response.ok) {
         throw new Error(result.message || 'Failed to add class to watch list')
       }
@@ -86,7 +131,7 @@ export class WatchedClassService {
       )
 
       const result = await response.json()
-      
+
       if (!response.ok) {
         throw new Error(result.message || 'Failed to remove class from watch list')
       }
@@ -107,7 +152,7 @@ export class WatchedClassService {
       )
 
       const result = await response.json()
-      
+
       if (!response.ok) {
         console.error('Check watch status failed:', result.message)
         return false
@@ -121,39 +166,33 @@ export class WatchedClassService {
   }
 
   async getWatchedClassCount() {
+    if (typeof this.watchedCountCache === 'number' && this.isCacheValid()) {
+      return this.watchedCountCache
+    }
+
     try {
-      if (this.watchedCountCache !== null && this.isCacheValid()) {
-        return this.watchedCountCache
-      }
-
-      const response = await this.makeAuthenticatedRequest(`${this.baseUrl}/count`)
-      const result = await response.json()
-      
-      if (!response.ok) {
-        console.error('Get watch count failed:', result.message)
-        return 0
-      }
-
-      this.watchedCountCache = result.count
+      const result = await this.requestJsonWithRetry(`${this.baseUrl}/count`)
+      const count = typeof result.count === 'number' ? result.count : 0
+      this.watchedCountCache = count
       this.cacheTimestamp = Date.now()
-
-      return result.count
+      return count
     } catch (error) {
       console.error('Get watch count error:', error)
+      if (typeof this.watchedCountCache === 'number' && this.isCacheWithinStaleWindow()) {
+        return this.watchedCountCache
+      }
       return 0
     }
   }
 
   async getWatchedClassesWithFullDetails() {
     try {
-      const response = await this.makeAuthenticatedRequest(`${this.baseUrl}/full-details`)
-      const result = await response.json()
-      
-      if (!response.ok) {
-        throw new Error(result.message || 'Failed to get watched classes with full details')
-      }
-
-      return result.data
+      const result = await this.requestJsonWithRetry(
+        `${this.baseUrl}/full-details`,
+        {},
+        { timeoutMs: FULL_DETAILS_TIMEOUT_MS, attempts: 2 }
+      )
+      return Array.isArray(result.data) ? result.data : []
     } catch (error) {
       console.error('Get watched classes with full details error:', error)
       throw error
