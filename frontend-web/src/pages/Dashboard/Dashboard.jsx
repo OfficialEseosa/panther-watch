@@ -15,137 +15,152 @@ function Dashboard() {
 
   useEffect(() => {
     if (!hasSeenTutorial && userInfo) {
-      const timer = setTimeout(() => {
-        setShowTutorial(true);
-      }, 500);
+      const timer = setTimeout(() => setShowTutorial(true), 500);
       return () => clearTimeout(timer);
     }
   }, [hasSeenTutorial, userInfo, setShowTutorial]);
 
   const tutorialSteps = [
     {
-      target: '.dashboard-header',
+      target: '.pw-kpi-grid',
       title: 'Welcome to PantherWatch!',
-      description: 'This is your dashboard where you can see an overview of your tracked classes and quick access to key features.',
-      position: 'bottom'
-    },
-    {
-      target: '.tracked-summary',
-      title: 'Track Your Classes',
-      description: 'Keep an eye on how many classes you\'re currently tracking. This number updates in real-time as you add or remove courses.',
-      position: 'bottom'
+      description: 'This is your dashboard — a quick snapshot of everything you\'re tracking.',
+      position: 'bottom',
     },
     {
       target: '[data-card="search"]',
       title: 'Course Search',
-      description: 'Start here to search for courses by term and subject. You\'ll see real-time seat availability for all courses at Georgia State.',
-      position: 'top'
+      description: 'Start here to search courses by term and subject with real-time seat counts.',
+      position: 'top',
     },
     {
       target: '[data-card="tracked"]',
-      title: 'Your Tracked Classes',
-      description: 'View and manage all the classes you\'re monitoring. Get notifications when seats become available in your tracked courses.',
-      position: 'top'
+      title: 'Tracked Classes',
+      description: 'All the sections you\'re monitoring. We email you the moment a seat opens.',
+      position: 'top',
     },
     {
       target: '[data-card="schedule"]',
       title: 'Schedule Builder',
-      description: 'Plan your weekly schedule visually. Add classes to see how they fit together and export your schedule when ready.',
-      position: 'top'
-    }
+      description: 'Visualise your weekly schedule and export it when you\'re ready to register.',
+      position: 'top',
+    },
   ];
-
-  const handleTutorialComplete = () => {
-    markTutorialAsSeen();
-  };
-
-  const handleTutorialSkip = () => {
-    markTutorialAsSeen();
-  };
 
   const cards = [
     {
       id: 'search',
       icon: 'search',
       title: 'Course search',
-      description: 'Filter by term, subject, and course details with real-time availability.',
+      description: 'Filter by term, subject, and number. See live seat counts as you browse.',
       actionLabel: 'Search courses',
-      onClick: () => navigate('/course-search')
+      onClick: () => navigate('/course-search'),
     },
     {
       id: 'tracked',
       icon: 'bookmark',
       title: 'Tracked classes',
-      description: 'Review the sections you are monitoring and adjust alerts anytime.',
-      actionLabel: watchedCount > 0 ? 'Manage tracked list' : 'Start tracking',
-      badge: watchedLoading ? undefined : `${watchedCount} active`,
-      onClick: () => navigate('/tracked-classes')
+      description: 'Review the sections you\'re monitoring and manage your watchlist anytime.',
+      actionLabel: watchedCount > 0 ? 'Manage list' : 'Start tracking',
+      badge: watchedLoading ? undefined : (watchedCount > 0 ? `${watchedCount} active` : undefined),
+      onClick: () => navigate('/tracked-classes'),
     },
     {
       id: 'schedule',
       icon: 'calendar',
-      title: 'Class schedule',
-      description: 'View and manage your weekly class schedule with calendar export.',
+      title: 'Schedule builder',
+      description: 'Plan your week visually. Add classes and export to your calendar.',
       actionLabel: 'View schedule',
-      onClick: () => navigate('/schedule-builder')
-    }
+      onClick: () => navigate('/schedule-builder'),
+    },
   ];
 
   const greetingName = userInfo?.firstName || 'Panther';
+  const today = new Date().toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric',
+  });
 
   return (
-    <div className="dashboard">
+    <div className="pw-dashboard">
       {showTutorial && (
         <Tutorial
           steps={tutorialSteps}
-          onComplete={handleTutorialComplete}
-          onSkip={handleTutorialSkip}
+          onComplete={markTutorialAsSeen}
+          onSkip={markTutorialAsSeen}
         />
       )}
-      
-      <section className="dashboard-header">
-        <div className="header-copy">
-          <span className="eyebrow">Overview</span>
-          <h1 className="dashboard-title">Welcome back, {greetingName}.</h1>
-          <p className="dashboard-subtitle">
-            Keep an eye on enrollment and act quickly when seats open across Georgia State courses.
+
+      {/* Page heading */}
+      <div className="pw-page-head">
+        <div>
+          <div className="pw-meta">// {today}</div>
+          <h1>Welcome back, {greetingName}.</h1>
+          <p className="pw-subtitle">
+            Here's what's happening with your tracked classes at Georgia State.
           </p>
         </div>
+      </div>
 
-        <div className="tracked-summary" aria-live="polite">
-          <div className="summary-icon">
-            <Icon name="bookmark" size={26} aria-hidden />
+      {/* KPI strip */}
+      <div className="pw-kpi-grid">
+        <div className="pw-kpi">
+          <div className="pw-kpi-label">Tracked classes</div>
+          <div className="pw-kpi-val">
+            {watchedLoading ? '—' : watchedCount}
           </div>
-          <div className="summary-content">
-            <span className="summary-label">Tracked classes</span>
-            <span className="summary-value">{watchedLoading ? '…' : watchedCount}</span>
-          </div>
+          <div className="pw-kpi-meta">Active watchlist</div>
         </div>
-      </section>
+        <div className="pw-kpi">
+          <div className="pw-kpi-label">Monitoring</div>
+          <div className="pw-kpi-val">
+            Live <span className="pw-kpi-delta">↑</span>
+          </div>
+          <div className="pw-kpi-meta">GoSOLAR checked regularly</div>
+        </div>
+        <div className="pw-kpi">
+          <div className="pw-kpi-label">Get notified</div>
+          <div className="pw-kpi-val">Email</div>
+          <div className="pw-kpi-meta">Instant alerts on seat opens</div>
+        </div>
+      </div>
 
-      <section className="dashboard-grid">
+      {/* Action cards */}
+      <div className="pw-section-head" style={{ marginTop: 0 }}>
+        <h2>Where do you want to go?</h2>
+      </div>
+
+      <div className="pw-dash-cards">
         {cards.map((card) => (
-          <article key={card.id} className={`dashboard-card ${card.disabled ? 'disabled' : ''}`} data-card={card.id}>
-            <div className="card-icon">
-              <Icon name={card.icon} size={28} aria-hidden />
+          <article
+            key={card.id}
+            className="pw-dash-card"
+            data-card={card.id}
+            onClick={card.onClick}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && card.onClick()}
+          >
+            <div className="pw-dash-card-icon">
+              <Icon name={card.icon} size={18} aria-hidden />
             </div>
-            <h3 className="card-title">{card.title}</h3>
-            <p className="card-description">{card.description}</p>
 
-            <div className="card-footer">
-              {card.badge && <span className="card-badge">{card.badge}</span>}
-              <button
-                type="button"
-                className="card-button"
-                onClick={card.onClick}
-                disabled={card.disabled}
-              >
+            <div>
+              <h3 className="pw-dash-card-title">{card.title}</h3>
+              <p className="pw-dash-card-desc">{card.description}</p>
+            </div>
+
+            <div className="pw-dash-card-footer">
+              {card.badge && (
+                <span className="pw-dash-card-badge">{card.badge}</span>
+              )}
+              <span className="pw-dash-card-action">
                 {card.actionLabel}
-              </button>
+                <Icon name="arrow" size={13} aria-hidden />
+              </span>
             </div>
           </article>
         ))}
-      </section>
+      </div>
     </div>
   );
 }

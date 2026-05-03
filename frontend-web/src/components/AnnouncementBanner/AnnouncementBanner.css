@@ -1,9 +1,7 @@
 .announcement-banner {
   width: 100%;
-  padding: 12px 20px;
-  position: sticky;
-  top: 0;
-  z-index: 1100;
+  padding: 10px 20px;
+  flex-shrink: 0;
   animation: slideDown 0.3s ease-out;
 }
 

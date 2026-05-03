@@ -1,354 +1,301 @@
-﻿.error-message {
-  background: rgba(180, 35, 24, 0.12);
-  color: var(--color-danger);
+/* ============================================================
+   Course cards v2 — seat visualization design
+   ============================================================ */
+
+/* Error / empty */
+.pw-course-error {
+  background: var(--red-tint);
+  color: oklch(0.78 0.16 22);
   padding: 14px 16px;
-  border-radius: var(--radius-sm);
-  border: 1px solid rgba(180, 35, 24, 0.2);
-  margin-bottom: 16px;
+  border-radius: var(--r-2);
+  border: 1px solid oklch(0.66 0.18 22 / 0.25);
+  font-size: 13px;
 }
 
-.results-section {
-  margin-top: 24px;
+/* Results header */
+.pw-results-header {
   display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.results-header {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 12px;
 }
 
-.results-count {
-  font-weight: 600;
-  color: var(--color-heading);
+.pw-results-count {
+  font-size: 13px;
+  color: var(--fg-3);
+  font-weight: 500;
 }
 
-.courses-grid {
-  display: grid;
-  gap: 24px;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-}
-
-.course-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+/* ── Course list (stacked cards) ── */
+.pw-course-list {
   display: flex;
   flex-direction: column;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--r-4);
   overflow: hidden;
 }
 
-.course-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 20px 24px;
-  background: var(--color-surface-muted);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.course-title {
-  margin: 0;
-  font-size: 1.05rem;
-  color: var(--color-heading);
-}
-
-.course-crn {
-  margin-top: 6px;
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--color-primary-100);
-  color: var(--color-primary-600);
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-/* Improve CRN visibility in dark mode */
-.theme-dark .course-crn {
-  /* Use a lighter, higher-contrast chip with clear text */
-  background: rgba(70, 104, 168, 0.28); /* based on --color-primary-300 */
-  border: 1px solid var(--color-primary-300);
-  color: var(--color-heading); /* near-white text for contrast */
-}
-
-.course-actions {
-  display: flex;
+/* ── Individual course row ── */
+.pw-course-row {
+  background: var(--bg-1);
+  padding: 18px 20px;
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 32px;
   align-items: center;
-  gap: 8px;
-}
-
-.calendar-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
   cursor: pointer;
-  transition: all var(--transition-base);
+  transition: background 140ms var(--ease);
+  position: relative;
 }
 
-.calendar-button:hover {
-  border-color: var(--color-primary-300);
-  color: var(--color-primary-600);
-  background: var(--color-primary-50);
+.pw-course-row:hover { background: var(--bg-2); }
+
+/* Blue left-border when watching */
+.pw-course-row.watching::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 14px;
+  bottom: 14px;
+  width: 2px;
+  background: var(--blue);
+  border-radius: 2px;
 }
 
-.watch-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-heading);
-  font-weight: 600;
-  padding: 8px 14px;
-  transition: background var(--transition-base), border-color var(--transition-base), color var(--transition-base);
-}
-
-.watch-button:hover:not(:disabled) {
-  border-color: var(--color-primary-300);
-  color: var(--color-primary-600);
-}
-
-.watch-button.state-active {
-  background: var(--color-primary-100);
-  border-color: var(--color-primary-300);
-  color: var(--color-primary-600);
-}
-
-.watch-button.state-remove {
-  background: rgba(180, 35, 24, 0.08);
-  border-color: rgba(180, 35, 24, 0.35);
-  color: var(--color-danger);
-}
-
-.watch-button:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-}
-
-.course-body {
+/* ── Left: course info ── */
+.pw-course-info {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 24px;
+  gap: 6px;
+  min-width: 0;
 }
 
-.course-info {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+.pw-course-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pw-course-code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--blue-hi);
+  font-weight: 500;
+}
+
+.pw-course-crn,
+.pw-course-section {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-3);
+}
+
+.pw-course-divider { color: var(--fg-4); font-size: 12px; }
+
+.pw-course-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--fg);
+  letter-spacing: -0.005em;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.pw-course-detail-row {
+  display: flex;
+  align-items: center;
   gap: 16px;
+  font-size: 12.5px;
+  color: var(--fg-2);
+  margin-top: 4px;
+  flex-wrap: wrap;
 }
 
-.info-item {
+.pw-course-detail {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Day pills */
+.pw-day-pills { display: inline-flex; gap: 2px; }
+
+.pw-day-pill {
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  background: var(--bg-3);
+  color: var(--fg-4);
+}
+
+.pw-day-pill.on {
+  background: var(--blue-tint);
+  color: var(--blue-hi);
+}
+
+/* ── Right: seat cluster ── */
+.pw-seat-cluster {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: center;
+}
+
+.pw-seat-readout {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.info-label {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--color-text-muted);
-}
-
-.info-value {
-  font-weight: 600;
-  color: var(--color-heading);
-}
-
-.partial-data-notice {
+.pw-seat-readout-top {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  background: rgba(255, 177, 66, 0.1);
-  border: 1px solid rgba(255, 177, 66, 0.3);
-  border-radius: var(--radius-sm);
-  font-size: 0.85rem;
-  color: #c27b12;
+  align-items: baseline;
+  gap: 6px;
 }
 
-.theme-dark .partial-data-notice {
-  background: rgba(255, 177, 66, 0.15);
-  border-color: rgba(255, 177, 66, 0.35);
-  color: #f5b547;
-}
-
-.partial-data-icon {
-  font-size: 1rem;
-  line-height: 1;
-  opacity: 0.9;
-}
-
-.partial-data-text {
+.pw-seat-num {
+  font-family: var(--font-mono);
+  font-size: 22px;
   font-weight: 500;
-  letter-spacing: 0.01em;
+  letter-spacing: -0.02em;
+  color: var(--fg);
+  font-feature-settings: 'tnum';
+  line-height: 1;
 }
 
-.enrollment-status {
+.pw-seat-num.green { color: var(--green); }
+.pw-seat-num.amber { color: var(--amber); }
+.pw-seat-num.red   { color: var(--red);   }
+
+.pw-seat-of {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--fg-3);
+}
+
+.pw-seat-track {
+  height: 4px;
+  border-radius: 99px;
+  background: var(--bg-3);
+  overflow: hidden;
+  margin-top: 2px;
+}
+
+.pw-seat-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: var(--blue);
+  transition: width 600ms var(--ease);
+}
+
+.pw-seat-fill.green { background: var(--green); }
+.pw-seat-fill.amber { background: var(--amber); }
+.pw-seat-fill.red   { background: var(--red);   }
+
+.pw-seat-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  flex-wrap: wrap;
+}
+
+.pw-seat-meta b { color: var(--fg-2); font-weight: 500; }
+
+/* Partial data notice */
+.pw-partial-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--amber);
+  font-family: var(--font-mono);
+  margin-top: 2px;
+}
+
+/* ── Watch toggle button ── */
+.pw-watch-toggle {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-2);
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  color: var(--fg-2);
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 16px;
-  padding: 18px;
-  background: var(--color-surface-muted);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
+  place-items: center;
+  transition: all 140ms var(--ease);
+  flex-shrink: 0;
+  cursor: pointer;
 }
 
-.enrollment-item {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: flex-start;
+.pw-watch-toggle:hover {
+  background: var(--bg-3);
+  color: var(--fg);
+  border-color: var(--line-strong);
 }
 
-.enrollment-number {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: var(--color-heading);
+.pw-watch-toggle.watching {
+  background: var(--blue-tint);
+  border-color: var(--blue-line);
+  color: var(--blue-hi);
 }
 
-.enrollment-label {
-  font-size: 0.8rem;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+.pw-watch-toggle.remove {
+  background: var(--red-tint);
+  border-color: oklch(0.66 0.18 22 / 0.3);
+  color: oklch(0.78 0.16 22);
 }
 
-.seats-available {
-  color: var(--color-success);
+.pw-watch-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.seats-low {
-  color: #c27b12;
+/* Calendar button */
+.pw-cal-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-1);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--fg-3);
+  display: grid;
+  place-items: center;
+  transition: all 140ms;
+  cursor: pointer;
 }
 
-.seats-full {
-  color: var(--color-danger);
+.pw-cal-btn:hover {
+  background: var(--bg-2);
+  color: var(--fg-2);
 }
 
-.seats-unknown {
-  color: var(--color-text-muted);
-}
-
-.waitlist-number {
-  color: var(--color-heading);
-}
-
-.waitlist-low {
-  color: #c27b12;
-}
-
-.waitlist-full {
-  color: var(--color-danger);
-}
-
-.waitlist-available {
-  color: var(--color-success);
-}
-
-.faculty-section {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.faculty-title {
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--color-text-muted);
-  font-weight: 600;
-}
-
-.faculty-name {
-  color: var(--color-heading);
-  font-weight: 600;
-}
-
-.meeting-times {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.meeting-time {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: 14px;
-  background: var(--color-surface);
-}
-
-.time-schedule {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.time-range {
-  font-weight: 600;
-  color: var(--color-heading);
-}
-
-.days-week {
-  display: flex;
-  gap: 6px;
-}
-
-.day-indicator {
-  min-width: 26px;
-  height: 26px;
-  border-radius: 999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 600;
-  background: var(--color-surface-muted);
-  color: var(--color-text-muted);
-}
-
-.day-indicator.day-active {
-  background: var(--color-primary-100);
-  color: var(--color-primary-600);
-}
-
-.location-info {
-  font-size: 0.9rem;
-  color: var(--color-text-muted);
-}
-
-.location-building {
-  font-weight: 600;
-  color: var(--color-heading);
-}
-
-@media (max-width: 768px) {
-  .courses-grid {
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .pw-course-row {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
 
-  .course-header {
-    flex-direction: column;
-    align-items: flex-start;
+  .pw-seat-cluster {
+    grid-template-columns: 1fr auto;
   }
+}
 
-  .watch-button {
-    width: 100%;
-    justify-content: center;
+@media (max-width: 600px) {
+  .pw-course-row {
+    padding: 16px;
   }
 }

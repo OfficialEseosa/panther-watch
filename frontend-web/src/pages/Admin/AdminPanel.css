@@ -1,10 +1,11 @@
 .admin-panel {
   max-width: 1180px;
   margin: 0 auto;
-  padding: 8px 0 48px;
+  padding: 36px 32px 80px;
   display: flex;
   flex-direction: column;
   gap: 24px;
+  animation: pageIn 280ms var(--ease);
 }
 
 .admin-panel.loading,

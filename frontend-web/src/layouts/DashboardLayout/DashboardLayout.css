@@ -1,46 +1,43 @@
-﻿.dashboard-layout {
-  min-height: 100vh;
+/* New permanent-sidebar layout */
+.pw-layout {
+  display: grid;
+  grid-template-columns: 232px 1fr;
+  height: 100%;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.pw-main {
   display: flex;
   flex-direction: column;
-  background: var(--color-page-background);
+  overflow: hidden;
+  height: 100%;
+  min-width: 0;
 }
 
-.dashboard-content {
+.pw-scroll {
   flex: 1;
-  display: flex;
-  align-items: stretch;
-  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--bg);
 }
 
-.main-content {
-  flex: 1;
-  padding: 32px 40px;
-  transition: margin-left 0.3s ease;
+/* Mobile sidebar state */
+.pw-sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: oklch(0 0 0 / 0.5);
+  z-index: 900;
 }
 
-.main-content.sidebar-open {
-  margin-left: 260px;
-}
-
-.content-wrapper {
-  max-width: 1200px;
-  margin: 0 auto;
-  width: 100%;
-  min-height: calc(100vh - 120px);
-}
-
-@media (max-width: 1024px) {
-  .main-content {
-    padding: 28px;
+/* ── Mobile ────────────────────────────── */
+@media (max-width: 900px) {
+  .pw-layout {
+    grid-template-columns: 1fr;
   }
 
-  .main-content.sidebar-open {
-    margin-left: 0;
-  }
-}
-
-@media (max-width: 768px) {
-  .main-content {
-    padding: 20px;
+  .pw-sidebar-backdrop.visible {
+    display: block;
   }
 }

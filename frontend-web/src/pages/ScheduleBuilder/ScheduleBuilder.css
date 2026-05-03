@@ -1,7 +1,8 @@
 .schedule-builder {
-  padding: 40px 24px;
+  padding: 36px 32px 80px;
   max-width: 1400px;
   margin: 0 auto;
+  animation: pageIn 280ms var(--ease);
 }
 
 .loading-state {
@@ -545,32 +546,19 @@
 .class-code {
   font-weight: 700;
   font-size: 0.85rem;
-  color: var(--color-primary-900, #1a237e);
+  color: var(--fg);
   line-height: 1.2;
 }
 
 .class-time {
   font-size: 0.7rem;
-  color: var(--color-primary-800, #283593);
+  color: var(--fg-1);
   font-weight: 600;
 }
 
 .class-location {
   font-size: 0.7rem;
-  color: var(--color-primary-700, #3949ab);
-}
-
-/* Dark mode text colors */
-.theme-dark .class-code {
-  color: white;
-}
-
-.theme-dark .class-time {
-  color: white;
-}
-
-.theme-dark .class-location {
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--fg-2);
 }
 
 .remove-class-btn {

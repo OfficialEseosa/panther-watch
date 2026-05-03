@@ -10,28 +10,30 @@ function DashboardLayout({ children }) {
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen)
-  }
+  const toggleSidebar = () => setSidebarOpen((prev) => !prev)
+  const closeSidebar = () => setSidebarOpen(false)
 
   return (
-    <div className="dashboard-layout">
-      <Header onToggleSidebar={toggleSidebar} />
-      <AnnouncementBanner />
-      
-      <div className="dashboard-content">
-        <Sidebar 
-          isOpen={sidebarOpen}
-          currentPath={location.pathname}
-          onNavigate={navigate}
-          onClose={() => setSidebarOpen(false)}
-        />
-        
-        <main className={`main-content ${sidebarOpen ? 'sidebar-open' : ''}`}>
-          <div className="content-wrapper">
-            {children}
-          </div>
-        </main>
+    <div className="pw-layout">
+      {/* Mobile backdrop */}
+      <div
+        className={`pw-sidebar-backdrop ${sidebarOpen ? 'visible' : ''}`}
+        onClick={closeSidebar}
+      />
+
+      <Sidebar
+        isOpen={sidebarOpen}
+        currentPath={location.pathname}
+        onNavigate={navigate}
+        onClose={closeSidebar}
+      />
+
+      <div className="pw-main">
+        <Header onToggleSidebar={toggleSidebar} />
+        <AnnouncementBanner />
+        <div className="pw-scroll">
+          {children}
+        </div>
       </div>
     </div>
   )

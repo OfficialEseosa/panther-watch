@@ -250,7 +250,35 @@ const ICONS = {
       <path d="M4 20h4l10.5-10.5a2.828 2.828 0 1 0-4-4L4 16v4z" />
       <path d="M13.5 6.5l4 4" />
     </>
-  )
+  ),
+  arrow: (
+    <>
+      <path d="M5 12h14" />
+      <path d="m13 5 7 7-7 7" />
+    </>
+  ),
+  bookmarkFilled: (
+    <path d="M8 4.75h8a1 1 0 0 1 1 1v12.8l-5-2.7-5 2.7v-12.8a1 1 0 0 1 1-1z" fill="currentColor" />
+  ),
+  map: (
+    <>
+      <path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z" />
+      <path d="M9 4v14" />
+      <path d="M15 6v14" />
+    </>
+  ),
+  clock: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </>
+  ),
+  user: (
+    <>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21a8 8 0 0 1 16 0" />
+    </>
+  ),
 };
 
 function Icon({ name, size = 20, strokeWidth = 1.7, className, ariaLabel, ...rest }) {

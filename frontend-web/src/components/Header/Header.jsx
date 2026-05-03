@@ -1,137 +1,135 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
 import { authService } from '../../config/authService.js';
-import { useTheme } from '../../hooks/useTheme.js';
 import CachedAvatar from '../CachedAvatar';
 import Icon from '../Icon';
-import pantherLogo from '../../assets/panther.png';
 import './Header.css';
 
+const PAGE_LABELS = {
+  '/dashboard':      'Dashboard',
+  '/course-search':  'Course search',
+  '/course-results': 'Course results',
+  '/tracked-classes':'Tracked classes',
+  '/schedule-builder':'Schedule builder',
+  '/settings':       'Settings',
+  '/admin':          'Admin panel',
+};
+
 function Header({ onToggleSidebar }) {
-  const navigate = useNavigate();
+  const navigate   = useNavigate();
+  const location   = useLocation();
   const { userInfo } = useAuth();
-  const { theme, toggleTheme } = useTheme();
-  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
 
-  const handleTitleClick = () => {
-    navigate('/dashboard');
-  };
-
-  const handleProfileClick = () => {
-    setShowProfileDropdown((prev) => !prev);
-  };
+  const pageLabel = PAGE_LABELS[location.pathname] ?? 'PantherWatch';
 
   const handleLogout = async () => {
     try {
       await authService.logout();
       navigate('/', { replace: true });
       window.location.reload();
-    } catch (error) {
-      console.error('Logout failed:', error);
+    } catch {
       window.location.reload();
     }
   };
 
   const handleSettingsClick = () => {
     navigate('/settings');
-    setShowProfileDropdown(false);
+    setShowDropdown(false);
   };
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (!event.target.closest('.user-profile-container')) {
-        setShowProfileDropdown(false);
-      }
+    if (!showDropdown) return;
+    const close = (e) => {
+      if (!e.target.closest('.pw-user-profile')) setShowDropdown(false);
     };
-
-    if (showProfileDropdown) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
-    }
-  }, [showProfileDropdown]);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [showDropdown]);
 
   const firstInitial = userInfo?.firstName ? userInfo.firstName.charAt(0).toUpperCase() : '';
-  const lastInitial = userInfo?.lastName ? userInfo.lastName.charAt(0).toUpperCase() : '';
-  const displayName = userInfo?.firstName
+  const lastInitial  = userInfo?.lastName  ? userInfo.lastName.charAt(0).toUpperCase()  : '';
+  const displayName  = userInfo?.firstName
     ? `${userInfo.firstName}${lastInitial ? ` ${lastInitial}.` : ''}`
-    : userInfo?.name;
+    : (userInfo?.name || '');
   const initials = (firstInitial + lastInitial).trim() || '?';
-  const isDark = theme === 'dark';
-  const themeLabel = isDark ? 'Light mode' : 'Dark mode';
-  const themeIcon = isDark ? 'sun' : 'moon';
 
   return (
-    <header className="app-header">
-      <div className="header-left">
-        <button
-          type="button"
-          className="menu-toggle"
-          onClick={onToggleSidebar}
-          aria-label="Toggle sidebar"
-        >
-          <span className="hamburger"></span>
-          <span className="hamburger"></span>
-          <span className="hamburger"></span>
-        </button>
-        <button type="button" className="title-button" onClick={handleTitleClick}>
-          <img src={pantherLogo} alt="PantherWatch" className="app-logo" />
-          <div className="title-text">
-            <span className="app-name">PantherWatch</span>
-            <span className="app-tagline">Georgia State monitoring suite</span>
-          </div>
-        </button>
+    <div className="pw-topbar">
+      {/* Mobile hamburger */}
+      <button
+        type="button"
+        className="pw-menu-toggle"
+        onClick={onToggleSidebar}
+        aria-label="Toggle sidebar"
+      >
+        <span className="pw-hamburger" />
+        <span className="pw-hamburger" />
+        <span className="pw-hamburger" />
+      </button>
+
+      {/* Desktop breadcrumb */}
+      <div className="pw-crumb">
+        <span>PantherWatch</span>
+        <span className="pw-sep">/</span>
+        <b>{pageLabel}</b>
       </div>
 
-      <div className="header-right">
+      {/* Mobile brand */}
+      <div className="pw-mobile-brand">
+        <div className="pw-mobile-brand-mark" />
+        PantherWatch
+      </div>
+
+      {/* Right: icon actions + profile */}
+      <div className="pw-topbar-right">
         {userInfo && (
-          <div className="user-profile-container">
-            <button type="button" className="user-trigger" onClick={handleProfileClick}>
-              <span className="avatar-wrapper">
+          <div className="pw-user-profile">
+            <button
+              type="button"
+              className="pw-user-trigger"
+              onClick={() => setShowDropdown((p) => !p)}
+              aria-label="User menu"
+            >
+              <div className="pw-user-avatar-wrap">
                 <CachedAvatar
                   src={userInfo.picture}
                   alt={userInfo.name}
                   fallbackText={initials}
                   className="avatar-image"
                 />
-              </span>
-              <span className="user-meta">
-                <span className="user-name">{displayName}</span>
-                <span className="user-email">{userInfo.email}</span>
-              </span>
+              </div>
+              <span className="pw-user-name">{displayName}</span>
               <Icon
                 name="chevronDown"
-                size={16}
-                className={`user-chevron ${showProfileDropdown ? 'open' : ''}`}
+                size={12}
+                className={`pw-user-chevron ${showDropdown ? 'open' : ''}`}
                 aria-hidden
               />
             </button>
 
-            {showProfileDropdown && (
-              <div className="profile-dropdown">
-                <div className="profile-info">
-                  <div className="profile-name">{userInfo.name}</div>
-                  <div className="profile-email">{userInfo.email}</div>
+            {showDropdown && (
+              <div className="pw-profile-dropdown">
+                <div className="pw-profile-info">
+                  <div className="pw-profile-name">{userInfo.name}</div>
+                  <div className="pw-profile-email">{userInfo.email}</div>
                 </div>
-                <div className="profile-actions">
+                <div className="pw-dropdown-actions">
                   <button
                     type="button"
-                    className="dropdown-action dropdown-theme"
-                    onClick={toggleTheme}
-                  >
-                    <Icon name={themeIcon} size={18} className="dropdown-icon" aria-hidden />
-                    {themeLabel}
-                  </button>
-                  <button
-                    type="button"
-                    className="dropdown-action dropdown-settings"
+                    className="pw-dropdown-btn"
                     onClick={handleSettingsClick}
                   >
-                    <Icon name="settings" size={18} className="dropdown-icon" aria-hidden />
+                    <Icon name="settings" size={15} aria-hidden />
                     Settings
                   </button>
-                  <button type="button" className="dropdown-action dropdown-logout" onClick={handleLogout}>
-                    <Icon name="logout" size={18} className="dropdown-icon" aria-hidden />
+                  <button
+                    type="button"
+                    className="pw-dropdown-btn logout"
+                    onClick={handleLogout}
+                  >
+                    <Icon name="logout" size={15} aria-hidden />
                     Sign out
                   </button>
                 </div>
@@ -140,7 +138,7 @@ function Header({ onToggleSidebar }) {
           </div>
         )}
       </div>
-    </header>
+    </div>
   );
 }
 
