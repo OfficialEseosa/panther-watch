@@ -44,8 +44,6 @@ function CourseSearch() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Form submitted with values:', value);
-    
     const params = new URLSearchParams(value);
     navigate(`/course-results?${params.toString()}`);
   }

@@ -13,19 +13,12 @@ export class AuthService {
     
     supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
-        console.log('User signed out')
         this.clearLocalData()
         return
       }
 
-      const previousUserId = this.lastKnownUserId
-
       if (['INITIAL_SESSION', 'SIGNED_IN', 'TOKEN_REFRESHED', 'USER_UPDATED'].includes(event)) {
         this.updateCacheFromSession(session)
-      }
-
-      if (event === 'SIGNED_IN' && session?.user?.id && previousUserId !== session.user.id) {
-        console.log('User signed in successfully')
       }
     })
   }

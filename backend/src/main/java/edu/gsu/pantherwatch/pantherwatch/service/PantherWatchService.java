@@ -86,7 +86,7 @@ public class PantherWatchService {
     }
 
     private String declareTermAndGetCookies(String term) {
-        logger.info("Declaring term {} to obtain session cookies", term);
+        logger.debug("Declaring term {} to obtain session cookies", term);
         return webClient
                 .post()
                 .uri(uriBuilder -> uriBuilder
@@ -98,7 +98,7 @@ public class PantherWatchService {
                     if (response.statusCode().is2xxSuccessful() || response.statusCode().value() == 302) {
                         var setCookieHeaders = response.headers().header(HttpHeaders.SET_COOKIE);
                         if (!setCookieHeaders.isEmpty()) {
-                            logger.info("Term declaration succeeded with {} Set-Cookie header(s): {}",
+                            logger.debug("Term declaration succeeded with {} Set-Cookie header(s): {}",
                                     setCookieHeaders.size(), summarizeCookies(setCookieHeaders));
                             String combinedCookies = setCookieHeaders.stream()
                                     .map(cookie -> cookie.split(";", 2)[0])
@@ -191,7 +191,7 @@ public class PantherWatchService {
     }
 
     private RetrieveCourseInfoResponse executeCourseSearch(RetrieveCourseInfoRequest request, String cookies, boolean isRetry) {
-        logger.info("Performing course search{} with cookies: {}", isRetry ? " (retry)" : "", summarizeCookieHeader(cookies));
+        logger.debug("Performing course search{} with cookies: {}", isRetry ? " (retry)" : "", summarizeCookieHeader(cookies));
         return webClient
                 .get()
                 .uri(uriBuilder -> uriBuilder
@@ -206,15 +206,14 @@ public class PantherWatchService {
                     .build())
                 .header(HttpHeaders.COOKIE, cookies != null ? cookies : "")
                 .exchangeToMono(response -> {
-                    logger.info("Course search response status: {}", response.statusCode().value());
+                    logger.debug("Course search response status: {}", response.statusCode().value());
                     if (response.statusCode().is2xxSuccessful()) {
                         return response.bodyToMono(RetrieveCourseInfoResponse.class)
                                 .map(body -> {
-                                    logger.info("Course search success flag: {}", body.isSuccess());
                                     if (body.getData() == null) {
                                         logger.warn("Course search returned null data");
                                     } else {
-                                        logger.info("Course search returned {} result(s)", body.getData().length);
+                                        logger.debug("Course search returned {} result(s)", body.getData().length);
                                     }
                                     return body;
                                 });
