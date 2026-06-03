@@ -3,13 +3,9 @@ import { authService } from './authService.js'
 
 const REQUEST_TIMEOUT_MS = 30_000
 const FULL_DETAILS_TIMEOUT_MS = 35_000
-const RETRY_ATTEMPTS = 3
-const RETRY_BACKOFF_MS = 400
 // Hard ceiling for serving stale cache during backend outages. Beyond this we
 // throw rather than show day-old tracked classes as if they were current.
 const STALE_FALLBACK_MAX_MS = 24 * 60 * 60 * 1000
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 export class WatchedClassService {
   constructor() {
@@ -54,24 +50,13 @@ export class WatchedClassService {
     }
   }
 
-  async requestJsonWithRetry(url, options = {}, { timeoutMs = REQUEST_TIMEOUT_MS, attempts = RETRY_ATTEMPTS } = {}) {
-    let lastError
-    for (let i = 0; i < attempts; i++) {
-      try {
-        const response = await this.makeAuthenticatedRequest(url, options, timeoutMs)
-        const result = await response.json().catch(() => ({}))
-        if (!response.ok) {
-          throw new Error(result.message || `HTTP ${response.status}`)
-        }
-        return result
-      } catch (err) {
-        lastError = err
-        if (i < attempts - 1) {
-          await sleep(RETRY_BACKOFF_MS * Math.pow(2, i))
-        }
-      }
+  async requestJson(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
+    const response = await this.makeAuthenticatedRequest(url, options, timeoutMs)
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      throw new Error(result.message || `HTTP ${response.status}`)
     }
-    throw lastError
+    return result
   }
 
   async getWatchedClasses() {
@@ -80,7 +65,7 @@ export class WatchedClassService {
     }
 
     try {
-      const result = await this.requestJsonWithRetry(this.baseUrl)
+      const result = await this.requestJson(this.baseUrl)
       const data = Array.isArray(result.data) ? result.data : []
       // Only cache real data — never cache empty arrays from a transient error,
       // and never cache nullish payloads. This avoids the "stale null sticks for an hour" bug.
@@ -171,7 +156,7 @@ export class WatchedClassService {
     }
 
     try {
-      const result = await this.requestJsonWithRetry(`${this.baseUrl}/count`)
+      const result = await this.requestJson(`${this.baseUrl}/count`)
       const count = typeof result.count === 'number' ? result.count : 0
       this.watchedCountCache = count
       this.cacheTimestamp = Date.now()
@@ -187,10 +172,10 @@ export class WatchedClassService {
 
   async getWatchedClassesWithFullDetails() {
     try {
-      const result = await this.requestJsonWithRetry(
+      const result = await this.requestJson(
         `${this.baseUrl}/full-details`,
         {},
-        { timeoutMs: FULL_DETAILS_TIMEOUT_MS, attempts: 2 }
+        FULL_DETAILS_TIMEOUT_MS
       )
       return Array.isArray(result.data) ? result.data : []
     } catch (error) {

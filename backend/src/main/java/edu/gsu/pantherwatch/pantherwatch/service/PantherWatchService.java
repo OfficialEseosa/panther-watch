@@ -27,7 +27,6 @@ public class PantherWatchService {
     private static final String SORT_DIRECTION = "asc";
     private static final int DEFAULT_OFFSET = 1;
     private static final int DEFAULT_MAX = 10;
-    private static final int MAX_SEARCH_ATTEMPTS = 3;
     private final WebClient webClient;
     private static final String SEARCH_PATH = "/term/search";
     private static final String RETRIEVE_INFO_PATH = "/searchResults/searchResults";
@@ -43,46 +42,27 @@ public class PantherWatchService {
         logger.info("Starting course search for subject={} course={} term={}",
                 request.getTxtSubject(), request.getTxtCourseNumber(), request.getTxtTerm());
 
-        RuntimeException lastError = null;
-        for (int attempt = 1; attempt <= MAX_SEARCH_ATTEMPTS; attempt++) {
-            try {
-                String sessionCookies = declareTermAndGetCookies(request.getTxtTerm());
-                RetrieveCourseInfoResponse body = executeCourseSearch(request, sessionCookies, attempt > 1);
-                if (body != null && body.isSuccess() && body.getData() != null) {
-                    return body;
-                }
-                logger.warn("Course search attempt {}/{} returned no data (success={}, dataNull={})",
-                        attempt, MAX_SEARCH_ATTEMPTS,
-                        body != null && body.isSuccess(),
-                        body == null || body.getData() == null);
-            } catch (RuntimeException e) {
-                lastError = e;
-                logger.warn("Course search attempt {}/{} failed: {}", attempt, MAX_SEARCH_ATTEMPTS, e.getMessage());
+        // A single attempt is sufficient: the non-pooling WebClient guarantees a fresh
+        // connection per request, so the F5 always issues the BIGipServer affinity cookie
+        // and the declare+search pair stays pinned to the same GoSolar node. The empty
+        // response below is null-safety for a genuine GoSolar failure, not a retry.
+        try {
+            String sessionCookies = declareTermAndGetCookies(request.getTxtTerm());
+            RetrieveCourseInfoResponse body = executeCourseSearch(request, sessionCookies);
+            if (body != null && body.isSuccess() && body.getData() != null) {
+                return body;
             }
-            if (attempt < MAX_SEARCH_ATTEMPTS) {
-                sleepBackoff(attempt);
-            }
+            logger.warn("Course search returned no data (success={}, dataNull={})",
+                    body != null && body.isSuccess(), body == null || body.getData() == null);
+        } catch (RuntimeException e) {
+            logger.error("Course search failed for subject={} course={} term={}",
+                    request.getTxtSubject(), request.getTxtCourseNumber(), request.getTxtTerm(), e);
         }
 
-        logger.error("Course search exhausted {} attempts for subject={} course={} term={}; returning empty response",
-                MAX_SEARCH_ATTEMPTS, request.getTxtSubject(), request.getTxtCourseNumber(), request.getTxtTerm(),
-                lastError);
         RetrieveCourseInfoResponse empty = new RetrieveCourseInfoResponse();
         empty.setSuccess(false);
         empty.setData(new CourseData[0]);
         return empty;
-    }
-
-    private void sleepBackoff(int attempt) {
-        // Exponential backoff with jitter: 200ms, 400ms, 800ms... +/-25% randomized.
-        long base = 200L * (1L << Math.min(attempt - 1, 5));
-        long jitter = (long) (base * 0.5 * Math.random()) - (long) (base * 0.25);
-        long delay = Math.max(50L, base + jitter);
-        try {
-            Thread.sleep(delay);
-        } catch (InterruptedException ie) {
-            Thread.currentThread().interrupt();
-        }
     }
 
     private String declareTermAndGetCookies(String term) {
@@ -190,8 +170,8 @@ public class PantherWatchService {
         return subjectsArray == null ? Collections.emptyList() : Arrays.asList(subjectsArray);
     }
 
-    private RetrieveCourseInfoResponse executeCourseSearch(RetrieveCourseInfoRequest request, String cookies, boolean isRetry) {
-        logger.debug("Performing course search{} with cookies: {}", isRetry ? " (retry)" : "", summarizeCookieHeader(cookies));
+    private RetrieveCourseInfoResponse executeCourseSearch(RetrieveCourseInfoRequest request, String cookies) {
+        logger.debug("Performing course search with cookies: {}", summarizeCookieHeader(cookies));
         return webClient
                 .get()
                 .uri(uriBuilder -> uriBuilder

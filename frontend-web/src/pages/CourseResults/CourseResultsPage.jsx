@@ -59,35 +59,22 @@ function CourseResultsPage() {
     const params = new URLSearchParams(searchWithPagination);
     const url = `${buildApiUrl('/courses/search')}?${params.toString()}`;
 
-    const attemptFetch = async (attempt) => {
-      try {
-        const res = await fetch(url, {
-          method: 'GET',
-          headers: { Accept: 'application/json' },
-          credentials: 'include'
-        });
-
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
-
-        const json = await res.json();
-        if (json.success) {
-          return json.data || [];
-        }
-        throw new Error('Response marked unsuccessful');
-      } catch (err) {
-        if (attempt < 2) {
-          const backoff = 300 * Math.pow(2, attempt);
-          await new Promise((r) => setTimeout(r, backoff));
-          return attemptFetch(attempt + 1);
-        }
-        throw err;
-      }
-    };
-
     try {
-      const data = await attemptFetch(0);
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        credentials: 'include'
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const json = await res.json();
+      if (!json.success) {
+        throw new Error('Response marked unsuccessful');
+      }
+      const data = json.data || [];
 
       const hasMore = data.length > resultsPerPage;
       const actualResults = hasMore ? data.slice(0, resultsPerPage) : data;
