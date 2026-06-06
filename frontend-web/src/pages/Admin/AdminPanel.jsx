@@ -4,6 +4,7 @@ import UserSearchSection from '../../components/AdminPanel/UserSearch'
 import { EmailComposer } from '../../components/AdminPanel/EmailComposer'
 import { AnnouncementManager } from '../../components/AdminPanel/AnnouncementManager'
 import AdminStats from '../../components/AdminPanel/Stats'
+import { GradeDataManager } from '../../components/AdminPanel/GradeDataManager'
 import { adminService } from '../../config/adminService'
 import './AdminPanel.css'
 
@@ -125,6 +126,13 @@ function AdminPanel() {
           <Icon name="notifications" />
           Announcements
         </button>
+        <button
+          className={`admin-tab ${activeTab === 'grades' ? 'active' : ''}`}
+          onClick={() => setActiveTab('grades')}
+        >
+          <Icon name="analytics" />
+          Grade data
+        </button>
       </div>
 
       <div className="admin-content">
@@ -147,6 +155,12 @@ function AdminPanel() {
         {activeTab === 'announcements' && (
           <section className="admin-section">
             <AnnouncementManager />
+          </section>
+        )}
+
+        {activeTab === 'grades' && (
+          <section className="admin-section">
+            <GradeDataManager />
           </section>
         )}
 

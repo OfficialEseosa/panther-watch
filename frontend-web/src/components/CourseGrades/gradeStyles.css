@@ -1,0 +1,72 @@
+/* Shared grade-distribution styles used by the card GPA chip, the GradeBar, and
+   the ExpandedCourseCard. Tone classes set a --tone-color custom property so any
+   value element can opt in via color: var(--tone-color). */
+
+/* GPA tones (higher is better). */
+.gpa-tone-high { --tone-color: var(--color-success); }
+.gpa-tone-good { --tone-color: var(--color-success); }
+.gpa-tone-mid { --tone-color: var(--color-warning); }
+.gpa-tone-low { --tone-color: var(--color-danger); }
+.gpa-tone-unknown { --tone-color: var(--color-text-muted); }
+
+/* DWF tones (lower is better). */
+.dwf-tone-high { --tone-color: var(--color-success); }
+.dwf-tone-good { --tone-color: var(--color-success); }
+.dwf-tone-mid { --tone-color: var(--color-warning); }
+.dwf-tone-low { --tone-color: var(--color-danger); }
+.dwf-tone-unknown { --tone-color: var(--color-text-muted); }
+
+.cc-gpa-num,
+.grade-chip-value,
+.exp-metric-value,
+.exp-prof-gpa {
+  color: var(--tone-color, var(--color-heading));
+}
+
+/* Stacked A-F bar. */
+.grade-bar-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.grade-bar {
+  display: flex;
+  width: 100%;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--color-border);
+}
+
+.grade-seg {
+  display: block;
+  height: 100%;
+}
+
+.grade-seg-A { background: #1d814c; }
+.grade-seg-B { background: #4f9bd9; }
+.grade-seg-C { background: #e0a52b; }
+.grade-seg-D { background: #d97a2b; }
+.grade-seg-F { background: #b42318; }
+
+.grade-bar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+.grade-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.grade-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 999px;
+  display: inline-block;
+}

@@ -1,16 +1,30 @@
-import { useState } from 'react';
-import Icon from '../Icon';
+import { useState, useMemo } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import './CourseResults.css';
-import { formatTime, getEnrollmentStatus, formatCreditHours, getWaitlistStatus, decodeHtmlEntities } from '../../utils';
-import { renderDaysOfWeek } from '../../utils/scheduleComponents';
 import { useWatchedClasses } from '../../hooks/useWatchedClasses.js';
 import { useTerms } from '../../hooks/useTerms.js';
 import LoadingBar from '../LoadingBar';
+import CourseCard from './CourseCard';
+import ExpandedCourseCard from '../ExpandedCourseCard';
 
 function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = false, onCourseRemoved, watchedCrns = [] }) {
   const [watchLoading, setWatchLoading] = useState({});
+  const [expandedDetails, setExpandedDetails] = useState(null);
   const { getTermName: getTermNameFromContext } = useTerms();
   const { addWatchedClass, removeWatchedClass } = useWatchedClasses();
+
+  // Distinct instructors per course among the current results, so the expanded
+  // card's "By professor" view can show only professors teaching it now.
+  const instructorsByCourse = useMemo(() => {
+    const map = {};
+    for (const c of courses) {
+      const name = c.faculty?.[0]?.displayName;
+      if (!name || name === 'TBA') continue;
+      const key = `${c.subject} ${c.courseNumber}`;
+      (map[key] ||= new Set()).add(name);
+    }
+    return map;
+  }, [courses]);
 
   const handleWatchToggle = async (course) => {
     const crn = course.courseReferenceNumber;
@@ -47,37 +61,6 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
     }
   };
 
-  const renderWatchButtonContent = (isWatchLoading, isTrackedView, isWatching) => {
-    if (isWatchLoading) {
-      return 'Saving...';
-    }
-
-    if (isTrackedView) {
-      return (
-        <>
-          <Icon name="remove" size={18} aria-hidden />
-          Remove
-        </>
-      );
-    }
-
-    if (isWatching) {
-      return (
-        <>
-          <Icon name="watching" size={18} aria-hidden />
-          Watching
-        </>
-      );
-    }
-
-    return (
-      <>
-        <Icon name="watch" size={18} aria-hidden />
-        Watch
-      </>
-    );
-  };
-
   if (error) {
     return (
       <div className="error-message">
@@ -107,143 +90,38 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
           const crn = course.courseReferenceNumber;
           const courseTerm = course.term || selectedTerm;
           const key = `${crn}-${courseTerm}`;
-          const isWatching = watchedCrns.includes(crn);
-          const isWatchLoading = watchLoading[key];
 
           return (
-            <article key={course.courseReferenceNumber} className="course-card">
-              <header className="course-header">
-                <div className="course-title-section">
-                  <h3 className="course-title">
-                    {course.subjectDescription} ({course.subject} {course.courseNumber})
-                  </h3>
-                  <span className="course-crn">CRN {course.courseReferenceNumber}</span>
-                </div>
-                <div className="course-actions">
-                  <button
-                    type="button"
-                    className="calendar-button"
-                    onClick={() => window.location.href = `/schedule-builder?add=${course.courseReferenceNumber}`}
-                    title="Add to schedule"
-                  >
-                    <Icon name="calendar" size={18} aria-hidden />
-                  </button>
-                  <button
-                    type="button"
-                    className={`watch-button ${isTrackedView ? 'state-remove' : isWatching ? 'state-active' : ''}`}
-                    onClick={() => handleWatchToggle(course)}
-                    disabled={isWatchLoading}
-                  >
-                    {renderWatchButtonContent(isWatchLoading, isTrackedView, isWatching)}
-                  </button>
-                </div>
-              </header>
-
-              <div className="course-body">
-                <div className="course-info">
-                  <div className="info-item">
-                    <span className="info-label">Course title</span>
-                    <span className="info-value">{decodeHtmlEntities(course.courseTitle)}</span>
-                  </div>
-                  <div className="info-item">
-                    <span className="info-label">Section</span>
-                    <span className="info-value">{course.sequenceNumber}</span>
-                  </div>
-                  {isTrackedView && course.term && (
-                    <div className="info-item">
-                      <span className="info-label">Term</span>
-                      <span className="info-value">{getTermNameFromContext(course.term)}</span>
-                    </div>
-                  )}
-                  <div className="info-item">
-                    <span className="info-label">Credits</span>
-                    <span className="info-value">{formatCreditHours(course.creditHourLow, course.creditHourHigh)}</span>
-                  </div>
-                </div>
-
-                {course.isPartialData && (
-                  <div className="partial-data-notice">
-                    <span className="partial-data-icon">ⓘ</span>
-                    <span className="partial-data-text">Limited enrollment data</span>
-                  </div>
-                )}
-
-                <div className="enrollment-status">
-                  <div className="enrollment-item">
-                    <span className={`enrollment-number ${getEnrollmentStatus(course.seatsAvailable, course.maximumEnrollment)}`}>
-                      {course.seatsAvailable}
-                    </span>
-                    <span className="enrollment-label">Available</span>
-                  </div>
-                  <div className="enrollment-item">
-                    <span className="enrollment-number">{course.enrollment}</span>
-                    <span className="enrollment-label">Enrolled</span>
-                  </div>
-                  <div className="enrollment-item">
-                    <span className="enrollment-number">{course.maximumEnrollment}</span>
-                    <span className="enrollment-label">Capacity</span>
-                  </div>
-                  {(() => {
-                    const waitAvailable = course.waitAvailable;
-                    const waitCapacity = course.waitCapacity;
-                    const waitCount = course.waitCount;
-                    const waitlistInfo = getWaitlistStatus(waitAvailable, waitCapacity);
-                    if (waitlistInfo.hasWaitlist) {
-                      return (
-                        <>
-                          <div className="enrollment-item waitlist-item">
-                            <span className={`enrollment-number waitlist-number ${waitlistInfo.statusClass}`}>
-                              {waitCount ?? 'N/A'}
-                            </span>
-                            <span className="enrollment-label">Waitlist count</span>
-                          </div>
-                          <div className="enrollment-item waitlist-item">
-                            <span className="enrollment-number waitlist-number">{waitCapacity ?? 'N/A'}</span>
-                            <span className="enrollment-label">Waitlist capacity</span>
-                          </div>
-                        </>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-
-                {course.faculty && course.faculty.length > 0 && (
-                  <div className="faculty-section">
-                    <div className="faculty-title">Instructor</div>
-                    {course.faculty.map((faculty, index) => (
-                      <div key={index} className="faculty-name">
-                        {faculty.displayName}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {course.meetingsFaculty && course.meetingsFaculty.length > 0 && (
-                  <div className="meeting-times">
-                    {course.meetingsFaculty.map((meeting, index) => (
-                      <div key={index} className="meeting-time">
-                        <div className="time-schedule">
-                          <span className="time-range">
-                            {formatTime(meeting.meetingTime.beginTime)} - {formatTime(meeting.meetingTime.endTime)}
-                          </span>
-                          <div className="days-week">
-                            {renderDaysOfWeek(meeting.meetingTime)}
-                          </div>
-                        </div>
-                        <div className="location-info">
-                          <span className="location-building">{meeting.meetingTime.buildingDescription || 'Location TBA'}</span>
-                          {meeting.meetingTime.room && ` - Room ${meeting.meetingTime.room}`}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </article>
+            <CourseCard
+              key={crn}
+              course={course}
+              isTrackedView={isTrackedView}
+              isWatching={watchedCrns.includes(crn)}
+              isWatchLoading={watchLoading[key]}
+              onWatchToggle={handleWatchToggle}
+              onOpenDetails={setExpandedDetails}
+              getTermName={getTermNameFromContext}
+            />
           );
         })}
       </div>
+
+      <AnimatePresence>
+        {expandedDetails && (
+          <ExpandedCourseCard
+            course={expandedDetails.course}
+            grades={expandedDetails.grades}
+            currentInstructors={[
+              ...(instructorsByCourse[`${expandedDetails.course.subject} ${expandedDetails.course.courseNumber}`] || []),
+            ]}
+            isTrackedView={isTrackedView}
+            isWatching={watchedCrns.includes(expandedDetails.course.courseReferenceNumber)}
+            onWatchToggle={handleWatchToggle}
+            getTermName={getTermNameFromContext}
+            onClose={() => setExpandedDetails(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

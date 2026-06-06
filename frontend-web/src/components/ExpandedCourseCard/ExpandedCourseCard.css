@@ -1,0 +1,425 @@
+/* ---- Shared-layout (Framer Motion) morph from the course card ---- */
+
+.exp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 5vh 16px;
+  background: rgba(15, 23, 42, 0.55);
+  overflow-y: auto;
+}
+
+.exp-modal {
+  position: relative;
+  width: min(760px, 100%);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: 0 30px 70px rgba(15, 23, 42, 0.32);
+}
+
+.theme-dark .exp-modal {
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.6);
+}
+
+.exp-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+/* ---- Header ---- */
+
+.exp-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-muted);
+  flex-shrink: 0;
+}
+
+.exp-title {
+  margin: 0;
+  font-size: 1.15rem;
+  color: var(--color-heading);
+}
+
+.exp-subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+}
+
+.exp-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.7rem;
+}
+
+.exp-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 1.6rem;
+  padding: 0 0.7rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: 999px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.exp-tag--crn {
+  background: var(--color-primary-100);
+  border-color: var(--color-primary-300);
+  color: var(--color-primary-600);
+}
+
+.theme-dark .exp-tag--crn {
+  background: rgba(70, 104, 168, 0.28);
+  color: var(--color-heading);
+}
+
+.exp-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.exp-close {
+  border: none;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--color-text);
+  transition: var(--transition-base);
+}
+
+.exp-close:hover {
+  background: var(--color-border);
+}
+
+/* ---- Sidebar + content layout ---- */
+
+.exp-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.exp-sidebar {
+  flex-shrink: 0;
+  width: 13rem;
+  padding: 1rem 0.75rem;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow-y: auto;
+}
+
+.exp-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.15s ease;
+}
+
+.exp-nav-item:hover {
+  color: var(--color-heading);
+}
+
+.exp-nav-item.is-active {
+  color: var(--color-primary-600);
+}
+
+.exp-nav-active {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--color-primary-50);
+  border: 1px solid var(--color-primary-100);
+  border-radius: var(--radius-sm);
+}
+
+.exp-nav-item > :not(.exp-nav-active) {
+  position: relative;
+  z-index: 1;
+}
+
+.exp-nav-label {
+  white-space: nowrap;
+}
+
+.exp-pane {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1.25rem 1.5rem 1.75rem;
+}
+
+.exp-pane-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.exp-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 14rem;
+  padding: 2rem;
+  text-align: center;
+  color: var(--color-text-muted);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.exp-empty-title {
+  margin: 0;
+  font-weight: 700;
+  color: var(--color-heading);
+}
+
+.exp-empty-text {
+  margin: 0;
+  font-size: 0.85rem;
+  max-width: 26rem;
+}
+
+.exp-pdf {
+  width: 100%;
+  height: 70vh;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.exp-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-primary-50);
+  border: 1px solid var(--color-primary-100);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  color: var(--color-text);
+}
+
+.exp-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+}
+
+.exp-block-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.exp-block-headings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.exp-block-title {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--color-heading);
+}
+
+.exp-block-span {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+}
+
+.exp-block-sub {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.exp-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.exp-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0.4rem 0.7rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  min-width: 4.5rem;
+}
+
+.exp-metric-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.exp-metric-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+}
+
+.exp-fine-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.4rem;
+}
+
+.exp-fine-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.35rem 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.exp-fine-grade {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.exp-fine-count {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+/* Per-professor comparison table. */
+.exp-prof-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.exp-prof-row {
+  display: grid;
+  grid-template-columns: 1.5fr 0.5fr 0.6fr 0.95fr 1.25fr;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+}
+
+.exp-prof-head {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.exp-prof-row.is-current {
+  background: var(--color-primary-50);
+  border: 1px solid var(--color-primary-100);
+}
+
+.exp-prof-name {
+  font-weight: 600;
+  color: var(--color-heading);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exp-prof-gpa { font-weight: 700; }
+
+.exp-prof-bar-col { min-width: 0; }
+
+/* On narrow screens the sidebar becomes a horizontal tab strip above the pane. */
+@media (max-width: 640px) {
+  .exp-main {
+    flex-direction: column;
+  }
+  .exp-sidebar {
+    width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 0.4rem;
+    padding: 0.6rem 0.75rem;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .exp-nav-item {
+    width: auto;
+    flex-shrink: 0;
+    padding: 0.5rem 0.7rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .exp-prof-row {
+    grid-template-columns: 1.3fr 0.5fr 0.6fr 0.9fr;
+  }
+  .exp-prof-bar-col {
+    display: none;
+  }
+  .exp-fine-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .exp-header {
+    flex-direction: column;
+  }
+  .exp-nav-label {
+    display: none;
+  }
+}

@@ -1,0 +1,163 @@
+.grade-data-manager {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.gdm-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.gdm-title {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  color: var(--color-primary-600);
+}
+
+.gdm-title h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: var(--color-heading);
+}
+
+.gdm-title p {
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.gdm-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-primary-300);
+  background: var(--color-primary-600);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity var(--transition-base), background var(--transition-base);
+}
+
+.gdm-refresh:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.gdm-refresh:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.gdm-spinner {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  animation: gdm-spin 0.7s linear infinite;
+}
+
+@keyframes gdm-spin {
+  to { transform: rotate(360deg); }
+}
+
+.gdm-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.gdm-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem 1.1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.gdm-stat-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-heading);
+}
+
+.gdm-stat-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.gdm-status-pill {
+  align-self: flex-start;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.gdm-status-pill.is-idle {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+
+.gdm-status-pill.is-running {
+  background: var(--color-primary-100);
+  color: var(--color-primary-600);
+  border: 1px solid var(--color-primary-300);
+}
+
+.gdm-terms {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.gdm-terms-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.gdm-term-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.gdm-term-chip {
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  color: var(--color-heading);
+}
+
+.gdm-muted,
+.gdm-note,
+.gdm-message {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.gdm-note {
+  padding: 0.75rem 1rem;
+  background: var(--color-primary-50);
+  border: 1px solid var(--color-primary-100);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+}

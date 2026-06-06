@@ -5,8 +5,10 @@ import edu.gsu.pantherwatch.pantherwatch.api.SendCustomEmailResponse;
 import edu.gsu.pantherwatch.pantherwatch.api.UserSearchRequest;
 import edu.gsu.pantherwatch.pantherwatch.api.UserSearchResponse;
 import edu.gsu.pantherwatch.pantherwatch.model.User;
+import edu.gsu.pantherwatch.pantherwatch.scheduler.GradeDistributionScraper;
 import edu.gsu.pantherwatch.pantherwatch.service.AdminService;
 import edu.gsu.pantherwatch.pantherwatch.service.EmailService;
+import edu.gsu.pantherwatch.pantherwatch.service.GradeDistributionService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,8 @@ public class AdminController {
     
     private final AdminService adminService;
     private final EmailService emailService;
+    private final GradeDistributionScraper gradeDistributionScraper;
+    private final GradeDistributionService gradeDistributionService;
     
     @PostMapping("/users/search")
     public ResponseEntity<List<UserSearchResponse>> searchUsers(
@@ -136,6 +140,50 @@ public class AdminController {
             
         } catch (Exception e) {
             log.error("Error getting email stats", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping("/grades/refresh")
+    public ResponseEntity<java.util.Map<String, Object>> refreshGradeDistributions(HttpServletRequest request) {
+        try {
+            User currentUser = (User) request.getAttribute("currentUser");
+
+            if (!adminService.isAdmin(currentUser.getEmail())) {
+                log.warn("Non-admin user {} attempted to refresh grade distributions", currentUser.getEmail());
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            boolean started = gradeDistributionScraper.triggerRefresh();
+
+            java.util.Map<String, Object> response = new java.util.HashMap<>();
+            response.put("started", started);
+            response.put("message", started
+                    ? "Grade distribution refresh started in the background"
+                    : "A refresh is already in progress");
+            return ResponseEntity.accepted().body(response);
+
+        } catch (Exception e) {
+            log.error("Error triggering grade distribution refresh", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/grades/status")
+    public ResponseEntity<java.util.Map<String, Object>> gradeDistributionStatus(HttpServletRequest request) {
+        try {
+            User currentUser = (User) request.getAttribute("currentUser");
+
+            if (!adminService.isAdmin(currentUser.getEmail())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            java.util.Map<String, Object> status = new java.util.HashMap<>(gradeDistributionService.getStatus());
+            status.put("running", gradeDistributionScraper.isRunning());
+            return ResponseEntity.ok(status);
+
+        } catch (Exception e) {
+            log.error("Error getting grade distribution status", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

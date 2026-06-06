@@ -28,7 +28,7 @@
 .courses-grid {
   display: grid;
   gap: 24px;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .course-card {
@@ -39,6 +39,53 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  cursor: pointer;
+  /* The lift is driven by Framer Motion (whileHover); only paint props here so
+     they don't fight Framer's inline transform. */
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.course-card:hover {
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
+  border-color: var(--color-primary-300);
+}
+
+.course-card:focus-visible {
+  outline: 2px solid var(--color-primary-600);
+  outline-offset: 2px;
+}
+
+.theme-dark .course-card:hover {
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+/* Compact grade summary at the foot of the card. */
+.cc-grade-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.cc-gpa {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.05;
+  flex-shrink: 0;
+}
+
+.cc-gpa-num {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.cc-gpa-label {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
 }
 
 .course-header {
@@ -337,7 +384,7 @@
   color: var(--color-heading);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .courses-grid {
     grid-template-columns: 1fr;
   }

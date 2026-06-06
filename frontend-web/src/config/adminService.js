@@ -79,6 +79,46 @@ class AdminService {
     }
   }
 
+  async getGradeStatus() {
+    try {
+      const headers = await this.getAuthHeaders()
+      const response = await fetch(`${this.baseUrl}/grades/status`, {
+        method: 'GET',
+        headers,
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Error getting grade status:', error)
+      throw error
+    }
+  }
+
+  async refreshGradeDistributions() {
+    try {
+      const headers = await this.getAuthHeaders()
+      const response = await fetch(`${this.baseUrl}/grades/refresh`, {
+        method: 'POST',
+        headers,
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Error refreshing grade distributions:', error)
+      throw error
+    }
+  }
+
   async sendCustomEmail(targetEmail, subject, message) {
     try {
       const headers = await this.getAuthHeaders()
