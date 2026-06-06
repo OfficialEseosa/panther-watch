@@ -18,11 +18,71 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .results-count {
   font-weight: 600;
   color: var(--color-heading);
+}
+
+.results-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  min-width: 16rem;
+}
+
+.results-filter:focus-within {
+  border-color: var(--color-primary-300);
+}
+
+.results-filter-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.85rem;
+  color: var(--color-text);
+}
+
+.results-filter-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.results-filter-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0;
+}
+
+.results-filter-clear:hover {
+  color: var(--color-text);
+}
+
+.results-empty {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 560px) {
+  .results-filter {
+    min-width: 0;
+    width: 100%;
+  }
 }
 
 .courses-grid {
@@ -397,5 +457,129 @@
   .watch-button {
     width: 100%;
     justify-content: center;
+  }
+}
+
+/* Compact "rectangle" card for phones: keep the essentials glanceable so a full
+   card fits on screen, and lean on the expanded view for the rest. */
+@media (max-width: 600px) {
+  .courses-grid {
+    gap: 14px;
+  }
+
+  /* Header back to a single row (title left, actions right) to save height. */
+  .course-header {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+  }
+
+  .course-title-section {
+    min-width: 0;
+  }
+
+  .course-title {
+    font-size: 0.92rem;
+    line-height: 1.25;
+  }
+
+  .course-crn {
+    margin-top: 4px;
+    padding: 3px 8px;
+    font-size: 0.66rem;
+  }
+
+  .course-actions {
+    flex-shrink: 0;
+    gap: 6px;
+  }
+
+  .calendar-button {
+    width: 32px;
+    height: 32px;
+  }
+
+  .watch-button {
+    width: auto;
+    padding: 7px 10px;
+    font-size: 0.8rem;
+  }
+
+  .course-body {
+    gap: 12px;
+    padding: 14px;
+  }
+
+  /* Title / section / credits as a tight two-column meta block. */
+  .course-info {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 12px;
+  }
+
+  .info-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.04em;
+  }
+
+  .info-value {
+    font-size: 0.84rem;
+  }
+
+  /* Enrollment + waitlist shrink to a tight 3-up grid (waitlist is a core
+     PantherWatch feature, so it stays visible — it just wraps to a second row). */
+  .enrollment-status {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px 10px;
+    padding: 10px 12px;
+  }
+
+  .enrollment-item {
+    gap: 2px;
+  }
+
+  .enrollment-number {
+    font-size: 1.05rem;
+  }
+
+  .enrollment-label {
+    font-size: 0.58rem;
+    letter-spacing: 0.03em;
+  }
+
+  .faculty-title {
+    font-size: 0.6rem;
+  }
+
+  .faculty-name {
+    font-size: 0.86rem;
+  }
+
+  /* Condense each meeting line. */
+  .meeting-time {
+    padding: 10px 12px;
+  }
+
+  .time-range {
+    font-size: 0.85rem;
+  }
+
+  .location-info {
+    font-size: 0.78rem;
+  }
+
+  .day-indicator {
+    min-width: 22px;
+    height: 22px;
+    font-size: 0.68rem;
+  }
+
+  .cc-grade-line {
+    padding-top: 12px;
+    gap: 10px;
+  }
+
+  .cc-gpa-num {
+    font-size: 1.05rem;
   }
 }

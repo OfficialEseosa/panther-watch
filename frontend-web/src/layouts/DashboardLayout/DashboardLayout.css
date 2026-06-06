@@ -2,7 +2,8 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--color-page-background);
+  /* Transparent so the faint statue on body::before shows through the page. */
+  background: transparent;
 }
 
 .dashboard-content {

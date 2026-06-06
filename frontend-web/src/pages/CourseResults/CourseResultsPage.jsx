@@ -14,12 +14,13 @@ function CourseResultsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchParams, setSearchParams] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [hasMorePages, setHasMorePages] = useState(false);
   const { watchedClasses } = useWatchedClasses();
   const { getTermName } = useTerms();
 
-  const resultsPerPage = 10;
+  // A single course number rarely has more than a few dozen sections, so we pull
+  // the whole result set in one request. Filtering and pagination then happen
+  // client-side (in CourseResults) so the filter searches across everything.
+  const MAX_RESULTS = 500;
 
   const watchedCrns = watchedClasses.map((wc) => wc.crn);
 
@@ -31,9 +32,7 @@ function CourseResultsPage() {
       txtTerm: params.get('txtTerm') || '',
       txtCourseNumber: params.get('txtCourseNumber') || ''
     };
-    
-    const page = parseInt(params.get('page')) || 1;
-    setCurrentPage(page);
+
     setSearchParams(searchData);
 
     if (!searchData.txtSubject || !searchData.txtTerm || !searchData.txtCourseNumber || !searchData.txtLevel) {
@@ -41,22 +40,18 @@ function CourseResultsPage() {
       return;
     }
 
-    performSearch(searchData, page);
+    performSearch(searchData);
   }, [location, navigate]);
 
-  const performSearch = async (searchData, page = 1) => {
+  const performSearch = async (searchData) => {
     setLoading(true);
     setError(null);
 
-    const offset = (page - 1) * resultsPerPage;
-
-    const searchWithPagination = {
+    const params = new URLSearchParams({
       ...searchData,
-      pageOffset: offset,
-      pageMaxSize: resultsPerPage + 1
-    };
-
-    const params = new URLSearchParams(searchWithPagination);
+      pageOffset: 0,
+      pageMaxSize: MAX_RESULTS
+    });
     const url = `${buildApiUrl('/courses/search')}?${params.toString()}`;
 
     try {
@@ -74,18 +69,11 @@ function CourseResultsPage() {
       if (!json.success) {
         throw new Error('Response marked unsuccessful');
       }
-      const data = json.data || [];
 
-      const hasMore = data.length > resultsPerPage;
-      const actualResults = hasMore ? data.slice(0, resultsPerPage) : data;
-      
-      setCourses(actualResults);
-      setHasMorePages(hasMore);
-      
+      setCourses(json.data || []);
     } catch (err) {
       console.error('Search failed:', err);
       setCourses([]);
-      setHasMorePages(false);
       setError('Failed to load courses. Please try again.');
     } finally {
       setLoading(false);
@@ -94,26 +82,6 @@ function CourseResultsPage() {
 
   const handleNewSearch = () => {
     navigate('/course-search');
-  };
-
-  const goToPage = (page) => {
-    if (page < 1) return;
-    
-    const params = new URLSearchParams(location.search);
-    params.set('page', page.toString());
-    navigate(`${location.pathname}?${params.toString()}`);
-  };
-
-  const goToPreviousPage = () => {
-    if (currentPage > 1) {
-      goToPage(currentPage - 1);
-    }
-  };
-
-  const goToNextPage = () => {
-    if (hasMorePages) {
-      goToPage(currentPage + 1);
-    }
   };
 
   return (
@@ -140,36 +108,6 @@ function CourseResultsPage() {
         selectedTerm={searchParams?.txtTerm}
         watchedCrns={watchedCrns}
       />
-
-      {/* Pagination Controls */}
-      {!loading && !error && courses.length > 0 && (
-        <div className="pagination-controls">
-          <button 
-            type="button" 
-            className="pagination-btn" 
-            onClick={goToPreviousPage}
-            disabled={currentPage === 1}
-          >
-            <Icon name="chevronDown" size={16} style={{ transform: 'rotate(90deg)' }} />
-            Previous
-          </button>
-          
-          <span className="page-info">
-            Page {currentPage}
-            {courses.length > 0 && ` • ${courses.length} results`}
-          </span>
-          
-          <button 
-            type="button" 
-            className="pagination-btn" 
-            onClick={goToNextPage}
-            disabled={!hasMorePages}
-          >
-            Next
-            <Icon name="chevronDown" size={16} style={{ transform: 'rotate(-90deg)' }} />
-          </button>
-        </div>
-      )}
     </div>
   );
 }

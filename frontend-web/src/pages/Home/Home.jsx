@@ -1,4 +1,5 @@
-﻿import { authService } from '../../config/authService.js'
+﻿import { useNavigate } from 'react-router-dom'
+import { authService } from '../../config/authService.js'
 import { useTheme } from '../../hooks/useTheme.js'
 import Icon from '../../components/Icon'
 import pantherLogo from '../../assets/panther.png'
@@ -6,6 +7,7 @@ import './Home.css'
 
 function Home() {
   const { theme, toggleTheme } = useTheme()
+  const navigate = useNavigate()
 
   const handleLogin = async () => {
     try {
@@ -13,6 +15,10 @@ function Home() {
     } catch (e) {
       console.error('Login failed', e)
     }
+  }
+
+  const handleContinueAsGuest = () => {
+    navigate('/dashboard')
   }
 
   return (
@@ -50,6 +56,9 @@ function Home() {
               </p>
               <div className="hero-actions">
                 <button className="btn btn-primary btn-lg" onClick={handleLogin}>Get Started</button>
+                <button className="btn btn-secondary btn-lg" onClick={handleContinueAsGuest}>
+                  Continue without logging in
+                </button>
               </div>
               <div className="hero-highlights">
                 <div className="highlight">

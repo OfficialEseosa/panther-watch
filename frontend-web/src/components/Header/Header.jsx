@@ -38,6 +38,14 @@ function Header({ onToggleSidebar }) {
     setShowProfileDropdown(false);
   };
 
+  const handleLogin = async () => {
+    try {
+      await authService.signInWithGoogle();
+    } catch (error) {
+      console.error('Login failed:', error);
+    }
+  };
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (!event.target.closest('.user-profile-container')) {
@@ -84,6 +92,23 @@ function Header({ onToggleSidebar }) {
       </div>
 
       <div className="header-right">
+        {!userInfo && (
+          <div className="guest-actions">
+            <button
+              type="button"
+              className="header-theme-toggle"
+              onClick={toggleTheme}
+              aria-label={themeLabel}
+              title={themeLabel}
+            >
+              <Icon name={themeIcon} size={18} aria-hidden />
+            </button>
+            <button type="button" className="header-login-btn" onClick={handleLogin}>
+              <Icon name="logout" size={16} className="login-icon" aria-hidden />
+              Log in
+            </button>
+          </div>
+        )}
         {userInfo && (
           <div className="user-profile-container">
             <button type="button" className="user-trigger" onClick={handleProfileClick}>

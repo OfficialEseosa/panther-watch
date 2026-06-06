@@ -37,6 +37,12 @@ const ICONS = {
       <path d="M21 12H9" />
     </>
   ),
+  lock: (
+    <>
+      <rect x="5" y="11" width="14" height="9" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </>
+  ),
   watch: (
     <>
       <circle cx="12" cy="12" r="7" />

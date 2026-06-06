@@ -49,6 +49,13 @@
   flex-shrink: 0;
 }
 
+.exp-header-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
 .exp-title {
   margin: 0;
   font-size: 1.15rem;
@@ -103,9 +110,9 @@
 }
 
 .exp-close {
-  border: none;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  flex-shrink: 0;
+  background: rgba(180, 35, 24, 0.1);
+  border: 1px solid rgba(180, 35, 24, 0.35);
   border-radius: var(--radius-sm);
   width: 2rem;
   height: 2rem;
@@ -113,12 +120,13 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: var(--color-text);
+  color: var(--color-danger);
   transition: var(--transition-base);
 }
 
 .exp-close:hover {
-  background: var(--color-border);
+  background: rgba(180, 35, 24, 0.18);
+  border-color: var(--color-danger);
 }
 
 /* ---- Sidebar + content layout ---- */
@@ -351,12 +359,16 @@
 
 .exp-prof-row {
   display: grid;
-  grid-template-columns: 1.5fr 0.5fr 0.6fr 0.95fr 1.25fr;
+  grid-template-columns: 1.4fr 0.7fr 0.6fr 0.95fr 1.2fr;
   align-items: center;
   gap: 0.5rem;
   padding: 0.45rem 0.5rem;
   border-radius: var(--radius-sm);
   font-size: 0.82rem;
+}
+
+.exp-prof-head span {
+  white-space: nowrap;
 }
 
 .exp-prof-head {
@@ -384,31 +396,122 @@
 
 .exp-prof-bar-col { min-width: 0; }
 
+/* Mini name search inside the By-professor header. */
+.exp-prof-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+}
+
+.exp-prof-search:focus-within {
+  border-color: var(--color-primary-300);
+}
+
+.exp-prof-search-input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.78rem;
+  color: var(--color-text);
+  width: 9rem;
+  max-width: 40vw;
+}
+
+.exp-prof-search-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.exp-prof-empty {
+  padding: 0.6rem 0.5rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.exp-prof-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+.exp-prof-pager-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.exp-prof-pager-btn:hover:not(:disabled) {
+  background: var(--color-primary-50);
+  border-color: var(--color-primary-300);
+  color: var(--color-primary-600);
+}
+
+.exp-prof-pager-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.exp-prof-pager-info {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  min-width: 3rem;
+  text-align: center;
+}
+
 /* On narrow screens the sidebar becomes a horizontal tab strip above the pane. */
 @media (max-width: 640px) {
   .exp-main {
     flex-direction: column;
   }
+  /* Sidebar becomes a bottom-tab-style strip: equal-width items, icon above a
+     label, spread evenly across the full width. */
   .exp-sidebar {
     width: 100%;
     flex-direction: row;
-    overflow-x: auto;
-    overflow-y: hidden;
-    gap: 0.4rem;
-    padding: 0.6rem 0.75rem;
+    overflow: visible;
+    gap: 0.25rem;
+    padding: 0.5rem 0.5rem;
     border-right: none;
     border-bottom: 1px solid var(--color-border);
   }
   .exp-nav-item {
-    width: auto;
-    flex-shrink: 0;
-    padding: 0.5rem 0.7rem;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.3rem;
+    padding: 0.55rem 0.25rem;
+    text-align: center;
+    font-size: 0.7rem;
+  }
+  .exp-nav-item svg {
+    width: 22px;
+    height: 22px;
+  }
+  .exp-nav-label {
+    display: block;
+    white-space: normal;
+    line-height: 1.15;
   }
 }
 
 @media (max-width: 560px) {
   .exp-prof-row {
-    grid-template-columns: 1.3fr 0.5fr 0.6fr 0.9fr;
+    grid-template-columns: 1.2fr 0.7fr 0.6fr 0.9fr;
   }
   .exp-prof-bar-col {
     display: none;
@@ -418,8 +521,5 @@
   }
   .exp-header {
     flex-direction: column;
-  }
-  .exp-nav-label {
-    display: none;
   }
 }

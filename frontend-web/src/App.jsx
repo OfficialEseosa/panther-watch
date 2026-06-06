@@ -73,34 +73,30 @@ function App() {
               </div>
             ) : (
               <Routes>
+                {/* Guest-accessible: search, results, and the dashboard are open
+                    without login. Auth-only features inside them are greyed out. */}
                 <Route
                   path="/dashboard"
                   element={
-                    isLoggedIn ?
-                      <TermsProvider>
-                        <DashboardLayout onLogout={handleLogout}><Dashboard /></DashboardLayout>
-                      </TermsProvider> :
-                      <Navigate to="/" replace />
+                    <TermsProvider>
+                      <DashboardLayout onLogout={handleLogout}><Dashboard /></DashboardLayout>
+                    </TermsProvider>
                   }
                 />
                 <Route
                   path="/course-search"
                   element={
-                    isLoggedIn ?
-                      <TermsProvider>
-                        <DashboardLayout onLogout={handleLogout}><CourseSearch /></DashboardLayout>
-                      </TermsProvider> :
-                      <Navigate to="/" replace />
+                    <TermsProvider>
+                      <DashboardLayout onLogout={handleLogout}><CourseSearch /></DashboardLayout>
+                    </TermsProvider>
                   }
                 />
                 <Route
                   path="/course-results"
                   element={
-                    isLoggedIn ?
-                      <TermsProvider>
-                        <DashboardLayout onLogout={handleLogout}><CourseResultsPage /></DashboardLayout>
-                      </TermsProvider> :
-                      <Navigate to="/" replace />
+                    <TermsProvider>
+                      <DashboardLayout onLogout={handleLogout}><CourseResultsPage /></DashboardLayout>
+                    </TermsProvider>
                   }
                 />
                 <Route

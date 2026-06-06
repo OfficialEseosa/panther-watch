@@ -1,10 +1,13 @@
 ﻿import { useState, useEffect } from 'react';
 import Icon from '../Icon';
 import { adminService } from '../../config/adminService';
+import { useAuth } from '../../hooks/useAuth.js';
 import './Sidebar.css';
 
 function Sidebar({ isOpen, currentPath, onNavigate, onClose }) {
   const [isAdmin, setIsAdmin] = useState(false);
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const isGuest = !authLoading && !isAuthenticated;
 
   useEffect(() => {
     checkAdminStatus();
@@ -37,7 +40,8 @@ function Sidebar({ isOpen, currentPath, onNavigate, onClose }) {
       id: 'tracked',
       label: 'Tracked Classes',
       path: '/tracked-classes',
-      icon: 'bookmark'
+      icon: 'bookmark',
+      locked: isGuest
     }
   ];
 
@@ -50,13 +54,16 @@ function Sidebar({ isOpen, currentPath, onNavigate, onClose }) {
     });
   }
 
-  const handleNavigate = (path, comingSoon = false) => {
-    if (comingSoon) {
+  const handleNavigate = (item) => {
+    if (item.comingSoon) {
       alert('This feature is coming soon!');
       return;
     }
+    if (item.locked) {
+      return;
+    }
 
-    onNavigate(path);
+    onNavigate(item.path);
     onClose();
   };
 
@@ -71,13 +78,16 @@ function Sidebar({ isOpen, currentPath, onNavigate, onClose }) {
               <li key={item.id} className="nav-item">
                 <button
                   type="button"
-                  className={`nav-link ${currentPath === item.path ? 'active' : ''}`}
-                  onClick={() => handleNavigate(item.path, item.comingSoon)}
+                  className={`nav-link ${currentPath === item.path ? 'active' : ''} ${item.locked ? 'locked' : ''}`}
+                  onClick={() => handleNavigate(item)}
                   data-admin={item.id === 'admin' ? 'true' : undefined}
+                  disabled={item.locked}
+                  title={item.locked ? 'Sign in to track classes' : undefined}
                 >
                   <Icon name={item.icon} size={18} className="nav-icon" aria-hidden />
                   <span className="nav-label">{item.label}</span>
                   {item.comingSoon && <span className="badge">Soon</span>}
+                  {item.locked && <Icon name="lock" size={14} className="nav-lock" aria-hidden />}
                 </button>
               </li>
             ))}

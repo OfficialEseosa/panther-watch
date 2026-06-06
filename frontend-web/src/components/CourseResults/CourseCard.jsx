@@ -19,6 +19,7 @@ function CourseCard({
   isTrackedView,
   isWatching,
   isWatchLoading,
+  isGuest = false,
   onWatchToggle,
   onOpenDetails,
   getTermName,
@@ -80,16 +81,18 @@ function CourseCard({
           <button
             type="button"
             className="calendar-button"
-            onClick={(e) => { stop(e); window.location.href = `/schedule-builder?add=${crn}`; }}
-            title="Add to schedule"
+            onClick={(e) => { stop(e); if (isGuest) return; window.location.href = `/schedule-builder?add=${crn}`; }}
+            disabled={isGuest}
+            title={isGuest ? 'Sign in to add to your schedule' : 'Add to schedule'}
           >
             <Icon name="calendar" size={18} aria-hidden />
           </button>
           <button
             type="button"
             className={`watch-button ${isTrackedView ? 'state-remove' : isWatching ? 'state-active' : ''}`}
-            onClick={(e) => { stop(e); onWatchToggle(course); }}
-            disabled={isWatchLoading}
+            onClick={(e) => { stop(e); if (isGuest) return; onWatchToggle(course); }}
+            disabled={isWatchLoading || isGuest}
+            title={isGuest ? 'Sign in to track classes' : undefined}
           >
             {renderWatchContent()}
           </button>

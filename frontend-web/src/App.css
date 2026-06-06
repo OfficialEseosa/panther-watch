@@ -48,9 +48,29 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+/* A whisper-faint statue behind every page, fixed so it doesn't scroll. The
+   page wrappers below are transparent so it shows through the whitespace while
+   opaque surfaces (cards, headers) sit cleanly on top. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: url('./assets/statue.jpg');
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  opacity: 0.04;
+  pointer-events: none;
+}
+
+.theme-dark body::before {
+  opacity: 0.06;
+}
+
 #root {
   min-height: 100vh;
-  background: var(--color-page-background);
+  background: transparent;
   transition: background-color 0.3s ease;
 }
 

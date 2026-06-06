@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Icon from '../Icon'
 import GradeBar from '../CourseGrades/GradeBar'
@@ -158,7 +158,41 @@ function OverviewSection({ course }) {
   )
 }
 
+const PROF_PAGE_SIZE = 8
+
 function GradeHistorySection({ grades, instructor, currentInstructors }) {
+  const [profQuery, setProfQuery] = useState('')
+  const [profPage, setProfPage] = useState(1)
+
+  const instructorKey = grades?.instructorDistribution?.professor
+
+  // Only show professors who actually come up in the current search (i.e. are
+  // teaching this course now) — not everyone who ever taught it. Falls back to
+  // all professors when no current instructors are known. Sorted highest GPA
+  // first, then narrowed by the mini name search.
+  const shownProfs = useMemo(() => {
+    if (!grades?.hasData) return []
+    const currentKeys = new Set((currentInstructors || []).map(normalizeName).filter(Boolean))
+    const allProfs = grades.professors || []
+    const scoped = currentKeys.size
+      ? allProfs.filter((p) => currentKeys.has(normalizeName(p.professor)))
+      : allProfs
+    const q = profQuery.trim().toLowerCase()
+    const filtered = q
+      ? scoped.filter((p) => (p.professor || '').toLowerCase().includes(q))
+      : scoped
+    return [...filtered].sort((a, b) => (b.gpa ?? -1) - (a.gpa ?? -1))
+  }, [grades, currentInstructors, profQuery])
+
+  const profPageCount = Math.max(1, Math.ceil(shownProfs.length / PROF_PAGE_SIZE))
+  const safeProfPage = Math.min(profPage, profPageCount)
+  const pagedProfs = shownProfs.slice((safeProfPage - 1) * PROF_PAGE_SIZE, safeProfPage * PROF_PAGE_SIZE)
+
+  // Reset to the first page whenever the search narrows or the data changes.
+  useEffect(() => {
+    setProfPage(1)
+  }, [profQuery, grades])
+
   if (!grades?.hasData) {
     return (
       <EmptyState
@@ -169,16 +203,15 @@ function GradeHistorySection({ grades, instructor, currentInstructors }) {
     )
   }
 
-  const instructorKey = grades.instructorDistribution?.professor
-
-  // Only show professors who actually come up in the current search (i.e. are
-  // teaching this course now) — not everyone who ever taught it. Falls back to
-  // all professors when no current instructors are known.
-  const currentKeys = new Set((currentInstructors || []).map(normalizeName).filter(Boolean))
-  const allProfs = grades.professors || []
-  const shownProfs = currentKeys.size
-    ? allProfs.filter((p) => currentKeys.has(normalizeName(p.professor)))
-    : allProfs
+  // The "By professor" section is worth showing whenever more than one professor
+  // is in scope, even if the active search/filter narrows it to one row.
+  const scopedCount = (() => {
+    const currentKeys = new Set((currentInstructors || []).map(normalizeName).filter(Boolean))
+    const allProfs = grades.professors || []
+    return currentKeys.size
+      ? allProfs.filter((p) => currentKeys.has(normalizeName(p.professor))).length
+      : allProfs.length
+  })()
 
   return (
     <>
@@ -202,32 +235,73 @@ function GradeHistorySection({ grades, instructor, currentInstructors }) {
 
       <AggregateBlock aggregate={grades.overall} heading="All instructors" subheading="Course-wide average" />
 
-      {shownProfs.length > 1 && (
+      {scopedCount > 1 && (
         <section className="exp-block">
           <div className="exp-block-head">
             <h3 className="exp-block-title">By professor</h3>
+            <div className="exp-prof-search">
+              <Icon name="search" size={14} aria-hidden />
+              <input
+                type="text"
+                className="exp-prof-search-input"
+                placeholder="Search professor"
+                value={profQuery}
+                onChange={(e) => setProfQuery(e.target.value)}
+                aria-label="Search professors by name"
+              />
+            </div>
           </div>
           <div className="exp-prof-table">
             <div className="exp-prof-row exp-prof-head">
               <span className="exp-prof-name">Professor</span>
-              <span>GPA</span>
+              <span>Avg GPA</span>
               <span>DWF</span>
               <span>Semesters</span>
               <span className="exp-prof-bar-col">Distribution</span>
             </div>
-            {shownProfs.map((p) => (
-              <div
-                key={p.professor || 'unknown'}
-                className={`exp-prof-row ${p.professor && p.professor === instructorKey ? 'is-current' : ''}`}
-              >
-                <span className="exp-prof-name">{p.professor || 'Unknown'}</span>
-                <span className={`exp-prof-gpa gpa-tone-${gpaTone(p.gpa)}`}>{formatGpa(p.gpa)}</span>
-                <span className={`dwf-tone-${dwfTone(p.dwfPercent)}`}>{formatPercent(p.dwfPercent)}</span>
-                <span>{p.termsTaught?.length ?? 0}</span>
-                <span className="exp-prof-bar-col"><GradeBar gradeCounts={p.gradeCounts} height={7} /></span>
-              </div>
-            ))}
+            {shownProfs.length === 0 ? (
+              <div className="exp-prof-empty">No professors match “{profQuery}”.</div>
+            ) : (
+              pagedProfs.map((p) => (
+                <div
+                  key={p.professor || 'unknown'}
+                  className={`exp-prof-row ${p.professor && p.professor === instructorKey ? 'is-current' : ''}`}
+                >
+                  <span className="exp-prof-name">{p.professor || 'Unknown'}</span>
+                  <span className={`exp-prof-gpa gpa-tone-${gpaTone(p.gpa)}`}>{formatGpa(p.gpa)}</span>
+                  <span className={`dwf-tone-${dwfTone(p.dwfPercent)}`}>{formatPercent(p.dwfPercent)}</span>
+                  <span>{p.termsTaught?.length ?? 0}</span>
+                  <span className="exp-prof-bar-col"><GradeBar gradeCounts={p.gradeCounts} height={7} /></span>
+                </div>
+              ))
+            )}
           </div>
+
+          {profPageCount > 1 && (
+            <div className="exp-prof-pager">
+              <button
+                type="button"
+                className="exp-prof-pager-btn"
+                onClick={() => setProfPage((p) => Math.max(1, p - 1))}
+                disabled={safeProfPage === 1}
+                aria-label="Previous professors"
+              >
+                <Icon name="chevronDown" size={14} style={{ transform: 'rotate(90deg)' }} aria-hidden />
+              </button>
+              <span className="exp-prof-pager-info">
+                {safeProfPage} / {profPageCount}
+              </span>
+              <button
+                type="button"
+                className="exp-prof-pager-btn"
+                onClick={() => setProfPage((p) => Math.min(profPageCount, p + 1))}
+                disabled={safeProfPage === profPageCount}
+                aria-label="More professors"
+              >
+                <Icon name="chevronDown" size={14} style={{ transform: 'rotate(-90deg)' }} aria-hidden />
+              </button>
+            </div>
+          )}
         </section>
       )}
     </>
@@ -259,6 +333,7 @@ function ExpandedCourseCard({
   currentInstructors,
   isTrackedView,
   isWatching,
+  isGuest = false,
   onWatchToggle,
   getTermName,
   onClose,
@@ -329,36 +404,41 @@ function ExpandedCourseCard({
           exit={{ opacity: 0, transition: { duration: 0.1 } }}
         >
           <header className="exp-header">
-            <div className="exp-heading">
-              <h2 className="exp-title">
-                {course.subjectDescription} ({course.subject} {course.courseNumber})
-              </h2>
-              <p className="exp-subtitle">{decodeHtmlEntities(course.courseTitle)}</p>
-              <div className="exp-tags">
-                <span className="exp-tag exp-tag--crn">CRN {crn}</span>
-                <span className="exp-tag">Section {course.sequenceNumber}</span>
-                <span className="exp-tag">{formatCreditHours(course.creditHourLow, course.creditHourHigh)} credits</span>
-                {term && <span className="exp-tag">{getTermName?.(term) || term}</span>}
+            <div className="exp-header-left">
+              <button type="button" className="exp-close" onClick={onClose} aria-label="Close">
+                <Icon name="x" size={16} />
+              </button>
+              <div className="exp-heading">
+                <h2 className="exp-title">
+                  {course.subjectDescription} ({course.subject} {course.courseNumber})
+                </h2>
+                <p className="exp-subtitle">{decodeHtmlEntities(course.courseTitle)}</p>
+                <div className="exp-tags">
+                  <span className="exp-tag exp-tag--crn">CRN {crn}</span>
+                  <span className="exp-tag">Section {course.sequenceNumber}</span>
+                  <span className="exp-tag">{formatCreditHours(course.creditHourLow, course.creditHourHigh)} credits</span>
+                  {term && <span className="exp-tag">{getTermName?.(term) || term}</span>}
+                </div>
               </div>
             </div>
             <div className="exp-header-actions">
               <button
                 type="button"
                 className="calendar-button"
-                onClick={() => { window.location.href = `/schedule-builder?add=${crn}`; }}
-                title="Add to schedule"
+                onClick={() => { if (isGuest) return; window.location.href = `/schedule-builder?add=${crn}`; }}
+                disabled={isGuest}
+                title={isGuest ? 'Sign in to add to your schedule' : 'Add to schedule'}
               >
                 <Icon name="calendar" size={18} aria-hidden />
               </button>
               <button
                 type="button"
                 className={`watch-button ${isTrackedView ? 'state-remove' : isWatching ? 'state-active' : ''}`}
-                onClick={() => onWatchToggle?.(course)}
+                onClick={() => { if (isGuest) return; onWatchToggle?.(course) }}
+                disabled={isGuest}
+                title={isGuest ? 'Sign in to track classes' : undefined}
               >
                 {renderWatchContent()}
-              </button>
-              <button type="button" className="exp-close" onClick={onClose} aria-label="Close">
-                <Icon name="x" size={16} />
               </button>
             </div>
           </header>

@@ -3,15 +3,25 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useWatchedClasses } from '../../hooks/useWatchedClasses.js';
 import { useTutorial } from '../../hooks/useTutorial.js';
+import { authService } from '../../config/authService.js';
 import Icon from '../../components/Icon';
 import Tutorial from '../../components/Tutorial';
 import './Dashboard.css';
 
 function Dashboard() {
   const navigate = useNavigate();
-  const { userInfo } = useAuth();
+  const { userInfo, isAuthenticated, loading: authLoading } = useAuth();
   const { watchedCount, loading: watchedLoading } = useWatchedClasses();
   const { showTutorial, setShowTutorial, hasSeenTutorial, markTutorialAsSeen } = useTutorial();
+  const isGuest = !authLoading && !isAuthenticated;
+
+  const handleLogin = async () => {
+    try {
+      await authService.signInWithGoogle();
+    } catch (err) {
+      console.error('Login failed:', err);
+    }
+  };
 
   useEffect(() => {
     if (!hasSeenTutorial && userInfo) {
@@ -77,8 +87,9 @@ function Dashboard() {
       icon: 'bookmark',
       title: 'Tracked classes',
       description: 'Review the sections you are monitoring and adjust alerts anytime.',
-      actionLabel: watchedCount > 0 ? 'Manage tracked list' : 'Start tracking',
-      badge: watchedLoading ? undefined : `${watchedCount} active`,
+      actionLabel: isGuest ? 'Sign in to track' : watchedCount > 0 ? 'Manage tracked list' : 'Start tracking',
+      badge: isGuest || watchedLoading ? undefined : `${watchedCount} active`,
+      locked: isGuest,
       onClick: () => navigate('/tracked-classes')
     },
     {
@@ -86,7 +97,8 @@ function Dashboard() {
       icon: 'calendar',
       title: 'Class schedule',
       description: 'View and manage your weekly class schedule with calendar export.',
-      actionLabel: 'View schedule',
+      actionLabel: isGuest ? 'Sign in to plan' : 'View schedule',
+      locked: isGuest,
       onClick: () => navigate('/schedule-builder')
     }
   ];
@@ -103,31 +115,50 @@ function Dashboard() {
         />
       )}
       
+      {isGuest && (
+        <div className="guest-banner" role="region" aria-label="Guest mode notice">
+          <div className="guest-banner-copy">
+            <Icon name="lock" size={20} aria-hidden />
+            <div>
+              <strong>You're browsing as a guest.</strong>
+              <span> Search and grade history are open — log in to track classes and build a schedule.</span>
+            </div>
+          </div>
+          <button type="button" className="guest-banner-btn" onClick={handleLogin}>
+            Log in
+          </button>
+        </div>
+      )}
+
       <section className="dashboard-header">
         <div className="header-copy">
           <span className="eyebrow">Overview</span>
-          <h1 className="dashboard-title">Welcome back, {greetingName}.</h1>
+          <h1 className="dashboard-title">
+            {isGuest ? 'Welcome, Panther.' : `Welcome back, ${greetingName}.`}
+          </h1>
           <p className="dashboard-subtitle">
             Keep an eye on enrollment and act quickly when seats open across Georgia State courses.
           </p>
         </div>
 
-        <div className="tracked-summary" aria-live="polite">
-          <div className="summary-icon">
-            <Icon name="bookmark" size={26} aria-hidden />
+        {!isGuest && (
+          <div className="tracked-summary" aria-live="polite">
+            <div className="summary-icon">
+              <Icon name="bookmark" size={26} aria-hidden />
+            </div>
+            <div className="summary-content">
+              <span className="summary-label">Tracked classes</span>
+              <span className="summary-value">{watchedLoading ? '…' : watchedCount}</span>
+            </div>
           </div>
-          <div className="summary-content">
-            <span className="summary-label">Tracked classes</span>
-            <span className="summary-value">{watchedLoading ? '…' : watchedCount}</span>
-          </div>
-        </div>
+        )}
       </section>
 
       <section className="dashboard-grid">
         {cards.map((card) => (
-          <article key={card.id} className={`dashboard-card ${card.disabled ? 'disabled' : ''}`} data-card={card.id}>
+          <article key={card.id} className={`dashboard-card ${card.locked ? 'locked' : ''}`} data-card={card.id}>
             <div className="card-icon">
-              <Icon name={card.icon} size={28} aria-hidden />
+              <Icon name={card.locked ? 'lock' : card.icon} size={28} aria-hidden />
             </div>
             <h3 className="card-title">{card.title}</h3>
             <p className="card-description">{card.description}</p>
@@ -138,7 +169,8 @@ function Dashboard() {
                 type="button"
                 className="card-button"
                 onClick={card.onClick}
-                disabled={card.disabled}
+                disabled={card.locked}
+                title={card.locked ? 'Sign in to use this feature' : undefined}
               >
                 {card.actionLabel}
               </button>
