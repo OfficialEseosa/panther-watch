@@ -3,13 +3,11 @@ package edu.gsu.pantherwatch.pantherwatch.service;
 import edu.gsu.pantherwatch.pantherwatch.model.User;
 import edu.gsu.pantherwatch.pantherwatch.repository.UserRepository;
 import edu.gsu.pantherwatch.pantherwatch.repository.WatchedClassRepository;
-import io.jsonwebtoken.Claims;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -19,59 +17,59 @@ public class UserService {
 
     @Autowired
     private UserRepository userRepository;
-    
-    @Autowired
-    private SupabaseAuthService supabaseAuthService;
-    
+
     @Autowired
     private EmailService emailService;
 
     @Autowired
     private WatchedClassRepository watchedClassRepository;
 
-    public User findByAuthUserId(UUID authUserId) {
-        return userRepository.findById(authUserId).orElse(null);
-    }
-
     public User findById(UUID id) {
         return userRepository.findById(id).orElse(null);
     }
     
-    public User createFromSupabaseAuth(UUID authUserId, String email, String token) {
-        try {
-            Claims claims = supabaseAuthService.validateJWT(token);
-
-            @SuppressWarnings("unchecked")
-            Map<String, Object> userMetadata = (Map<String, Object>) claims.get("user_metadata");
-            String name = userMetadata != null ? (String) userMetadata.get("full_name") : null;
-            String picture = userMetadata != null ? (String) userMetadata.get("avatar_url") : null;
-            
-            User user = User.builder()
-                    .id(authUserId)
-                    .email(email)
-                    .name(name)
-                    .picture(picture)
-                    .build();
-            
-            User savedUser = userRepository.save(user);
-
-            try {
-                String firstName = name != null && !name.trim().isEmpty() ? 
-                    name.trim().split("\\s+")[0] :
-                    email.split("@")[0];
-                
-                emailService.sendWelcomeEmail(email, firstName);
-                logger.info("Welcome email sent to new user: {}", email);
-            } catch (Exception e) {
-                logger.error("Failed to send welcome email to {}: {}", email, e.getMessage(), e);
-            }
-            
-            return savedUser;
-            
-        } catch (Exception e) {
-            logger.error("Failed to create user from Supabase auth for user {}: {}", authUserId, e.getMessage(), e);
-            throw new RuntimeException("Failed to create user account");
+    /**
+     * Resolves the PantherWatch user for a Google sign-in. Matches on email so that
+     * users who existed under the old Supabase auth keep their account (and their
+     * existing user_id / related data) — we just backfill the Google subject and
+     * refresh the profile. Brand-new emails get a fresh app-generated UUID and a
+     * welcome email.
+     */
+    @Transactional
+    public User upsertGoogleUser(String googleSub, String email, String name, String picture) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("Google profile is missing an email");
         }
+
+        User existing = userRepository.findByEmail(email).orElse(null);
+        if (existing != null) {
+            existing.setGoogleSub(googleSub);
+            if (name != null) existing.setName(name);
+            if (picture != null) existing.setPicture(picture);
+            return userRepository.save(existing);
+        }
+
+        User user = User.builder()
+                .id(UUID.randomUUID())
+                .email(email)
+                .name(name)
+                .picture(picture)
+                .googleSub(googleSub)
+                .build();
+
+        User savedUser = userRepository.save(user);
+
+        try {
+            String firstName = name != null && !name.trim().isEmpty()
+                    ? name.trim().split("\\s+")[0]
+                    : email.split("@")[0];
+            emailService.sendWelcomeEmail(email, firstName);
+            logger.info("Welcome email sent to new user: {}", email);
+        } catch (Exception e) {
+            logger.error("Failed to send welcome email to {}: {}", email, e.getMessage(), e);
+        }
+
+        return savedUser;
     }
 
     @Transactional
@@ -81,7 +79,6 @@ public class UserService {
         }
 
         String email = user.getEmail();
-        UUID authUserId = user.getId();
         String name = user.getName();
         String firstName = null;
         if (name != null && !name.trim().isEmpty()) {
@@ -98,22 +95,6 @@ public class UserService {
         } catch (Exception e) {
             logger.error("Failed to delete user account from database for {}: {}", user.getEmail(), e.getMessage(), e);
             throw new RuntimeException("Failed to delete user account");
-        }
-
-        // Delete user from Supabase Auth system
-        try {
-            if (authUserId != null) {
-                boolean deleted = supabaseAuthService.deleteUserFromAuth(authUserId);
-                if (deleted) {
-                    logger.info("Successfully deleted user {} from Supabase auth", email);
-                } else {
-                    logger.warn("Failed to delete user {} from Supabase auth (service key might not be configured)", email);
-                }
-            } else {
-                logger.warn("No auth user ID found for user {}, skipping Supabase auth deletion", email);
-            }
-        } catch (Exception e) {
-            logger.error("Error deleting user {} from Supabase auth: {}", email, e.getMessage(), e);
         }
 
         try {

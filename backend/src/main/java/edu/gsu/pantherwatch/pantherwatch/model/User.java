@@ -23,9 +23,14 @@ public class User {
     private String email;
 
     private String name;
-    
+
     private String picture;
-    
+
+    // Google's stable subject identifier ("sub"). Nullable: existing rows were keyed
+    // by their old Supabase UUID and get this backfilled on first Google sign-in.
+    @Column(name = "google_sub")
+    private String googleSub;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
     

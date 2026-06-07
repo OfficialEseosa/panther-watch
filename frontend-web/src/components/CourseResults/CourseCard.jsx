@@ -6,6 +6,7 @@ import { renderDaysOfWeek } from '../../utils/scheduleComponents';
 import { useCourseGrades } from '../../hooks/useCourseGrades.js';
 import { useProfessorRatings } from '../../hooks/useProfessorRatings.js';
 import { gpaTone, formatGpa } from '../CourseGrades/gradeUtils';
+import { isExpiringSoon, formatExpiry } from '../../utils/trackedClassExpiry.js';
 import rmpLogo from '../../assets/rmp.svg';
 import '../CourseGrades/gradeStyles.css';
 
@@ -28,6 +29,7 @@ function CourseCard({
 }) {
   const crn = course.courseReferenceNumber;
   const instructor = course.faculty?.[0]?.displayName || 'TBA';
+  const expiringSoon = isTrackedView && isExpiringSoon(course.term);
 
   const { grades } = useCourseGrades({
     subject: course.subject,
@@ -106,6 +108,14 @@ function CourseCard({
       </header>
 
       <div className="course-body">
+        {expiringSoon && (
+          <div className="expiry-notice" title={`Tracking ends ${formatExpiry(course.term)}`}>
+            <Icon name="time" size={14} aria-hidden />
+            <span className="expiry-notice-text">
+              We&rsquo;ll stop tracking this on {formatExpiry(course.term)}
+            </span>
+          </div>
+        )}
         <div className="course-info">
           <div className="info-item">
             <span className="info-label">Course title</span>

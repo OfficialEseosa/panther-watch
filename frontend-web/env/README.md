@@ -1,24 +1,16 @@
-﻿# Environment Configuration
+# Environment Configuration
 
-This folder contains all environment configuration files for the PantherWatch frontend.
+The PantherWatch frontend currently requires **no environment variables**.
 
-## Files:
+- Authentication is handled entirely by the backend's Google OAuth flow (no client
+  secrets or keys live in the frontend).
+- The API base URL is selected in code — see `src/config/apiConfig.js`
+  (localhost → `http://localhost:8080/api`, otherwise `https://api.pantherwatch.app/api`).
 
-- `.env.example` — Template showing required environment variables
-- `.env.development` — Development environment (git-ignored)
-- `.env.production` — Production environment (git-ignored)
+## Files
 
-## Setup:
+- `.env.example` — template for any future client-side variables (tracked in git)
+- `.env.development`, `.env.production`, `.env.local` — local overrides (git-ignored)
 
-1. Copy `.env.example` to `.env.development`
-2. Fill in your actual values:
-   ```bash
-   VITE_SUPABASE_URL=your-supabase-url
-   VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
-   ```
-
-## Notes:
-
-- Only the two Supabase variables are required by the frontend.
-- API base URL is selected in code (`src/config/apiConfig.js`).
-- `.env.example` is tracked; other `.env*` files are ignored.
+If you introduce a client-side variable later, prefix it with `VITE_` so Vite exposes it,
+document it in `.env.example`, and read it via `import.meta.env.VITE_*`.

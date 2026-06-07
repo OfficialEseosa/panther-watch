@@ -1,136 +1,131 @@
-import { supabase } from './supabase.js'
+import { API_BASE_URL } from './apiConfig.js'
+
+// PantherWatch-owned auth. Google sign-in runs through our backend
+// (GET /api/auth/google/login → Google → /api/auth/google/callback), which redirects
+// back to /auth/callback#token=<jwt>. We store that JWT and send it as a Bearer header.
+// This replaces the old @supabase/supabase-js client; the public method names are kept
+// so AuthContext, App.jsx, and watchedClassService don't need to change.
+
+const TOKEN_KEY = 'pw_token'
+
+function decodeJwt(token) {
+  try {
+    const payload = token.split('.')[1]
+    const json = decodeURIComponent(
+      atob(payload.replace(/-/g, '+').replace(/_/g, '/'))
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    )
+    return JSON.parse(json)
+  } catch {
+    return null
+  }
+}
 
 export class AuthService {
   constructor() {
+    this.listeners = new Set()
     this.userInfoCache = null
-    this.userCache = null
-    this.sessionCache = null
-    this.cacheTimestamp = null
-    this.CACHE_DURATION = 60 * 60 * 1000
-    this.lastKnownUserId = null
 
+    // Runs once on full page load — captures the token from the OAuth redirect.
     this.handleOAuthCallback()
-    
-    supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT') {
-        this.clearLocalData()
-        return
-      }
-
-      if (['INITIAL_SESSION', 'SIGNED_IN', 'TOKEN_REFRESHED', 'USER_UPDATED'].includes(event)) {
-        this.updateCacheFromSession(session)
-      }
-    })
   }
 
-  updateCacheFromSession(session) {
-    if (!session) return
+  getToken() {
+    const token = localStorage.getItem(TOKEN_KEY)
+    if (!token) return null
 
-    this.sessionCache = session
-    this.userCache = session.user || null
-    this.userInfoCache = this.buildUserInfo(session.user)
-    this.cacheTimestamp = Date.now()
-    this.lastKnownUserId = session.user?.id || null
+    const claims = decodeJwt(token)
+    if (!claims || (claims.exp && claims.exp * 1000 <= Date.now())) {
+      localStorage.removeItem(TOKEN_KEY)
+      return null
+    }
+    return token
   }
 
-  async handleOAuthCallback() {
-    // Check if we're in an OAuth callback
-    if (window.location.hash.includes('access_token') || window.location.search.includes('code=')) {
-      try {
-        const { error } = await supabase.auth.getSession()
-        if (error) {
-          console.error('OAuth callback error:', error.message)
-        }
-      } catch (error) {
-        console.error('OAuth callback processing error:', error.message)
-      }
+  setToken(token) {
+    localStorage.setItem(TOKEN_KEY, token)
+    this.userInfoCache = null
+  }
+
+  signInWithGoogle() {
+    // Full-page redirect to the backend, which sends the browser on to Google.
+    window.location.href = `${API_BASE_URL}/auth/google/login`
+  }
+
+  handleOAuthCallback() {
+    if (typeof window === 'undefined' || window.location.pathname !== '/auth/callback') {
+      return
+    }
+    const match = (window.location.hash || '').match(/token=([^&]+)/)
+    if (match) {
+      this.setToken(decodeURIComponent(match[1]))
+      // Strip the token from the URL so it isn't left in history.
+      window.history.replaceState(null, '', '/auth/callback')
+      this.emit('SIGNED_IN')
     }
   }
 
-  async signInWithGoogle() {
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          }
-        }
-      })
+  async getAccessToken() {
+    return this.getToken()
+  }
 
-      if (error) throw error
-      return data
-    } catch (error) {
-      console.error('Google sign in error:', error)
-      throw error
+  async getSession() {
+    const token = this.getToken()
+    return token ? { access_token: token } : null
+  }
+
+  async getCurrentUser() {
+    const token = this.getToken()
+    return token ? decodeJwt(token) : null
+  }
+
+  async getUserInfo() {
+    if (this.userInfoCache) return this.userInfoCache
+
+    const claims = await this.getCurrentUser()
+    if (!claims) return null
+
+    this.userInfoCache = this.buildUserInfo(claims)
+    return this.userInfoCache
+  }
+
+  buildUserInfo(claims) {
+    if (!claims) return null
+
+    let picture = claims.picture
+    if (picture && picture.includes('googleusercontent.com')) {
+      picture = picture.replace(/[?&]s=\d+/, '').replace(/=s\d+(-c)?/, '=s96-c')
     }
+
+    const fullName = claims.name
+    const firstName = fullName?.split(' ')[0] || claims.email?.split('@')[0] || 'User'
+
+    return {
+      provider: 'Google',
+      name: fullName || claims.email,
+      email: claims.email,
+      picture,
+      firstName
+    }
+  }
+
+  isAuthenticated() {
+    return this.getSession().then((session) => !!session)
+  }
+
+  async logout() {
+    this.clearLocalData()
+    this.emit('SIGNED_OUT')
   }
 
   clearCache() {
     this.userInfoCache = null
-    this.userCache = null
-    this.sessionCache = null
-    this.cacheTimestamp = null
-    this.lastKnownUserId = null
-  }
-
-  isCacheValid() {
-    return this.cacheTimestamp && (Date.now() - this.cacheTimestamp) < this.CACHE_DURATION
-  }
-
-  async getCurrentUser() {
-    try {
-      if (this.userCache && this.isCacheValid()) {
-        return this.userCache
-      }
-
-      const { data: { user }, error } = await supabase.auth.getUser()
-      if (error) throw error
-
-      this.userCache = user
-      this.cacheTimestamp = Date.now()
-      this.lastKnownUserId = user?.id || null
-      this.userInfoCache = this.buildUserInfo(user)
-      
-      return user
-    } catch (error) {
-      console.error('Get user error:', error)
-      return null
-    }
-  }
-
-  async getSession() {
-    try {
-      if (this.sessionCache && this.isCacheValid()) {
-        return this.sessionCache
-      }
-
-      const { data: { session }, error } = await supabase.auth.getSession()
-      if (error) throw error
-
-      this.updateCacheFromSession(session)
-      
-      return session
-    } catch (error) {
-      console.error('Get session error:', error.message)
-      return null
-    }
-  }
-
-  async logout() {
-    try {
-      const { error } = await supabase.auth.signOut()
-      if (error) throw error
-    } catch (error) {
-      console.error('Logout error:', error)
-    } finally {
-      this.clearLocalData()
-    }
   }
 
   clearLocalData() {
+    localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem('authProvider')
     localStorage.removeItem('userData')
     localStorage.removeItem('googleUser')
@@ -142,60 +137,32 @@ export class AuthService {
         keysToRemove.push(key)
       }
     }
-    keysToRemove.forEach(key => localStorage.removeItem(key))
-    
+    keysToRemove.forEach((key) => localStorage.removeItem(key))
+
     sessionStorage.clear()
     this.clearCache()
   }
 
-  isAuthenticated() {
-    return this.getSession().then(session => !!session)
-  }
-
-  async getUserInfo() {
-    if (this.userInfoCache && this.isCacheValid()) {
-      return this.userInfoCache
-    }
-
-    const user = await this.getCurrentUser()
-    if (!user) return null
-
-    const userInfo = this.buildUserInfo(user)
-
-    this.userInfoCache = userInfo
-    this.cacheTimestamp = Date.now()
-    
-    return userInfo
-  }
-
-  buildUserInfo(user) {
-    if (!user) return null
-
-    let picture = user.user_metadata?.avatar_url || user.user_metadata?.picture
-
-    if (picture && picture.includes('googleusercontent.com')) {
-      picture = picture.replace(/[?&]s=\d+/, '').replace(/=s\d+(-c)?/, '=s96-c')
-    }
-
-    const fullName = user.user_metadata?.full_name || user.user_metadata?.name
-    const firstName = fullName?.split(' ')[0] || user.email?.split('@')[0] || 'User'
-
-    return {
-      provider: user.app_metadata?.provider || 'Google',
-      name: fullName || user.email,
-      email: user.email,
-      picture: picture,
-      firstName
-    }
-  }
-
-  async getAccessToken() {
-    const session = await this.getSession()
-    return session?.access_token || null
-  }
-
+  // Supabase-compatible shape so existing callers ({ data: { subscription } }) work.
   onAuthStateChange(callback) {
-    return supabase.auth.onAuthStateChange(callback)
+    this.listeners.add(callback)
+    return {
+      data: {
+        subscription: {
+          unsubscribe: () => this.listeners.delete(callback)
+        }
+      }
+    }
+  }
+
+  emit(event) {
+    this.listeners.forEach((cb) => {
+      try {
+        cb(event, null)
+      } catch (e) {
+        console.error('Auth state listener error:', e)
+      }
+    })
   }
 }
 

@@ -6,7 +6,7 @@ This directory contains the React/Vite web frontend for PantherWatch. It provide
 - React 19
 - Vite 7
 - ESLint (basic config in `eslint.config.js`)
-- Supabase-based authentication
+- Google OAuth authentication (handled by the PantherWatch backend; no client secrets in the frontend)
 
 ### Dev Scripts
 - `npm run dev`  Start local dev server
@@ -22,12 +22,10 @@ npm run dev
 Then open the displayed local URL (default: http://localhost:5173).
 
 ### Environment Configuration
-- `.env.development` — set:
-  - `VITE_SUPABASE_URL`
-  - `VITE_SUPABASE_ANON_KEY`
-- Production hosting should also set the same two variables.
-
-API base selection is handled in `src/config/apiConfig.js` (localhost → `http://localhost:8080/api`, otherwise `https://api.pantherwatch.app/api`).
+The frontend requires **no environment variables**. Authentication runs entirely through
+the backend's Google OAuth flow, and the API base URL is selected in code by
+`src/config/apiConfig.js` (localhost → `http://localhost:8080/api`, otherwise
+`https://api.pantherwatch.app/api`).
 
 ### Deployment
 Production builds automatically use the live API endpoint. Deploy the `dist/` folder to any static hosting service.

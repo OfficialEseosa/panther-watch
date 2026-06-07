@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import Home from './pages/Home'
 import Dashboard from './pages/Dashboard'
 import CourseSearch from './pages/CourseSearch'
@@ -8,6 +8,7 @@ import TrackedClasses from './pages/TrackedClasses'
 import AdminPanel from './pages/Admin'
 import Settings from './pages/Settings'
 import ScheduleBuilder from './pages/ScheduleBuilder'
+import { PrivacyPolicy, TermsOfService } from './pages/Legal'
 import DashboardLayout from './layouts/DashboardLayout'
 import { TermsProvider } from './contexts/TermsContext.jsx'
 import { AuthProvider } from './contexts/AuthContext.jsx'
@@ -17,6 +18,20 @@ import { TutorialProvider } from './contexts/TutorialContext.jsx'
 import { authService } from './config/authService.js'
 import './App.css'
 
+// Landing spot for the Google OAuth redirect. authService captures the token from the
+// URL fragment on page load (see handleOAuthCallback); here we just send the user on.
+function AuthCallback() {
+  const navigate = useNavigate()
+  useEffect(() => {
+    navigate('/dashboard', { replace: true })
+  }, [navigate])
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      Signing you in…
+    </div>
+  )
+}
+
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -24,10 +39,6 @@ function App() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        if (window.location.hash.includes('access_token') || window.location.search.includes('code=')) {
-          await new Promise(resolve => setTimeout(resolve, 1000))
-        }
-
         const session = await authService.getSession()
         setIsLoggedIn(!!session)
       } catch (error) {
@@ -73,6 +84,11 @@ function App() {
               </div>
             ) : (
               <Routes>
+                {/* OAuth landing route — token is captured on load, then we redirect. */}
+                <Route path="/auth/callback" element={<AuthCallback />} />
+                {/* Public legal pages (also used as the Google OAuth consent URLs). */}
+                <Route path="/privacy" element={<PrivacyPolicy />} />
+                <Route path="/terms" element={<TermsOfService />} />
                 {/* Guest-accessible: search, results, and the dashboard are open
                     without login. Auth-only features inside them are greyed out. */}
                 <Route

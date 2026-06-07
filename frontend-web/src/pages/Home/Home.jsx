@@ -1,4 +1,4 @@
-﻿import { useNavigate } from 'react-router-dom'
+﻿import { useNavigate, Link } from 'react-router-dom'
 import { authService } from '../../config/authService.js'
 import { useTheme } from '../../hooks/useTheme.js'
 import Icon from '../../components/Icon'
@@ -100,7 +100,12 @@ function Home() {
       </main>
 
       <footer className="home-footer container">
-        <p> {new Date().getFullYear()} PantherWatch. Not affiliated with Georgia State University.</p>
+        <p>© {new Date().getFullYear()} PantherWatch. Not affiliated with Georgia State University.</p>
+        <p className="home-footer-links">
+          <Link to="/privacy">Privacy Policy</Link>
+          <span aria-hidden> · </span>
+          <Link to="/terms">Terms of Service</Link>
+        </p>
       </footer>
     </div>
   )

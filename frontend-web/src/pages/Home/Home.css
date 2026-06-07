@@ -418,6 +418,21 @@
   color: var(--color-text-muted);
 }
 
+.home-footer-links {
+  margin-top: 0.5rem !important;
+  font-size: 0.875rem;
+}
+
+.home-footer-links a {
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.home-footer-links a:hover {
+  color: var(--color-primary-500);
+  text-decoration: underline;
+}
+
 .home-footer::before {
   content: '';
   position: absolute;
