@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Icon from '../../components/Icon'
 import UserSearchSection from '../../components/AdminPanel/UserSearch'
 import { EmailComposer } from '../../components/AdminPanel/EmailComposer'
@@ -9,6 +10,7 @@ import { adminService } from '../../config/adminService'
 import './AdminPanel.css'
 
 function AdminPanel() {
+  const navigate = useNavigate()
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('stats')
@@ -102,6 +104,15 @@ function AdminPanel() {
             <p>Manage users, insights, announcements, and outbound messaging.</p>
           </div>
         </div>
+        {/* TEMP: preview the "What's New" showcase. Remove before release. */}
+        <button
+          type="button"
+          className="admin-tab"
+          onClick={() => navigate('/dashboard?whatsnew=1')}
+        >
+          <Icon name="analytics" />
+          Preview What’s New
+        </button>
       </header>
 
       <div className="admin-tabs">

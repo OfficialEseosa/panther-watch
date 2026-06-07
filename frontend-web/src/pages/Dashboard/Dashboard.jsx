@@ -1,19 +1,45 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useWatchedClasses } from '../../hooks/useWatchedClasses.js';
 import { useTutorial } from '../../hooks/useTutorial.js';
 import { authService } from '../../config/authService.js';
 import Icon from '../../components/Icon';
 import Tutorial from '../../components/Tutorial';
+import WhatsNewShowcase from '../../components/WhatsNew';
 import './Dashboard.css';
+
+const WHATS_NEW_KEY = 'pantherwatch_whatsnew_v1_seen';
 
 function Dashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { userInfo, isAuthenticated, loading: authLoading } = useAuth();
   const { watchedCount, loading: watchedLoading } = useWatchedClasses();
   const { showTutorial, setShowTutorial, hasSeenTutorial, markTutorialAsSeen } = useTutorial();
   const isGuest = !authLoading && !isAuthenticated;
+  const [showWhatsNew, setShowWhatsNew] = useState(false);
+
+  // Show the "what's new" showcase once for signed-in users, or any time the
+  // admin trigger sends them here with ?whatsnew=1.
+  useEffect(() => {
+    const forced = new URLSearchParams(location.search).get('whatsnew') === '1';
+    if (forced) {
+      setShowWhatsNew(true);
+      return;
+    }
+    if (!isGuest && userInfo && localStorage.getItem(WHATS_NEW_KEY) !== 'true') {
+      setShowWhatsNew(true);
+    }
+  }, [isGuest, userInfo, location.search]);
+
+  const closeWhatsNew = () => {
+    localStorage.setItem(WHATS_NEW_KEY, 'true');
+    setShowWhatsNew(false);
+    if (location.search.includes('whatsnew')) {
+      navigate('/dashboard', { replace: true });
+    }
+  };
 
   const handleLogin = async () => {
     try {
@@ -114,6 +140,8 @@ function Dashboard() {
           onSkip={handleTutorialSkip}
         />
       )}
+
+      {showWhatsNew && <WhatsNewShowcase onClose={closeWhatsNew} />}
       
       {isGuest && (
         <div className="guest-banner" role="region" aria-label="Guest mode notice">

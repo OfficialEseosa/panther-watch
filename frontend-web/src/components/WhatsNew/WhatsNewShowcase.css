@@ -1,0 +1,121 @@
+.wn-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5rem;
+  padding: 24px;
+  background: rgba(10, 16, 32, 0.78);
+  backdrop-filter: blur(8px);
+}
+
+/* Story layout: floating text above the 3D stage. */
+.wn-story {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5rem;
+  width: 100%;
+}
+
+/* Full-screen finale. */
+.wn-welcome {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+}
+
+.wn-welcome-text {
+  margin: 0;
+  font-size: clamp(2.2rem, 7vw, 4.5rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: #fff;
+}
+
+/* Floating text — no box, just type on the screen. */
+.wn-text {
+  text-align: center;
+  min-height: 5.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.wn-headline {
+  margin: 0;
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-weight: 800;
+  line-height: 1.1;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+.wn-subline {
+  margin: 0.6rem 0 0;
+  font-size: clamp(0.9rem, 2vw, 1.05rem);
+  color: rgba(226, 236, 248, 0.75);
+}
+
+/* 3D stage: perspective on the container, transforms on the layers within. */
+.wn-perspective {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  perspective: 1500px;
+}
+
+.wn-3d {
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.wn-rotor {
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* The real course card, floated and sized for the showcase. */
+.wn-card-floating {
+  width: min(440px, 92vw);
+  cursor: default;
+  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.55);
+}
+
+.wn-card-floating:hover {
+  /* Override the interactive card hover lift inside the showcase. */
+  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.55);
+  border-color: var(--color-border);
+}
+
+.wn-expanded-floating {
+  width: min(620px, 94vw);
+  max-height: 78vh;
+  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.6);
+}
+
+.wn-skip {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.5rem;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wn-skip:hover { color: #fff; }
+
+@media (max-width: 600px) {
+  .wn-overlay { gap: 1.5rem; }
+}
