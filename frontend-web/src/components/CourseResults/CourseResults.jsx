@@ -213,6 +213,7 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
             currentInstructors={[
               ...(instructorsByCourse[`${expandedDetails.course.subject} ${expandedDetails.course.courseNumber}`] || []),
             ]}
+            selectedTerm={selectedTerm}
             isTrackedView={isTrackedView}
             isWatching={watchedCrns.includes(expandedDetails.course.courseReferenceNumber)}
             isGuest={isGuest}

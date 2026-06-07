@@ -14,7 +14,7 @@
 
 .exp-modal {
   position: relative;
-  width: min(760px, 100%);
+  width: min(1040px, 96vw);
   max-height: 90vh;
   display: flex;
   flex-direction: column;
@@ -442,6 +442,27 @@
 
 .rmp-cta {
   white-space: nowrap;
+}
+
+.exp-syllabus {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.exp-pdf-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  align-self: flex-start;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-primary-600);
+  text-decoration: none;
+}
+
+.exp-pdf-link:hover {
+  text-decoration: underline;
 }
 
 .exp-pdf {

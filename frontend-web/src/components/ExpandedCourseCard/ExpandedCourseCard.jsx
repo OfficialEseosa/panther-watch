@@ -19,6 +19,7 @@ import {
   decodeHtmlEntities,
 } from '../../utils'
 import { renderDaysOfWeek } from '../../utils/scheduleComponents'
+import { useSyllabus } from '../../hooks/useSyllabus.js'
 import rmpLogo from '../../assets/rmp.svg'
 import './ExpandedCourseCard.css'
 
@@ -408,15 +409,25 @@ function RatingsSection({ rating, instructor }) {
   )
 }
 
-function SyllabusSection({ url }) {
-  if (url) {
-    return <iframe className="exp-pdf" src={url} title="Course syllabus" />
+function SyllabusSection({ syllabus, loading }) {
+  if (loading) {
+    return <EmptyState icon="bookmark" title="Looking for the syllabus…" />
+  }
+  if (syllabus?.available && syllabus.url) {
+    return (
+      <div className="exp-syllabus">
+        <a className="exp-pdf-link" href={syllabus.url} target="_blank" rel="noopener noreferrer">
+          <Icon name="external" size={14} aria-hidden /> Open PDF in a new tab
+        </a>
+        <iframe className="exp-pdf" src={syllabus.url} title="Course syllabus" />
+      </div>
+    )
   }
   return (
     <EmptyState
       icon="bookmark"
-      title="Syllabus not available yet"
-      text="When a syllabus is published for this section, it'll appear here as an embedded PDF."
+      title="No syllabus published"
+      text="GSU doesn't have a syllabus on file for this section yet. Check back closer to the term."
     />
   )
 }
@@ -432,6 +443,7 @@ function ExpandedCourseCard({
   grades,
   rating,
   currentInstructors,
+  selectedTerm,
   isTrackedView,
   isWatching,
   isGuest = false,
@@ -440,6 +452,11 @@ function ExpandedCourseCard({
   onClose,
 }) {
   const [tab, setTab] = useState('overview')
+  const term = course?.term || selectedTerm
+  const { syllabus, loading: syllabusLoading } = useSyllabus({
+    term,
+    crn: course?.courseReferenceNumber,
+  })
 
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -455,7 +472,6 @@ function ExpandedCourseCard({
 
   const crn = course.courseReferenceNumber
   const instructor = course.faculty?.[0]?.displayName || null
-  const term = course.term
 
   const renderWatchContent = () => {
     if (isTrackedView) return (<><Icon name="remove" size={16} aria-hidden /> Remove</>)
@@ -468,7 +484,7 @@ function ExpandedCourseCard({
       case 'overview': return <OverviewSection course={course} />
       case 'grades': return <GradeHistorySection grades={grades} instructor={instructor} currentInstructors={currentInstructors} />
       case 'ratings': return <RatingsSection rating={rating} instructor={instructor} />
-      case 'syllabus': return <SyllabusSection url={course.syllabusUrl} />
+      case 'syllabus': return <SyllabusSection syllabus={syllabus} loading={syllabusLoading} />
       default: return null
     }
   }

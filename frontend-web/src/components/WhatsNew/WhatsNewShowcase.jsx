@@ -23,7 +23,7 @@ const SCENES = [
   { kind: 'expanded', tab: 'overview', headline: 'The full story, one click away', sub: 'Everything about a section, in one place.', dur: 1900 },
   { kind: 'expanded', tab: 'grades', headline: 'Grade history', sub: 'See exactly how each professor grades.', dur: 2100 },
   { kind: 'expanded', tab: 'ratings', headline: 'Professor ratings', sub: 'Rate My Professors, at a glance.', dur: 2100 },
-  { kind: 'expanded', tab: 'syllabus', headline: 'And the syllabus', sub: 'Coming soon to every section.', dur: 1700 },
+  { kind: 'expanded', tab: 'syllabus', headline: 'And the syllabus', sub: 'Read it without leaving PantherWatch.', dur: 2600 },
   { kind: 'welcome', dur: 2600 },
 ]
 
@@ -239,10 +239,13 @@ function TabPane({ tab }) {
     )
   }
   return (
-    <div className="exp-empty-state">
-      <Icon name="bookmark" size={30} aria-hidden />
-      <p className="exp-empty-title">Syllabus</p>
-      <p className="exp-empty-text">The section's syllabus will appear here as an embedded PDF.</p>
+    <div className="wn-syllabus">
+      <iframe
+        className="wn-syllabus-frame"
+        src="https://cdn.gsu.edu/static/syllabi-public/files/syllabi/202508/83537.pdf#toolbar=0&navpanes=0"
+        title="Sample syllabus"
+        loading="lazy"
+      />
     </div>
   )
 }
