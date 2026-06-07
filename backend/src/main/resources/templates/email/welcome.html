@@ -4,51 +4,71 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Welcome to PantherWatch</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="welcome.css">
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🎉 Welcome to PantherWatch!</h1>
-        </div>
-        
-        <div class="content">
-            <div class="greeting">
-                Hi %s! 👋
-            </div>
-            
-            <div class="message">
-                Welcome to PantherWatch - your ultimate companion for tracking GSU class availability! 
-                We're excited to have you on board and help you secure the classes you need.
-            </div>
-            
-            <div class="features">
-                <h3>🚀 How to Navigate PantherWatch:</h3>
-                <ul class="feature-list">
-                    <li><strong>Search for Classes:</strong> Use the Course Search page to find any GSU course by subject, course number, or CRN</li>
-                    <li><strong>Track Classes:</strong> Click the "👁️ Watch" button on any class to get notified when spots open up</li>
-                    <li><strong>View Your List:</strong> Check your "Tracked Classes" page to see all the courses you're monitoring</li>
-                    <li><strong>Get Instant Alerts:</strong> Receive email notifications the moment a spot becomes available in your watched classes</li>
-                    <li><strong>Stay Updated:</strong> We'll keep you informed about enrollment changes and waitlist movements</li>
-                </ul>
-            </div>
-            
-            <div class="message">
-                <strong>Pro tip:</strong> Add classes to your watch list even if they're full! 
-                Students often drop during the first week of classes, and you'll be the first to know when spots open up.
-            </div>
-            
-            <div class="cta-section">
-                <a href="https://pantherwatch.app" class="cta-button">
-                    Start Tracking Classes →
-                </a>
-            </div>
-        </div>
-        
-        <div class="footer">
-            <p><strong>PantherWatch</strong> - Your GSU Class Monitoring Service</p>
-            <p>Keeping Georgia State students ahead of the registration game</p>
-        </div>
-    </div>
+    <span class="preheader">You're all set. Here's how to grab the classes you actually need.</span>
+    <table role="presentation" class="wrap" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+            <td align="center">
+                <div class="gutter">&nbsp;</div>
+                <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                        <td class="header">
+                            <img src="https://www.pantherwatch.app/favicon.png" width="48" height="48" alt="PantherWatch" class="logo">
+                            <p class="brand">PantherWatch</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="content">
+                            <p class="eyebrow">Welcome aboard</p>
+                            <h1 class="h1">You're in, %s.</h1>
+                            <p class="p">
+                                PantherWatch watches Georgia State's course catalog and emails you the
+                                moment a seat opens in a class you're tracking. No more refreshing GoSolar.
+                            </p>
+
+                            <table role="presentation" class="steps" cellpadding="0" cellspacing="0" border="0">
+                                <tr class="step-row">
+                                    <td class="step-n"><span class="step-badge">1</span></td>
+                                    <td class="step-t"><strong>Search any course</strong> by subject, course number, or CRN.</td>
+                                </tr>
+                                <tr class="step-row">
+                                    <td class="step-n"><span class="step-badge">2</span></td>
+                                    <td class="step-t"><strong>Tap Watch</strong> on the exact sections you want to track.</td>
+                                </tr>
+                                <tr class="step-row">
+                                    <td class="step-n"><span class="step-badge">3</span></td>
+                                    <td class="step-t"><strong>Get the alert</strong> the instant a seat or waitlist spot opens.</td>
+                                </tr>
+                            </table>
+
+                            <div class="callout">
+                                <strong>Tip:</strong> Watch full classes too. Students drop during the first
+                                week, and you'll be first in line when they do.
+                            </div>
+
+                            <div class="btn-wrap">
+                                <a href="https://pantherwatch.app" class="btn">Open PantherWatch</a>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="footer">
+                            <p class="f-brand">PantherWatch</p>
+                            <p class="f-tag">Real-time seat tracking for Georgia State students.</p>
+                            <p class="f-links"><a href="https://pantherwatch.app">pantherwatch.app</a></p>
+                            <p class="f-fine">
+                                You're receiving this because you created a PantherWatch account.
+                                Not affiliated with Georgia State University.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+                <div class="gutter">&nbsp;</div>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>

@@ -1,93 +1,82 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
+/* PantherWatch - account deletion confirmation. Inter, exact GSU Blue (#0039A6),
+   no gradients. Calm and reassuring, same brand header as the rest. */
 body {
     margin: 0;
     padding: 0;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    line-height: 1.6;
-    color: #1f2937;
-    background-color: #f5f6fb;
+    background-color: #f0f3f9;
+    color: #1b2a47;
+    font-weight: 500;
+    -webkit-font-smoothing: antialiased;
+    font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
 }
+
+.preheader {
+    display: none !important;
+    visibility: hidden;
+    opacity: 0;
+    color: transparent;
+    height: 0;
+    width: 0;
+    overflow: hidden;
+}
+
+.wrap { width: 100%; background-color: #f0f3f9; }
 
 .container {
+    width: 600px;
     max-width: 600px;
-    margin: 0 auto;
     background-color: #ffffff;
-    border-radius: 16px;
-    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+    border: 1px solid #dfe5ef;
+    border-radius: 12px;
     overflow: hidden;
-    margin-top: 40px;
-    margin-bottom: 40px;
-    border: 1px solid #d6deeb;
 }
+
+.gutter { height: 32px; line-height: 32px; font-size: 0; }
 
 .header {
-    background: linear-gradient(135deg, #0039a6 0%, #1f5fc3 100%);
-    color: white;
-    padding: 48px 32px;
+    background-color: #ffffff;
+    padding: 30px 36px 26px;
     text-align: center;
+    border-bottom: 3px solid #0039a6;
 }
+.logo { width: 48px; height: 48px; display: inline-block; }
+.brand { margin: 12px 0 0; font-size: 22px; font-weight: 800; letter-spacing: -0.01em; color: #0039a6; }
 
-.header h1 {
-    margin: 0;
-    font-size: 28px;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-}
+.content { padding: 40px 36px 12px; }
 
-.content {
-    padding: 40px 32px;
-}
-
-.greeting {
-    font-size: 22px;
-    font-weight: 600;
-    margin-bottom: 20px;
-    color: #152044;
-}
-
-.message {
-    font-size: 16px;
-    color: #4b5563;
-    margin-bottom: 20px;
-    line-height: 1.7;
-}
+.eyebrow { margin: 0 0 10px; font-size: 12px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #0039a6; }
+.h1 { margin: 0 0 20px; font-size: 25px; line-height: 1.28; font-weight: 800; letter-spacing: -0.01em; color: #15223b; }
+.p { margin: 0 0 20px; font-size: 16px; line-height: 1.7; font-weight: 500; color: #3a4a66; }
 
 .support {
+    background-color: #eaf0fb;
+    border-left: 4px solid #0039a6;
+    border-radius: 0 8px 8px 0;
+    padding: 16px 20px;
+    margin: 28px 0 6px;
     font-size: 15px;
-    color: #4b5563;
-    background-color: #e4eef9;
-    border-left: 4px solid #1f5fc3;
-    border-radius: 8px;
-    padding: 18px 20px;
-    margin-top: 28px;
+    line-height: 1.6;
+    font-weight: 500;
+    color: #3a4a66;
 }
-
-.support a {
-    color: #0039a6;
-    text-decoration: none;
-    font-weight: 600;
-}
-
-.support a:hover {
-    color: #1f5fc3;
-    text-decoration: underline;
-}
+.support strong { color: #15223b; font-weight: 700; }
 
 .footer {
-    background-color: #f1f4f9;
-    padding: 24px 32px;
+    padding: 28px 36px 34px;
     text-align: center;
-    border-top: 1px solid #d6deeb;
+    background-color: #f5f7fb;
+    border-top: 1px solid #e6ebf3;
 }
+.f-brand { margin: 0 0 4px; font-size: 15px; font-weight: 800; color: #15223b; }
+.f-tag { margin: 0 0 14px; font-size: 13px; font-weight: 500; color: #6b7796; }
+.f-links { margin: 0 0 14px; font-size: 13px; }
+.f-links a { color: #0039a6; text-decoration: none; font-weight: 700; }
+.f-fine { margin: 0; font-size: 12px; line-height: 1.6; font-weight: 500; color: #93a0bd; }
 
-.footer p {
-    margin: 8px 0;
-    font-size: 14px;
-    color: #4b5563;
-}
-
-.footer p:first-child {
-    color: #152044;
-    font-weight: 600;
+@media only screen and (max-width: 620px) {
+    .container { width: 100% !important; border-radius: 0 !important; }
+    .content { padding: 30px 22px 8px !important; }
+    .header { padding: 26px 22px 22px !important; }
+    .footer { padding: 24px 22px 28px !important; }
+    .h1 { font-size: 22px !important; }
 }

@@ -3,61 +3,91 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Class Spot Available</title>
+    <title>A seat just opened</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="class-availability.css">
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🎉 Class Spot Available!</h1>
-            <p>A spot just opened up in your watched class</p>
-        </div>
-        
-        <div class="content">
-            <div class="greeting">
-                Hi %s! 👋
-            </div>
-            
-            <p>Great news! A spot has just become available in the class you've been watching. 
-               <span class="urgent-badge">Act Fast</span> - spots fill up quickly!</p>
-            
-            <div class="course-card">
-                <div class="course-title">%s</div>
-                <div class="course-details">
-                    <div class="detail-item">
-                        <span class="detail-label">Course:</span>
-                        <span class="detail-value">%s %s</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">CRN:</span>
-                        <span class="detail-value">%s</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Term:</span>
-                        <span class="detail-value">%s</span>
-                    </div>
-                </div>
-            </div>
-            
-            <p>🚀 <strong>What to do next:</strong></p>
-            <ol>
-                <li>Log into GoSolar immediately</li>
-                <li>Search for CRN <strong>%s</strong></li>
-                <li>Register for the class before someone else does!</li>
-            </ol>
-            
-            <a href="https://registration.gosolar.gsu.edu/StudentRegistrationSsb/ssb/term/termSelection?mode=registration" class="cta-button">Go to GoSolar →</a>
-            
-            <p style="margin-top: 30px; font-size: 14px; color: #6b7280;">
-                ⏰ <em>This notification was sent because the waitlist for this class dropped to zero. 
-                We'll continue monitoring this class for you.</em>
-            </p>
-        </div>
-        
-        <div class="footer">
-            <p><strong>PantherWatch</strong> - Your GSU Class Monitoring Service</p>
-            <p>Keeping Georgia State students ahead of the registration game</p>
-        </div>
-    </div>
+    <span class="preheader">A seat just opened in a class you're watching. Grab it before it's gone.</span>
+    <table role="presentation" class="wrap" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+            <td align="center">
+                <div class="gutter">&nbsp;</div>
+                <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                        <td class="header">
+                            <img src="https://www.pantherwatch.app/favicon.png" width="48" height="48" alt="PantherWatch" class="logo">
+                            <p class="brand">PantherWatch</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="content">
+                            <span class="status">Seat available</span>
+                            <h1 class="h1">A seat just opened, %s.</h1>
+                            <p class="p">
+                                One of the classes you're watching just freed up. Open seats in popular
+                                sections rarely last long, so it's worth registering now.
+                            </p>
+
+                            <div class="course-card">
+                                <p class="course-title">%s</p>
+                                <table role="presentation" class="detail-table" cellpadding="0" cellspacing="0" border="0">
+                                    <tr>
+                                        <td class="detail-label">Course</td>
+                                        <td class="detail-value">%s %s</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="detail-label">CRN</td>
+                                        <td class="detail-value">%s</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="detail-label">Term</td>
+                                        <td class="detail-value">%s</td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <p class="subhead">What to do next</p>
+                            <table role="presentation" class="steps" cellpadding="0" cellspacing="0" border="0">
+                                <tr class="step-row">
+                                    <td class="step-n"><span class="step-badge">1</span></td>
+                                    <td class="step-t"><strong>Log into GoSolar</strong> right away.</td>
+                                </tr>
+                                <tr class="step-row">
+                                    <td class="step-n"><span class="step-badge">2</span></td>
+                                    <td class="step-t"><strong>Search for CRN %s</strong> in registration.</td>
+                                </tr>
+                                <tr class="step-row">
+                                    <td class="step-n"><span class="step-badge">3</span></td>
+                                    <td class="step-t"><strong>Register</strong> before the seat is taken.</td>
+                                </tr>
+                            </table>
+
+                            <div class="btn-wrap">
+                                <a href="https://registration.gosolar.gsu.edu/StudentRegistrationSsb/ssb/term/termSelection?mode=registration" class="btn">Open GoSolar</a>
+                            </div>
+
+                            <p class="fineprint">
+                                You're getting this because the waitlist for this section dropped to zero.
+                                We'll keep watching it for you.
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="footer">
+                            <p class="f-brand">PantherWatch</p>
+                            <p class="f-tag">Real-time seat tracking for Georgia State students.</p>
+                            <p class="f-links"><a href="https://pantherwatch.app">pantherwatch.app</a></p>
+                            <p class="f-fine">
+                                You're receiving this because you're tracking this class on PantherWatch.
+                                Not affiliated with Georgia State University.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+                <div class="gutter">&nbsp;</div>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>
