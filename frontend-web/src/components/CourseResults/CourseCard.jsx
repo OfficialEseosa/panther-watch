@@ -4,7 +4,9 @@ import GradeBar from '../CourseGrades/GradeBar';
 import { formatTime, getEnrollmentStatus, formatCreditHours, getWaitlistStatus, decodeHtmlEntities } from '../../utils';
 import { renderDaysOfWeek } from '../../utils/scheduleComponents';
 import { useCourseGrades } from '../../hooks/useCourseGrades.js';
+import { useProfessorRatings } from '../../hooks/useProfessorRatings.js';
 import { gpaTone, formatGpa } from '../CourseGrades/gradeUtils';
+import rmpLogo from '../../assets/rmp.svg';
 import '../CourseGrades/gradeStyles.css';
 
 const MotionArticle = motion.article;
@@ -33,13 +35,17 @@ function CourseCard({
     instructor: instructor !== 'TBA' ? instructor : null,
   });
 
+  const { rating } = useProfessorRatings({
+    instructor: instructor !== 'TBA' ? instructor : null,
+  });
+
   const featured = grades?.hasData
     ? (grades.instructorHasTaught && grades.instructorDistribution
         ? grades.instructorDistribution
         : grades.overall)
     : null;
 
-  const openDetails = () => onOpenDetails({ course, grades });
+  const openDetails = () => onOpenDetails({ course, grades, rating });
 
   const handleKeyDown = (event) => {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -170,7 +176,13 @@ function CourseCard({
             <div className="faculty-title">Instructor</div>
             {course.faculty.map((faculty, index) => (
               <div key={index} className="faculty-name">
-                {faculty.displayName}
+                <span className="faculty-name-text">{faculty.displayName}</span>
+                {index === 0 && rating?.found && rating.avgRating != null && (
+                  <span className="cc-rmp" title={`${rating.avgRating.toFixed(1)}/5 on Rate My Professors`}>
+                    <img src={rmpLogo} alt="Rate My Professors" className="cc-rmp-logo" />
+                    <span className="cc-rmp-score">{rating.avgRating.toFixed(1)}</span>
+                  </span>
+                )}
               </div>
             ))}
           </div>

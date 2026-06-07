@@ -43,6 +43,13 @@ const ICONS = {
       <path d="M8 11V8a4 4 0 0 1 8 0v3" />
     </>
   ),
+  external: (
+    <>
+      <path d="M14 4h6v6" />
+      <path d="M20 4 10 14" />
+      <path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5" />
+    </>
+  ),
   watch: (
     <>
       <circle cx="12" cy="12" r="7" />

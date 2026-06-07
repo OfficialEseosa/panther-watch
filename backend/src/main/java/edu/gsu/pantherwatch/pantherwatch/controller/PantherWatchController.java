@@ -8,10 +8,12 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 
 import edu.gsu.pantherwatch.pantherwatch.service.GradeDistributionService;
 import edu.gsu.pantherwatch.pantherwatch.service.PantherWatchService;
+import edu.gsu.pantherwatch.pantherwatch.service.ProfessorRatingService;
 import lombok.RequiredArgsConstructor;
 import edu.gsu.pantherwatch.pantherwatch.api.GetSubjectRequest;
 import edu.gsu.pantherwatch.pantherwatch.api.GetSubjectResponse;
 import edu.gsu.pantherwatch.pantherwatch.api.GradeDistributionResponse;
+import edu.gsu.pantherwatch.pantherwatch.api.ProfessorRating;
 import edu.gsu.pantherwatch.pantherwatch.api.RetrieveCourseInfoRequest;
 import edu.gsu.pantherwatch.pantherwatch.api.RetrieveCourseInfoResponse;
 import edu.gsu.pantherwatch.pantherwatch.api.Terms;
@@ -24,6 +26,7 @@ public class PantherWatchController {
 
     private final PantherWatchService pantherWatchService;
     private final GradeDistributionService gradeDistributionService;
+    private final ProfessorRatingService professorRatingService;
 
     @GetMapping("/search")
     public RetrieveCourseInfoResponse retrieveCourseInfo(@ModelAttribute RetrieveCourseInfoRequest request) {
@@ -53,5 +56,14 @@ public class PantherWatchController {
             @RequestParam String courseNumber,
             @RequestParam(required = false) String instructor) {
         return gradeDistributionService.getDistribution(subject, courseNumber, instructor);
+    }
+
+    /**
+     * RateMyProfessors summary for an instructor, resolved by name against GSU.
+     * Returns {@code found: false} when the professor has no RMP profile.
+     */
+    @GetMapping("/ratings")
+    public ProfessorRating getProfessorRating(@RequestParam String professor) {
+        return professorRatingService.getRating(professor);
     }
 }

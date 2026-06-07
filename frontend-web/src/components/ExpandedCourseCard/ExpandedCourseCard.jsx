@@ -19,6 +19,7 @@ import {
   decodeHtmlEntities,
 } from '../../utils'
 import { renderDaysOfWeek } from '../../utils/scheduleComponents'
+import rmpLogo from '../../assets/rmp.svg'
 import './ExpandedCourseCard.css'
 
 const MotionDiv = motion.div
@@ -308,6 +309,105 @@ function GradeHistorySection({ grades, instructor, currentInstructors }) {
   )
 }
 
+function ratingTone(value) {
+  if (value == null) return 'unknown'
+  if (value >= 4) return 'high'
+  if (value >= 3.5) return 'mid'
+  return 'low'
+}
+
+const DIST_ROWS = [
+  { key: 'r5', label: 'Awesome', score: 5 },
+  { key: 'r4', label: 'Great', score: 4 },
+  { key: 'r3', label: 'Good', score: 3 },
+  { key: 'r2', label: 'OK', score: 2 },
+  { key: 'r1', label: 'Awful', score: 1 },
+]
+
+/** RateMyProfessors summary + a link out to the full reviews. */
+function RatingsSection({ rating, instructor }) {
+  if (!rating || !rating.found) {
+    return (
+      <EmptyState
+        icon="people"
+        title="No ratings found"
+        text={instructor && instructor !== 'TBA'
+          ? `We couldn't find ${instructor} on Rate My Professors for Georgia State.`
+          : 'No instructor is listed for this section yet.'}
+      />
+    )
+  }
+
+  const oneDecimal = (v) => (v == null ? '—' : v.toFixed(1))
+  const dist = rating.distribution
+  const maxCount = dist ? Math.max(1, dist.r1, dist.r2, dist.r3, dist.r4, dist.r5) : 1
+  const reviewCount = rating.numRatings ?? 0
+
+  return (
+    <div className="rmp">
+      <div className="rmp-head">
+        <div className="rmp-score">
+          <div className={`rmp-score-num rating-tone-${ratingTone(rating.avgRating)}`}>
+            {oneDecimal(rating.avgRating)}<span className="rmp-score-max">/5</span>
+          </div>
+          <div className="rmp-score-meta">
+            <span className="rmp-score-label">Overall quality</span>
+            <span className="rmp-score-sub">Based on {reviewCount} rating{reviewCount === 1 ? '' : 's'}</span>
+          </div>
+        </div>
+
+        <div className="rmp-secondary">
+          <div className="rmp-stat">
+            <span className="rmp-stat-num">
+              {rating.wouldTakeAgainPercent == null ? '—' : formatPercent(rating.wouldTakeAgainPercent)}
+            </span>
+            <span className="rmp-stat-label">Would take again</span>
+          </div>
+          <div className="rmp-stat-divider" />
+          <div className="rmp-stat">
+            <span className="rmp-stat-num">{oneDecimal(rating.avgDifficulty)}</span>
+            <span className="rmp-stat-label">Level of difficulty</span>
+          </div>
+        </div>
+      </div>
+
+      {dist && (
+        <section className="rmp-panel">
+          <h4 className="rmp-panel-title">Rating distribution</h4>
+          <div className="rmp-dist">
+            {DIST_ROWS.map((row) => {
+              const count = dist[row.key] || 0
+              return (
+                <div key={row.key} className="rmp-dist-row">
+                  <span className="rmp-dist-label">{row.label} <strong>{row.score}</strong></span>
+                  <div className="rmp-dist-track">
+                    <div className="rmp-dist-fill" style={{ width: `${(count / maxCount) * 100}%` }} />
+                  </div>
+                  <span className="rmp-dist-count">{count}</span>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      {rating.topTags?.length > 0 && (
+        <div className="rmp-tags">
+          {rating.topTags.map((t) => (
+            <span key={t.name} className="rmp-tag">{t.name}</span>
+          ))}
+        </div>
+      )}
+
+      <a className="rmp-button" href={rating.profileUrl} target="_blank" rel="noopener noreferrer">
+        <img src={rmpLogo} alt="Rate My Professors" className="rmp-button-logo" />
+        <span className="rmp-cta">See all {reviewCount} review{reviewCount === 1 ? '' : 's'}</span>
+        <Icon name="external" size={15} aria-hidden />
+      </a>
+    </div>
+  )
+}
+
 function SyllabusSection({ url }) {
   if (url) {
     return <iframe className="exp-pdf" src={url} title="Course syllabus" />
@@ -330,6 +430,7 @@ function SyllabusSection({ url }) {
 function ExpandedCourseCard({
   course,
   grades,
+  rating,
   currentInstructors,
   isTrackedView,
   isWatching,
@@ -366,15 +467,7 @@ function ExpandedCourseCard({
     switch (tab) {
       case 'overview': return <OverviewSection course={course} />
       case 'grades': return <GradeHistorySection grades={grades} instructor={instructor} currentInstructors={currentInstructors} />
-      case 'ratings': return (
-        <EmptyState
-          icon="people"
-          title="Professor ratings coming soon"
-          text={instructor && instructor !== 'TBA'
-            ? `Ratings and reviews for ${instructor} will appear here.`
-            : 'Ratings and reviews will appear here.'}
-        />
-      )
+      case 'ratings': return <RatingsSection rating={rating} instructor={instructor} />
       case 'syllabus': return <SyllabusSection url={course.syllabusUrl} />
       default: return null
     }

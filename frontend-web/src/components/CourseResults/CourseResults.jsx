@@ -209,6 +209,7 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
           <ExpandedCourseCard
             course={expandedDetails.course}
             grades={expandedDetails.grades}
+            rating={expandedDetails.rating}
             currentInstructors={[
               ...(instructorsByCourse[`${expandedDetails.course.subject} ${expandedDetails.course.courseNumber}`] || []),
             ]}

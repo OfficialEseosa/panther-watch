@@ -381,8 +381,43 @@
 }
 
 .faculty-name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   color: var(--color-heading);
   font-weight: 600;
+}
+
+.faculty-name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* RMP rating badge next to the instructor name. */
+.cc-rmp {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  flex-shrink: 0;
+  padding: 7px 14px 7px 11px;
+  border-radius: 999px;
+  background: #000;
+}
+
+.cc-rmp-logo {
+  height: 22px;
+  width: auto;
+  display: block;
+}
+
+.cc-rmp-score {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
 }
 
 .meeting-times {
