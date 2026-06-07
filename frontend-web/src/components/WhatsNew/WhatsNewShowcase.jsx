@@ -12,20 +12,33 @@ const MotionDiv = motion.div
 const MotionSpan = motion.span
 
 const SPRING = { type: 'spring', stiffness: 240, damping: 28 }
+const HERO = { type: 'spring', stiffness: 190, damping: 26 }
+
+// One slow, continuous turn across the WHOLE story — it never settles flat. The
+// rotor sweeps steadily from one tilt to the other (held at an angle the entire
+// time, for the cinematic 3D look); the card→expanded swap is just a scale
+// crossfade riding on top of that uninterrupted rotation.
+const ROT_FROM = -22
+const ROT_TO = 22
+const CARD_TILT = 6
 const MOCK_GRADES = { A: 44, B: 58, C: 31, D: 12, F: 9 }
 const DIST = { r1: 2, r2: 0, r3: 1, r4: 0, r5: 0 }
 
 // A linear, auto-advancing storyboard. Two "card" scenes (intro, then the new
 // pieces revealed), one "expanded" scene per tab, then a full-screen welcome.
 const SCENES = [
-  { kind: 'card', reveal: false, headline: 'The all-new PantherWatch', sub: 'A closer look at what just changed.', dur: 2200 },
-  { kind: 'card', reveal: true, headline: 'Ratings & grade history, built in', sub: 'Right on every course card.', dur: 2600 },
-  { kind: 'expanded', tab: 'overview', headline: 'The full story, one click away', sub: 'Everything about a section, in one place.', dur: 1900 },
-  { kind: 'expanded', tab: 'grades', headline: 'Grade history', sub: 'See exactly how each professor grades.', dur: 2100 },
-  { kind: 'expanded', tab: 'ratings', headline: 'Professor ratings', sub: 'Rate My Professors, at a glance.', dur: 2100 },
-  { kind: 'expanded', tab: 'syllabus', headline: 'And the syllabus', sub: 'Read it without leaving PantherWatch.', dur: 2600 },
-  { kind: 'welcome', dur: 2600 },
+  { kind: 'card', reveal: false, headline: 'The all-new PantherWatch', sub: 'A closer look at what just changed.', dur: 2800 },
+  { kind: 'card', reveal: true, headline: 'Ratings & grade history, built in', sub: 'Right on every course card.', dur: 3400 },
+  { kind: 'expanded', tab: 'overview', headline: 'The full story, one click away', sub: 'Everything about a section, in one place.', dur: 2400 },
+  { kind: 'expanded', tab: 'grades', headline: 'Grade history', sub: 'See exactly how each professor grades.', dur: 2800 },
+  { kind: 'expanded', tab: 'ratings', headline: 'Professor ratings', sub: 'Rate My Professors, at a glance.', dur: 2800 },
+  { kind: 'expanded', tab: 'syllabus', headline: 'And the syllabus', sub: 'Read it without leaving PantherWatch.', dur: 3200 },
+  { kind: 'welcome', dur: 3000 },
 ]
+
+// Total runtime of the non-welcome scenes — the rotor sweeps ROT_FROM→ROT_TO
+// linearly across exactly this span, so the turn never pauses or settles.
+const STORY_MS = SCENES.filter((s) => s.kind !== 'welcome').reduce((a, s) => a + s.dur, 0)
 
 const TABS = [
   { id: 'overview', icon: 'dashboard', label: 'Overview' },
@@ -370,40 +383,48 @@ export default function WhatsNewShowcase({ onClose }) {
             </div>
 
             <div className="wn-perspective" onClick={(e) => e.stopPropagation()}>
-              <AnimatePresence mode="wait">
-                {isExpanded ? (
-                  <MotionDiv
-                    key="expanded"
-                    className="wn-3d"
-                    initial={{ opacity: 0, rotateX: 24, scale: 0.9, y: 26 }}
-                    animate={{ opacity: 1, rotateX: 0, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={SPRING}
-                  >
-                    <ShowcaseExpanded activeTab={current.tab} />
-                  </MotionDiv>
-                ) : (
-                  <MotionDiv
-                    key="card"
-                    className="wn-3d"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 1.06, rotateX: 18 }}
-                    transition={{ ...SPRING, duration: 0.5 }}
-                  >
-                    {/* Inner layer owns the slow, continuous 3D turn. Keyframes
-                        start and end at 0 so there's no snap on mount. */}
+              {/* The rotor is one persistent element that owns the 3D turn for
+                  the whole story: it sweeps ROT_FROM→ROT_TO linearly across the
+                  entire runtime and never settles flat (held at an angle the
+                  whole time). Rotation lives HERE and only here — the
+                  card→expanded swap inside is a plain scale-crossfade (NOT a
+                  layout/layoutId morph), because Framer's layout projection
+                  can't measure boxes correctly under a 3D-rotated parent: it
+                  flings them off-screen and overwrites the rotate. */}
+              <MotionDiv
+                className="wn-rotor"
+                initial={{ rotateY: ROT_FROM, rotateX: CARD_TILT }}
+                animate={{ rotateY: ROT_TO, rotateX: CARD_TILT }}
+                transition={{ rotateY: { duration: STORY_MS / 1000, ease: 'linear' } }}
+              >
+                <AnimatePresence>
+                  {isExpanded ? (
                     <MotionDiv
-                      className="wn-rotor"
-                      animate={{ rotateY: [0, 15, 0, -15, 0] }}
-                      transition={{ duration: 13, repeat: Infinity, ease: 'easeInOut', delay: 0.45 }}
-                      style={{ rotateX: 7 }}
+                      key="expanded"
+                      className="wn-stage-item"
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 1.04 }}
+                      /* Fade in fast so it's solid early — then you watch the
+                         rotor swing it from the handoff tilt to flat. */
+                      transition={{ opacity: { duration: 0.4 }, scale: HERO }}
+                    >
+                      <ShowcaseExpanded activeTab={current.tab} />
+                    </MotionDiv>
+                  ) : (
+                    <MotionDiv
+                      key="card"
+                      className="wn-stage-item"
+                      initial={{ opacity: 0, scale: 0.96 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 1.04 }}
+                      transition={HERO}
                     >
                       <ShowcaseCard reveal={current.reveal} />
                     </MotionDiv>
-                  </MotionDiv>
-                )}
-              </AnimatePresence>
+                  )}
+                </AnimatePresence>
+              </MotionDiv>
             </div>
           </MotionDiv>
         )}
