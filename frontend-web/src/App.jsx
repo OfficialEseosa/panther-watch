@@ -13,6 +13,7 @@ import DashboardLayout from './layouts/DashboardLayout'
 import { TermsProvider } from './contexts/TermsContext.jsx'
 import { AuthProvider } from './contexts/AuthContext.jsx'
 import { WatchedClassesProvider } from './contexts/WatchedClassesContext.jsx'
+import { ScheduleProvider } from './contexts/ScheduleContext.jsx'
 import { ThemeProvider } from './contexts/ThemeContext.jsx'
 import { TutorialProvider } from './contexts/TutorialContext.jsx'
 import { authService } from './config/authService.js'
@@ -72,6 +73,7 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <WatchedClassesProvider>
+          <ScheduleProvider>
           <TutorialProvider>
             {loading ? (
               <div style={{
@@ -156,6 +158,7 @@ function App() {
               </Routes>
             )}
           </TutorialProvider>
+          </ScheduleProvider>
         </WatchedClassesProvider>
       </AuthProvider>
     </ThemeProvider>

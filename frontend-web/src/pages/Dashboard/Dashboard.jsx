@@ -74,7 +74,7 @@ function Dashboard() {
     {
       target: '[data-card="search"]',
       title: 'Course Search',
-      description: 'Start here to search for courses by term and subject. You\'ll see real-time seat availability for all courses at Georgia State.',
+      description: 'Search courses by term and subject with real-time seat availability, plus grade history, professor ratings, and syllabi for every section.',
       position: 'top'
     },
     {
@@ -86,7 +86,7 @@ function Dashboard() {
     {
       target: '[data-card="schedule"]',
       title: 'Schedule Builder',
-      description: 'Plan your weekly schedule visually. Add classes to see how they fit together and export your schedule when ready.',
+      description: 'Plan your week visually. Add classes from search or your tracked list to see how they fit together, then export to your calendar app.',
       position: 'top'
     }
   ];
@@ -104,7 +104,7 @@ function Dashboard() {
       id: 'search',
       icon: 'search',
       title: 'Course search',
-      description: 'Filter by term, subject, and course details with real-time availability.',
+      description: 'Real-time seat availability plus grade history, Rate My Professors ratings, and syllabi for every section.',
       actionLabel: 'Search courses',
       onClick: () => navigate('/course-search')
     },
@@ -112,7 +112,7 @@ function Dashboard() {
       id: 'tracked',
       icon: 'bookmark',
       title: 'Tracked classes',
-      description: 'Review the sections you are monitoring and adjust alerts anytime.',
+      description: 'Get an email the moment a seat opens in a full section you are watching.',
       actionLabel: isGuest ? 'Sign in to track' : watchedCount > 0 ? 'Manage tracked list' : 'Start tracking',
       badge: isGuest || watchedLoading ? undefined : `${watchedCount} active`,
       locked: isGuest,
@@ -121,9 +121,9 @@ function Dashboard() {
     {
       id: 'schedule',
       icon: 'calendar',
-      title: 'Class schedule',
-      description: 'View and manage your weekly class schedule with calendar export.',
-      actionLabel: isGuest ? 'Sign in to plan' : 'View schedule',
+      title: 'Schedule builder',
+      description: 'Build your week from search results or tracked classes, spot conflicts on the calendar, and export to Google or Apple Calendar.',
+      actionLabel: isGuest ? 'Sign in to plan' : 'Open schedule builder',
       locked: isGuest,
       onClick: () => navigate('/schedule-builder')
     }

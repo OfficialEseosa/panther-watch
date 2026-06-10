@@ -755,3 +755,43 @@
     flex-direction: column;
   }
 }
+
+/* Calendar color picker (shown when opened from the schedule) */
+.exp-color-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.exp-color-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  margin-right: 4px;
+}
+
+.exp-color-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  padding: 0;
+  transition: transform var(--transition-base, 0.15s ease), box-shadow var(--transition-base, 0.15s ease);
+}
+
+.exp-color-swatch:hover {
+  transform: scale(1.12);
+}
+
+.exp-color-swatch.is-selected {
+  box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-heading);
+}

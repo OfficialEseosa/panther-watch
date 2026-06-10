@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class UserScheduleService {
     private final UserScheduleRepository scheduleRepository;
+    private final PantherWatchService pantherWatchService;
 
     /**
      * Get all schedule entries for a user, grouped by term code
@@ -45,7 +46,11 @@ public class UserScheduleService {
     @Transactional
     public ScheduleEntryResponse addScheduleEntry(UUID userId, String termCode, String crn) {
         log.info("Adding schedule entry for user: {}, term: {}, crn: {}", userId, termCode, crn);
-        
+
+        if (pantherWatchService.isViewOnlyTerm(termCode)) {
+            throw new IllegalArgumentException("This term is view only. Registration is closed and classes can no longer be scheduled");
+        }
+
         // Check if already exists
         Optional<UserSchedule> existing = scheduleRepository.findByUserIdAndTermCodeAndCrn(userId, termCode, crn);
         if (existing.isPresent()) {
@@ -89,9 +94,16 @@ public class UserScheduleService {
                 Collectors.mapping(UserSchedule::getCrn, Collectors.toSet())
             ));
 
+        Set<String> viewOnlyTerms = pantherWatchService.getViewOnlyTermCodes();
+
         // Process each term
         for (Map.Entry<String, List<String>> entry : scheduleByTerm.entrySet()) {
             String termCode = entry.getKey();
+            // Registration is closed for view-only terms, so drop client adds for them.
+            if (viewOnlyTerms.contains(termCode)) {
+                log.info("Skipping sync adds for view-only term: {}", termCode);
+                continue;
+            }
             Set<String> clientCrns = new HashSet<>(entry.getValue());
             Set<String> dbCrns = currentSchedule.getOrDefault(termCode, new HashSet<>());
 

@@ -6,9 +6,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.http.HttpHeaders;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import edu.gsu.pantherwatch.pantherwatch.api.CourseData;
@@ -34,8 +36,52 @@ public class PantherWatchService {
     private static final String TERMS_PATH = "/classSearch/getTerms";
     private static final String SUBJECT_PATH = "/classSearch/get_subject";
 
+    // Terms change rarely (a handful of times a year), so a short cache keeps
+    // view-only validation off the GoSolar hot path.
+    private static final Duration TERMS_CACHE_TTL = Duration.ofHours(1);
+    private volatile List<Terms> cachedTerms = Collections.emptyList();
+    private volatile Instant termsCachedAt = Instant.EPOCH;
+
     public PantherWatchService(WebClient webClient) {
         this.webClient = webClient;
+    }
+
+    public static boolean isViewOnlyDescription(String description) {
+        return description != null && description.toLowerCase().contains("view only");
+    }
+
+    /**
+     * Cached view of {@link #fetchAvailableTerms()}. On refresh failure the last
+     * known list is returned (possibly empty), so callers fail open.
+     */
+    public List<Terms> getCachedTerms() {
+        if (Instant.now().isAfter(termsCachedAt.plus(TERMS_CACHE_TTL))) {
+            try {
+                List<Terms> fresh = fetchAvailableTerms();
+                if (!fresh.isEmpty()) {
+                    cachedTerms = fresh;
+                }
+                termsCachedAt = Instant.now();
+            } catch (RuntimeException e) {
+                logger.warn("Failed to refresh terms cache (keeping previous): {}", e.getMessage());
+            }
+        }
+        return cachedTerms;
+    }
+
+    /**
+     * Term codes whose registration window has closed ("(View only)" in GoSolar).
+     * Tracking and scheduling are rejected for these terms.
+     */
+    public Set<String> getViewOnlyTermCodes() {
+        return getCachedTerms().stream()
+                .filter(term -> isViewOnlyDescription(term.getDescription()))
+                .map(Terms::getCode)
+                .collect(Collectors.toSet());
+    }
+
+    public boolean isViewOnlyTerm(String termCode) {
+        return termCode != null && getViewOnlyTermCodes().contains(termCode);
     }
 
     public RetrieveCourseInfoResponse searchCourses(RetrieveCourseInfoRequest request) {

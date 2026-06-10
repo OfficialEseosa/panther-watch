@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { TermsContext } from './TermsContext.js'
 import { buildApiUrl } from '../config'
+import { isViewOnlyTerm } from '../utils/termUtils.js'
 
 export const TermsProvider = ({ children }) => {
   const [terms, setTerms] = useState([])
@@ -55,12 +56,21 @@ export const TermsProvider = ({ children }) => {
     return termMappings[termCode] || termCode
   }
 
+  // True when the term's registration window has closed ("(View only)" in
+  // GoSolar). Unknown term codes are treated as open so a failed terms fetch
+  // doesn't lock the user out of tracking.
+  const isTermViewOnly = (termCode) => {
+    const term = terms.find((t) => t.code === termCode)
+    return term ? isViewOnlyTerm(term) : false
+  }
+
   const value = {
     terms,
     termsLoading,
     termsError,
     termMappings,
-    getTermName
+    getTermName,
+    isTermViewOnly
   }
 
   return (

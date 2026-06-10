@@ -1,17 +1,10 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useWatchedClasses } from './useWatchedClasses.js';
 import { useTerms } from './useTerms.js';
-import { useAuth } from './useAuth.js';
+import { useSchedule } from './useSchedule.js';
 import { buildApiUrl } from '../config';
 import {
-  loadFromLocalStorage,
-  saveToLocalStorage,
-  addCourse,
-  removeCourse
-} from '../config/scheduleService.js';
-import {
-  DAYS,
-  TIME_SLOTS,
+  WEEK_DAYS,
   isViewOnlyTerm,
   parseTimeToMinutes,
   formatMinutesToLabel,
@@ -38,12 +31,17 @@ export function useSchedulePlanner(locationSearch) {
     loading: watchedLoading
   } = useWatchedClasses();
   const { terms, termsLoading, getTermName } = useTerms();
-  const { isAuthenticated } = useAuth();
+  const {
+    scheduleByTerm,
+    addCourseToSchedule: addToSchedule,
+    removeCourseFromSchedule,
+    removeTermsFromSchedule,
+    isCourseScheduled: isScheduled
+  } = useSchedule();
 
   const pendingCrnRef = useRef(null);
 
   const [selectedTerm, setSelectedTerm] = useState(null);
-  const [scheduleByTerm, setScheduleByTerm] = useState(() => loadFromLocalStorage());
   const [detailsLoading, setDetailsLoading] = useState(false);
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -57,11 +55,6 @@ export function useSchedulePlanner(locationSearch) {
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState('');
-
-  // Save to localStorage whenever schedule changes
-  useEffect(() => {
-    saveToLocalStorage(scheduleByTerm);
-  }, [scheduleByTerm]);
 
   useEffect(() => {
     setSearchForm((prev) => {
@@ -94,6 +87,19 @@ export function useSchedulePlanner(locationSearch) {
       isMounted = false;
     };
   }, [loadWatchedClassesWithDetails]);
+
+  // Terms that have since flipped to "(View only)" can no longer be registered
+  // for, so any schedule saved under them is stale, so clean it up (local + DB).
+  useEffect(() => {
+    if (termsLoading || terms.length === 0) return;
+    const staleTerms = Object.keys(scheduleByTerm).filter((code) => {
+      const term = terms.find((t) => t.code === code);
+      return term && isViewOnlyTerm(term);
+    });
+    if (staleTerms.length > 0) {
+      removeTermsFromSchedule(staleTerms);
+    }
+  }, [terms, termsLoading, scheduleByTerm, removeTermsFromSchedule]);
 
   const availableTerms = useMemo(() => {
     const filtered = terms.filter((term) => !isViewOnlyTerm(term));
@@ -170,102 +176,37 @@ export function useSchedulePlanner(locationSearch) {
     });
   }, [scheduleClasses]);
 
-  const getClassesForSlot = useCallback(
-    (day, slotStart) => {
-      const slotEnd = slotStart + 60;
-      return scheduleBlocks.filter(
-        (block) =>
-          block.day === day &&
-          block.startMinutes >= slotStart &&
-          block.startMinutes < slotEnd
-      );
-    },
-    [scheduleBlocks]
-  );
+  // Mon-Fri always; weekend columns only when something actually meets then.
+  const visibleDays = useMemo(() => {
+    const used = new Set(scheduleBlocks.map((block) => block.day));
+    return WEEK_DAYS.filter(
+      (day, index) => index < 5 || used.has(day)
+    );
+  }, [scheduleBlocks]);
 
   const addCourseToSchedule = useCallback(
     (course) => {
-      if (!course) return false;
-      const termCode = course.term || selectedTerm;
-      if (!termCode) return false;
-
-      let added = false;
-      const normalizedCourse = { ...course, term: termCode };
-
-      setScheduleByTerm((prev) => {
-        const current = prev[termCode] || [];
-        const exists = current.some(
-          (item) => item.courseReferenceNumber === normalizedCourse.courseReferenceNumber
-        );
-        if (exists) {
-          return prev;
-        }
-        added = true;
-        return {
-          ...prev,
-          [termCode]: [...current, normalizedCourse]
-        };
-      });
-
-      if (added) {
+      const termCode = course?.term || selectedTerm;
+      const added = addToSchedule(course, selectedTerm);
+      if (added && termCode) {
         setSelectedTerm((prevTerm) => (prevTerm === termCode ? prevTerm : termCode));
-        
-        // Sync with database in background if authenticated (optimistic update - UI already updated)
-        if (isAuthenticated) {
-          addCourse(termCode, normalizedCourse.courseReferenceNumber).catch(error => {
-            console.error('Failed to sync add to database:', error);
-          });
-        }
       }
-
       return added;
     },
-    [selectedTerm, isAuthenticated]
+    [selectedTerm, addToSchedule]
   );
 
   const isCourseScheduled = useCallback(
-    (course) => {
-      if (!course) return false;
-      const termCode = course.term || selectedTerm;
-      if (!termCode) return false;
-      const current = scheduleByTerm[termCode] || [];
-      return current.some(
-        (item) => item.courseReferenceNumber === course.courseReferenceNumber
-      );
-    },
-    [scheduleByTerm, selectedTerm]
+    (course) => isScheduled(course, selectedTerm),
+    [isScheduled, selectedTerm]
   );
 
   const handleRemoveFromSchedule = useCallback(
     (crn) => {
       if (!selectedTerm) return;
-      
-      setScheduleByTerm((prev) => {
-        const current = prev[selectedTerm] || [];
-        const updated = current.filter(
-          (course) => course.courseReferenceNumber !== crn
-        );
-        if (updated.length === current.length) {
-          return prev;
-        }
-        const next = { ...prev };
-        if (updated.length > 0) {
-          next[selectedTerm] = updated;
-        } else {
-          delete next[selectedTerm];
-        }
-        
-        // Sync with database in background if authenticated (optimistic update - UI already updated)
-        if (isAuthenticated) {
-          removeCourse(selectedTerm, crn).catch(error => {
-            console.error('Failed to sync remove to database:', error);
-          });
-        }
-        
-        return next;
-      });
+      removeCourseFromSchedule(selectedTerm, crn);
     },
-    [selectedTerm, isAuthenticated]
+    [selectedTerm, removeCourseFromSchedule]
   );
 
   const handleAddToCalendar = useCallback(() => {
@@ -313,7 +254,7 @@ export function useSchedulePlanner(locationSearch) {
           txtCourseNumber: searchForm.courseNumber,
           txtLevel: searchForm.level,
           pageOffset: 0,
-          pageMaxSize: 5 
+          pageMaxSize: 5
         });
 
         const response = await fetch(`${buildApiUrl('/courses/search')}?${params.toString()}`, {
@@ -412,13 +353,13 @@ export function useSchedulePlanner(locationSearch) {
 
   return {
     // data
-    DAYS,
-    TIME_SLOTS,
+    visibleDays,
     getTermName,
     selectedTerm,
     selectedTermLabel,
     availableTerms,
     hasScheduleEntries,
+    scheduleBlocks,
     trackedClassesForSelectedTerm,
     searchForm,
     searchResults,
@@ -434,7 +375,6 @@ export function useSchedulePlanner(locationSearch) {
     handleAddToCalendar,
     addCourseToSchedule,
     isCourseScheduled,
-    getClassesForSlot,
     setShowAddModal,
     showAddModal,
     closeAddModal,

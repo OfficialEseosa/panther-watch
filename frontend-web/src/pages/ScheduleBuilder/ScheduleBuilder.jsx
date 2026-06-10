@@ -10,16 +10,14 @@ function ScheduleBuilder() {
   const location = useLocation();
 
   const {
-    DAYS,
-    TIME_SLOTS,
+    visibleDays,
+    scheduleBlocks,
     selectedTerm,
     setSelectedTerm,
     availableTerms,
     selectedTermLabel,
     hasScheduleEntries,
-    handleRemoveFromSchedule,
     handleAddToCalendar,
-    getClassesForSlot,
     showAddModal,
     setShowAddModal,
     closeAddModal,
@@ -66,9 +64,10 @@ function ScheduleBuilder() {
         </div>
         <div className="header-content">
           <div className="header-text">
-            <h1 className="schedule-title">Class Schedule</h1>
+            <h1 className="schedule-title">Schedule Builder</h1>
             <p className="schedule-description">
-              View your weekly class schedule. Add tracked classes or search the catalog to build your plan.
+              Plan your week visually. Add classes straight from search results, your tracked
+              list, or the catalog, then export everything to your calendar app.
             </p>
           </div>
           <div className="header-actions">
@@ -104,10 +103,8 @@ function ScheduleBuilder() {
 
       <div className="schedule-container">
         <ScheduleCalendar
-          days={DAYS}
-          timeSlots={TIME_SLOTS}
-          getClassesForSlot={getClassesForSlot}
-          onRemove={handleRemoveFromSchedule}
+          days={visibleDays}
+          blocks={scheduleBlocks}
           formatMinutesToLabel={formatMinutesToLabel}
         />
 
@@ -115,13 +112,16 @@ function ScheduleBuilder() {
           <div className="empty-schedule">
             <Icon name="calendar" size={48} />
             <h3>No classes scheduled</h3>
-            <p>Add classes from your tracked list to see them on your calendar.</p>
+            <p>
+              Add classes from your tracked list, or tap the calendar icon on any course
+              in search results to drop it onto your schedule.
+            </p>
             <button
               className="btn-secondary"
-              onClick={() => navigate('/tracked-classes')}
+              onClick={() => handleOpenAddModal('tracked')}
             >
-              <Icon name="bookmark" size={16} />
-              View tracked classes
+              <Icon name="add" size={16} />
+              Add classes
             </button>
           </div>
         )}
