@@ -85,8 +85,8 @@ public class PantherWatchService {
     }
 
     public RetrieveCourseInfoResponse searchCourses(RetrieveCourseInfoRequest request) {
-        logger.info("Starting course search for subject={} course={} term={}",
-                request.getTxtSubject(), request.getTxtCourseNumber(), request.getTxtTerm());
+        logger.info("Starting course search for subject={} course={} term={} level={}",
+                request.getTxtSubject(), request.getTxtCourseNumber(), request.getTxtTerm(), request.getTxtLevel());
 
         // A single attempt is sufficient: the non-pooling WebClient guarantees a fresh
         // connection per request, so the F5 always issues the BIGipServer affinity cookie
@@ -220,16 +220,21 @@ public class PantherWatchService {
         logger.debug("Performing course search with cookies: {}", summarizeCookieHeader(cookies));
         return webClient
                 .get()
-                .uri(uriBuilder -> uriBuilder
-                    .path(RETRIEVE_INFO_PATH)
-                    .queryParam("txt_subject", request.getTxtSubject())
-                    .queryParam("txt_courseNumber", request.getTxtCourseNumber())
-                    .queryParam("txt_term", request.getTxtTerm())
-                    .queryParam("pageOffset", request.getPageOffset() != null ? request.getPageOffset() : 0)
-                    .queryParam("pageMaxSize", request.getPageMaxSize() != null ? request.getPageMaxSize() : 200)
-                    .queryParam("sortColumn", SORT_COLUMN)
-                    .queryParam("sortDirection", SORT_DIRECTION)
-                    .build())
+                .uri(uriBuilder -> {
+                    uriBuilder
+                        .path(RETRIEVE_INFO_PATH)
+                        .queryParam("txt_subject", request.getTxtSubject())
+                        .queryParam("txt_courseNumber", request.getTxtCourseNumber())
+                        .queryParam("txt_term", request.getTxtTerm())
+                        .queryParam("pageOffset", request.getPageOffset() != null ? request.getPageOffset() : 0)
+                        .queryParam("pageMaxSize", request.getPageMaxSize() != null ? request.getPageMaxSize() : 200)
+                        .queryParam("sortColumn", SORT_COLUMN)
+                        .queryParam("sortDirection", SORT_DIRECTION);
+                    if (request.getTxtLevel() != null && !request.getTxtLevel().isBlank()) {
+                        uriBuilder.queryParam("txt_level", request.getTxtLevel());
+                    }
+                    return uriBuilder.build();
+                })
                 .header(HttpHeaders.COOKIE, cookies != null ? cookies : "")
                 .exchangeToMono(response -> {
                     logger.debug("Course search response status: {}", response.statusCode().value());
