@@ -1,18 +1,23 @@
 // Utility helpers for the Schedule Builder page. Keep these pure and shared.
 
-const STORAGE_KEY = 'pantherwatch.schedule.v1';
+import { isViewOnlyTerm } from '../../utils/termUtils.js';
+import { icsColorName } from '../../utils/scheduleColors.js';
 
-export const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+export { isViewOnlyTerm };
 
-const MEETING_DAY_LABELS = {
-  sunday: 'Sunday',
-  monday: 'Monday',
-  tuesday: 'Tuesday',
-  wednesday: 'Wednesday',
-  thursday: 'Thursday',
-  friday: 'Friday',
-  saturday: 'Saturday'
-};
+// Calendar ordering for every possible meeting day. Weekend columns are only
+// shown when a class actually meets then (see useSchedulePlanner).
+export const WEEK_DAYS = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday'
+];
+
+export const DAYS = WEEK_DAYS.slice(0, 5);
 
 const ICS_DAY_MAP = {
   Sunday: 'SU',
@@ -33,53 +38,6 @@ const DAY_ABBREVIATIONS = {
   Friday: 'Fri',
   Saturday: 'Sat'
 };
-
-const formatHourLabel = (hour) => {
-  const period = hour >= 12 ? 'PM' : 'AM';
-  const displayHour = hour % 12 === 0 ? 12 : hour % 12;
-  return `${displayHour}:00 ${period}`;
-};
-
-const createTimeSlots = (startHour = 8, endHour = 21) => {
-  const slots = [];
-  for (let hour = startHour; hour < endHour; hour += 1) {
-    slots.push({
-      label: formatHourLabel(hour),
-      startMinutes: hour * 60
-    });
-  }
-  return slots;
-};
-
-export const TIME_SLOTS = createTimeSlots();
-
-export const loadScheduleFromStorage = () => {
-  if (typeof window === 'undefined') {
-    return {};
-  }
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch (error) {
-    console.warn('Failed to read schedule from storage:', error);
-    return {};
-  }
-};
-
-export const saveScheduleToStorage = (schedule) => {
-  if (typeof window === 'undefined') {
-    return;
-  }
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(schedule));
-  } catch (error) {
-    console.warn('Failed to persist schedule:', error);
-  }
-};
-
-export const isViewOnlyTerm = (term) =>
-  typeof term?.description === 'string' &&
-  term.description.toLowerCase().includes('view only');
 
 export const parseTimeToMinutes = (timeStr) => {
   if (!timeStr) return null;
@@ -115,12 +73,11 @@ const sanitizeDateForICS = (dateStr) => {
   return `${year}${month.padStart(2, '0')}${day.padStart(2, '0')}`;
 };
 
+// Every day this meeting occurs on, in calendar order (including weekends;
+// the GoSolar meeting object has a boolean per lowercase day name).
 export const getMeetingDays = (meetingTime) => {
   if (!meetingTime) return [];
-  return Object.entries(MEETING_DAY_LABELS)
-    .filter(([key]) => meetingTime[key])
-    .map(([, label]) => label)
-    .filter((label) => DAYS.includes(label));
+  return WEEK_DAYS.filter((label) => meetingTime[label.toLowerCase()]);
 };
 
 export const getInstructorNames = (course) => {
@@ -189,6 +146,12 @@ export const generateICSFile = (courses) => {
       icsContent += `SUMMARY:${course.courseTitle} - ${course.subject} ${course.courseNumber}\n`;
       icsContent += `DESCRIPTION:${formatICSDescription(course)}\n`;
       icsContent += `LOCATION:${location}\n`;
+      // RFC 7986 event color. Best effort: most calendar apps (Google, Apple)
+      // ignore it on import and use the target calendar's color instead.
+      const colorName = icsColorName(course.scheduleColor);
+      if (colorName) {
+        icsContent += `COLOR:${colorName}\n`;
+      }
       icsContent += `DTSTART:${startDate}T${startTime}\n`;
       if (endTime) {
         icsContent += `DTEND:${startDate}T${endTime}\n`;

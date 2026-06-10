@@ -19,6 +19,7 @@ import {
   decodeHtmlEntities,
 } from '../../utils'
 import { renderDaysOfWeek } from '../../utils/scheduleComponents'
+import { SCHEDULE_COLORS } from '../../utils/scheduleColors.js'
 import { useSyllabus } from '../../hooks/useSyllabus.js'
 import rmpLogo from '../../assets/rmp.svg'
 import './ExpandedCourseCard.css'
@@ -447,9 +448,15 @@ function ExpandedCourseCard({
   isTrackedView,
   isWatching,
   isGuest = false,
+  isScheduled = false,
+  isViewOnly = false,
   onWatchToggle,
+  onScheduleToggle,
   getTermName,
   onClose,
+  layoutId,
+  scheduleColor,
+  onScheduleColorChange,
 }) {
   const [tab, setTab] = useState('overview')
   const term = course?.term || selectedTerm
@@ -499,7 +506,7 @@ function ExpandedCourseCard({
       onClick={onClose}
     >
       <MotionDiv
-        layoutId={`course-${crn}`}
+        layoutId={layoutId || `course-${crn}`}
         className="exp-modal"
         transition={MORPH}
         role="dialog"
@@ -528,24 +535,53 @@ function ExpandedCourseCard({
                   <span className="exp-tag">{formatCreditHours(course.creditHourLow, course.creditHourHigh)} credits</span>
                   {term && <span className="exp-tag">{getTermName?.(term) || term}</span>}
                 </div>
+                {onScheduleColorChange && (
+                  <div className="exp-color-row" role="radiogroup" aria-label="Calendar color">
+                    <span className="exp-color-label">Calendar color</span>
+                    {SCHEDULE_COLORS.map((color) => (
+                      <button
+                        key={color.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={scheduleColor === color.value}
+                        className={`exp-color-swatch ${scheduleColor === color.value ? 'is-selected' : ''}`}
+                        style={{ backgroundColor: color.value }}
+                        title={color.label}
+                        onClick={() => onScheduleColorChange(color.value)}
+                      >
+                        {scheduleColor === color.value && <Icon name="check" size={12} aria-hidden />}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <div className="exp-header-actions">
               <button
                 type="button"
-                className="calendar-button"
-                onClick={() => { if (isGuest) return; window.location.href = `/schedule-builder?add=${crn}`; }}
-                disabled={isGuest}
-                title={isGuest ? 'Sign in to add to your schedule' : 'Add to schedule'}
+                className={`calendar-button ${isScheduled ? 'state-added' : ''}`}
+                onClick={() => { if (isGuest || isViewOnly) return; onScheduleToggle?.(course) }}
+                disabled={isGuest || isViewOnly}
+                title={
+                  isViewOnly ? 'This term is view only. Registration is closed'
+                    : isGuest ? 'Sign in to add to your schedule'
+                    : isScheduled ? 'On your schedule. Click to remove'
+                    : 'Add to schedule'
+                }
+                aria-pressed={isScheduled}
               >
-                <Icon name="calendar" size={18} aria-hidden />
+                <Icon name={isScheduled ? 'check' : 'calendar'} size={18} aria-hidden />
               </button>
               <button
                 type="button"
                 className={`watch-button ${isTrackedView ? 'state-remove' : isWatching ? 'state-active' : ''}`}
                 onClick={() => { if (isGuest) return; onWatchToggle?.(course) }}
-                disabled={isGuest}
-                title={isGuest ? 'Sign in to track classes' : undefined}
+                disabled={isGuest || (isViewOnly && !isWatching && !isTrackedView)}
+                title={
+                  isGuest ? 'Sign in to track classes'
+                    : isViewOnly && !isWatching && !isTrackedView ? 'This term is view only. Registration is closed'
+                    : undefined
+                }
               >
                 {renderWatchContent()}
               </button>

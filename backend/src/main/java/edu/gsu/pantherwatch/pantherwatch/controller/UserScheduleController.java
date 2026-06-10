@@ -58,7 +58,7 @@ public class UserScheduleController {
      * POST /api/schedule - Add a course to user's schedule
      */
     @PostMapping
-    public ResponseEntity<ScheduleEntryResponse> addScheduleEntry(
+    public ResponseEntity<?> addScheduleEntry(
             HttpServletRequest request,
             @Valid @RequestBody AddScheduleEntryRequest requestBody) {
         User currentUser = (User) request.getAttribute("currentUser");
@@ -66,12 +66,19 @@ public class UserScheduleController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        ScheduleEntryResponse entry = scheduleService.addScheduleEntry(
-            currentUser.getId(),
-            requestBody.getTermCode(),
-            requestBody.getCrn()
-        );
-        return ResponseEntity.ok(entry);
+        try {
+            ScheduleEntryResponse entry = scheduleService.addScheduleEntry(
+                currentUser.getId(),
+                requestBody.getTermCode(),
+                requestBody.getCrn()
+            );
+            return ResponseEntity.ok(entry);
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
     }
 
     /**

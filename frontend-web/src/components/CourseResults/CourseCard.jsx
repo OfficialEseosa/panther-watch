@@ -23,7 +23,10 @@ function CourseCard({
   isWatching,
   isWatchLoading,
   isGuest = false,
+  isScheduled = false,
+  isViewOnly = false,
   onWatchToggle,
+  onScheduleToggle,
   onOpenDetails,
   getTermName,
 }) {
@@ -88,19 +91,29 @@ function CourseCard({
         <div className="course-actions">
           <button
             type="button"
-            className="calendar-button"
-            onClick={(e) => { stop(e); if (isGuest) return; window.location.href = `/schedule-builder?add=${crn}`; }}
-            disabled={isGuest}
-            title={isGuest ? 'Sign in to add to your schedule' : 'Add to schedule'}
+            className={`calendar-button ${isScheduled ? 'state-added' : ''}`}
+            onClick={(e) => { stop(e); if (isGuest || isViewOnly) return; onScheduleToggle(course); }}
+            disabled={isGuest || isViewOnly}
+            title={
+              isViewOnly ? 'This term is view only. Registration is closed'
+                : isGuest ? 'Sign in to add to your schedule'
+                : isScheduled ? 'On your schedule. Click to remove'
+                : 'Add to schedule'
+            }
+            aria-pressed={isScheduled}
           >
-            <Icon name="calendar" size={18} aria-hidden />
+            <Icon name={isScheduled ? 'check' : 'calendar'} size={18} aria-hidden />
           </button>
           <button
             type="button"
             className={`watch-button ${isTrackedView ? 'state-remove' : isWatching ? 'state-active' : ''}`}
             onClick={(e) => { stop(e); if (isGuest) return; onWatchToggle(course); }}
-            disabled={isWatchLoading || isGuest}
-            title={isGuest ? 'Sign in to track classes' : undefined}
+            disabled={isWatchLoading || isGuest || (isViewOnly && !isWatching && !isTrackedView)}
+            title={
+              isGuest ? 'Sign in to track classes'
+                : isViewOnly && !isWatching && !isTrackedView ? 'This term is view only. Registration is closed'
+                : undefined
+            }
           >
             {renderWatchContent()}
           </button>

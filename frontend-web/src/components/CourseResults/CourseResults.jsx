@@ -4,6 +4,7 @@ import './CourseResults.css';
 import { useWatchedClasses } from '../../hooks/useWatchedClasses.js';
 import { useTerms } from '../../hooks/useTerms.js';
 import { useAuth } from '../../hooks/useAuth.js';
+import { useSchedule } from '../../hooks/useSchedule.js';
 import Icon from '../Icon';
 import LoadingBar from '../LoadingBar';
 import CourseCard from './CourseCard';
@@ -16,8 +17,9 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
   const [expandedDetails, setExpandedDetails] = useState(null);
   const [filterQuery, setFilterQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const { getTermName: getTermNameFromContext } = useTerms();
+  const { getTermName: getTermNameFromContext, isTermViewOnly } = useTerms();
   const { addWatchedClass, removeWatchedClass } = useWatchedClasses();
+  const { addCourseToSchedule, removeCourseFromSchedule, isCourseScheduled } = useSchedule();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const isGuest = !authLoading && !isAuthenticated;
 
@@ -68,6 +70,18 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
     return map;
   }, [courses]);
 
+  // Toggle a course in/out of the schedule right from the results, no
+  // navigation. The button's state (green check) is the acknowledgement.
+  const handleScheduleToggle = (course) => {
+    const courseTerm = course.term || selectedTerm;
+    if (!courseTerm || isTermViewOnly(courseTerm)) return;
+    if (isCourseScheduled(course, courseTerm)) {
+      removeCourseFromSchedule(courseTerm, course.courseReferenceNumber);
+    } else {
+      addCourseToSchedule(course, courseTerm);
+    }
+  };
+
   const handleWatchToggle = async (course) => {
     const crn = course.courseReferenceNumber;
     const courseTerm = course.term || selectedTerm;
@@ -85,6 +99,10 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
           onCourseRemoved(course);
         }
       } else {
+        // Registration is closed for view-only terms, nothing to track.
+        if (isTermViewOnly(courseTerm)) {
+          return;
+        }
         const watchData = {
           crn,
           term: courseTerm,
@@ -168,7 +186,10 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
                   isWatching={watchedCrns.includes(crn)}
                   isWatchLoading={watchLoading[key]}
                   isGuest={isGuest}
+                  isScheduled={isCourseScheduled(course, courseTerm)}
+                  isViewOnly={isTermViewOnly(courseTerm)}
                   onWatchToggle={handleWatchToggle}
+                  onScheduleToggle={handleScheduleToggle}
                   onOpenDetails={setExpandedDetails}
                   getTermName={getTermNameFromContext}
                 />
@@ -217,7 +238,10 @@ function CourseResults({ courses, loading, error, selectedTerm, isTrackedView = 
             isTrackedView={isTrackedView}
             isWatching={watchedCrns.includes(expandedDetails.course.courseReferenceNumber)}
             isGuest={isGuest}
+            isScheduled={isCourseScheduled(expandedDetails.course, selectedTerm)}
+            isViewOnly={isTermViewOnly(expandedDetails.course.term || selectedTerm)}
             onWatchToggle={handleWatchToggle}
+            onScheduleToggle={handleScheduleToggle}
             getTermName={getTermNameFromContext}
             onClose={() => setExpandedDetails(null)}
           />

@@ -19,6 +19,9 @@ public class WatchedClassService {
     @Autowired
     private WatchedClassRepository watchedClassRepository;
 
+    @Autowired
+    private PantherWatchService pantherWatchService;
+
     public List<WatchedClassResponse> getWatchedClasses(User user) {
         List<WatchedClass> watchedClasses = watchedClassRepository.findByUserOrderByCreatedAtDesc(user);
         
@@ -30,6 +33,10 @@ public class WatchedClassService {
     public WatchedClassResponse addWatchedClass(User user, WatchedClassRequest request) {
         if (watchedClassRepository.existsByUserAndCrnAndTerm(user, request.getCrn(), request.getTerm())) {
             throw new RuntimeException("You are already watching this class");
+        }
+
+        if (pantherWatchService.isViewOnlyTerm(request.getTerm())) {
+            throw new IllegalArgumentException("This term is view only. Registration is closed and classes can no longer be tracked");
         }
 
         WatchedClass watchedClass = WatchedClass.builder()
