@@ -39,22 +39,6 @@ public class UserScheduleController {
     }
 
     /**
-     * GET /api/schedule/{termCode} - Get schedule entries for a specific term
-     */
-    @GetMapping("/{termCode}")
-    public ResponseEntity<List<ScheduleEntryResponse>> getUserScheduleForTerm(
-            HttpServletRequest request,
-            @PathVariable String termCode) {
-        User currentUser = (User) request.getAttribute("currentUser");
-        if (currentUser == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        List<ScheduleEntryResponse> schedule = scheduleService.getUserScheduleForTerm(currentUser.getId(), termCode);
-        return ResponseEntity.ok(schedule);
-    }
-
-    /**
      * POST /api/schedule - Add a course to user's schedule
      */
     @PostMapping
@@ -70,7 +54,10 @@ public class UserScheduleController {
             ScheduleEntryResponse entry = scheduleService.addScheduleEntry(
                 currentUser.getId(),
                 requestBody.getTermCode(),
-                requestBody.getCrn()
+                requestBody.getCrn(),
+                requestBody.getSubject(),
+                requestBody.getCourseNumber(),
+                requestBody.getCourseTitle()
             );
             return ResponseEntity.ok(entry);
         } catch (IllegalArgumentException e) {
@@ -95,30 +82,10 @@ public class UserScheduleController {
         }
 
         scheduleService.removeScheduleEntry(currentUser.getId(), termCode, crn);
-        
+
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
         response.put("message", "Schedule entry removed");
         return ResponseEntity.ok(response);
-    }
-
-    /**
-     * POST /api/schedule/sync - Sync entire schedule from client (batch update)
-     * Request body: { "202601": ["12345", "67890"], "202602": ["11111"] }
-     */
-    @PostMapping("/sync")
-    public ResponseEntity<Map<String, List<ScheduleEntryResponse>>> syncSchedule(
-            HttpServletRequest request,
-            @RequestBody Map<String, List<String>> scheduleByTerm) {
-        User currentUser = (User) request.getAttribute("currentUser");
-        if (currentUser == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        Map<String, List<ScheduleEntryResponse>> syncedSchedule = scheduleService.syncSchedule(
-            currentUser.getId(),
-            scheduleByTerm
-        );
-        return ResponseEntity.ok(syncedSchedule);
     }
 }

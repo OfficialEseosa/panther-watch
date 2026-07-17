@@ -19,4 +19,12 @@ public class AddScheduleEntryRequest {
     @NotBlank(message = "CRN is required")
     @Size(max = 10, message = "CRN must not exceed 10 characters")
     private String crn;
+
+    @Size(max = 10, message = "Subject must not exceed 10 characters")
+    private String subject;
+
+    @Size(max = 10, message = "Course number must not exceed 10 characters")
+    private String courseNumber;
+
+    private String courseTitle;
 }

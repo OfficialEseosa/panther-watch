@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useWatchedClasses } from './useWatchedClasses.js';
 import { useTerms } from './useTerms.js';
 import { useSchedule } from './useSchedule.js';
@@ -24,7 +24,7 @@ const downloadICSFile = (icsContent, termCode) => {
   document.body.removeChild(link);
 };
 
-export function useSchedulePlanner(locationSearch) {
+export function useSchedulePlanner() {
   const {
     watchedClassesWithDetails,
     loadWatchedClassesWithDetails,
@@ -33,13 +33,12 @@ export function useSchedulePlanner(locationSearch) {
   const { terms, termsLoading, getTermName } = useTerms();
   const {
     scheduleByTerm,
+    scheduleLoading,
     addCourseToSchedule: addToSchedule,
     removeCourseFromSchedule,
     removeTermsFromSchedule,
     isCourseScheduled: isScheduled
   } = useSchedule();
-
-  const pendingCrnRef = useRef(null);
 
   const [selectedTerm, setSelectedTerm] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
@@ -302,52 +301,7 @@ export function useSchedulePlanner(locationSearch) {
     );
   }, [watchedClassesWithDetails, selectedTerm]);
 
-  useEffect(() => {
-    const params = new URLSearchParams(locationSearch || '');
-    const crnParam = params.get('add');
-    if (crnParam) {
-      pendingCrnRef.current = crnParam;
-      setShowAddModal(true);
-      if (typeof window !== 'undefined') {
-        const url = new URL(window.location.href);
-        url.searchParams.delete('add');
-        window.history.replaceState({}, '', url.toString());
-      }
-    }
-  }, [locationSearch]);
-
-  useEffect(() => {
-    if (!pendingCrnRef.current) return;
-    if (detailsLoading) return;
-
-    const crn = pendingCrnRef.current;
-
-    if (Array.isArray(watchedClassesWithDetails) && watchedClassesWithDetails.length > 0) {
-      const match = watchedClassesWithDetails.find(
-        (course) => course.courseReferenceNumber === crn
-      );
-      if (match) {
-        const added = addCourseToSchedule(match);
-        pendingCrnRef.current = null;
-        if (added) {
-          setShowAddModal(false);
-        }
-        return;
-      }
-    }
-
-    setAddMode('search');
-    resetSearchState();
-    setSearchForm((prev) => ({ ...prev, crn }));
-    pendingCrnRef.current = null;
-  }, [
-    watchedClassesWithDetails,
-    detailsLoading,
-    addCourseToSchedule,
-    resetSearchState
-  ]);
-
-  const isLoading = termsLoading || watchedLoading || detailsLoading || !selectedTerm;
+  const isLoading = termsLoading || watchedLoading || detailsLoading || scheduleLoading || !selectedTerm;
   const hasScheduleEntries = scheduleClasses.length > 0;
   const selectedTermLabel = selectedTerm ? getTermName(selectedTerm) : '';
 

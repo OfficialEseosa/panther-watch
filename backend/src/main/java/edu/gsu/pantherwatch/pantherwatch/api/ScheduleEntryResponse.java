@@ -14,5 +14,8 @@ public class ScheduleEntryResponse {
     private Long id;
     private String termCode;
     private String crn;
+    private String subject;
+    private String courseNumber;
+    private String courseTitle;
     private LocalDateTime addedAt;
 }

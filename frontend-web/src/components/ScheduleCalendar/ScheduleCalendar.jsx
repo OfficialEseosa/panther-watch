@@ -9,6 +9,7 @@ import { useWatchedClasses } from '../../hooks/useWatchedClasses.js';
 import { useTerms } from '../../hooks/useTerms.js';
 import { useSchedule } from '../../hooks/useSchedule.js';
 import { colorForCrn } from '../../utils/scheduleColors.js';
+import { DAY_ABBREVIATIONS } from '../../pages/ScheduleBuilder/utils.js';
 
 const MotionDiv = motion.div;
 const MotionButton = motion.button;
@@ -19,16 +20,6 @@ const DEFAULT_END_HOUR = 18;
 
 // Match the card->modal morph used by the search results grid.
 const MORPH = { type: 'spring', stiffness: 320, damping: 34 };
-
-const DAY_ABBREVIATIONS = {
-  Monday: 'Mon',
-  Tuesday: 'Tue',
-  Wednesday: 'Wed',
-  Thursday: 'Thu',
-  Friday: 'Fri',
-  Saturday: 'Sat',
-  Sunday: 'Sun'
-};
 
 /**
  * Assign overlapping blocks within one day to side-by-side columns so nothing

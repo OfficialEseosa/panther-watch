@@ -3,6 +3,8 @@ import { ScheduleContext } from './ScheduleContext.js'
 import {
   loadFromLocalStorage,
   saveToLocalStorage,
+  fetchScheduleEntries,
+  fetchCourseSections,
   addCourse,
   removeCourse
 } from '../config/scheduleService.js'
@@ -20,14 +22,124 @@ import Icon from '../components/Icon'
 export function ScheduleProvider({ children }) {
   const { isAuthenticated } = useAuth()
   const [scheduleByTerm, setScheduleByTerm] = useState(() => loadFromLocalStorage())
+  const [scheduleLoading, setScheduleLoading] = useState(false)
   const [conflictNotice, setConflictNotice] = useState(null)
   const conflictTimerRef = useRef(null)
+  const scheduleRef = useRef(scheduleByTerm)
+  const syncedRef = useRef(false)
 
   useEffect(() => {
+    scheduleRef.current = scheduleByTerm
     saveToLocalStorage(scheduleByTerm)
   }, [scheduleByTerm])
 
   useEffect(() => () => clearTimeout(conflictTimerRef.current), [])
+
+  // On sign-in, reconcile with the database so the schedule follows the
+  // account across devices: local-only classes are pushed up, and DB-only
+  // entries (added on another device) are hydrated back into full course
+  // objects by searching their subject + course number on GoSolar and
+  // picking the section with the matching CRN.
+  useEffect(() => {
+    if (!isAuthenticated) {
+      syncedRef.current = false
+      return
+    }
+    if (syncedRef.current) return
+    syncedRef.current = true
+
+    let cancelled = false
+
+    const syncFromDatabase = async () => {
+      setScheduleLoading(true)
+      try {
+        const dbEntriesByTerm = await fetchScheduleEntries()
+        const local = scheduleRef.current
+
+        // Push classes that only exist locally (added while signed out, or
+        // while the DB sync was failing) up to the database.
+        Object.entries(local).forEach(([termCode, courses]) => {
+          const dbCrns = new Set((dbEntriesByTerm[termCode] || []).map((e) => e.crn))
+          courses.forEach((course) => {
+            if (!dbCrns.has(course.courseReferenceNumber)) {
+              addCourse(termCode, course).catch((error) => {
+                console.error('Failed to push local schedule entry to database:', error)
+              })
+            }
+          })
+        })
+
+        // Entries the database has but this device doesn't, grouped by
+        // term+subject+courseNumber so each course is searched only once
+        // even when several of its sections are scheduled.
+        const groups = new Map()
+        Object.entries(dbEntriesByTerm).forEach(([termCode, entries]) => {
+          const localCrns = new Set(
+            (local[termCode] || []).map((course) => course.courseReferenceNumber)
+          )
+          entries.forEach((entry) => {
+            if (localCrns.has(entry.crn)) return
+            if (!entry.subject || !entry.courseNumber) {
+              console.warn(`Schedule entry ${entry.crn} has no course identity; skipping hydration`)
+              return
+            }
+            const key = `${termCode}|${entry.subject}|${entry.courseNumber}`
+            if (!groups.has(key)) {
+              groups.set(key, { termCode, subject: entry.subject, courseNumber: entry.courseNumber, crns: [] })
+            }
+            groups.get(key).crns.push(entry.crn)
+          })
+        })
+        if (groups.size === 0) return
+
+        const hydrated = await Promise.all(
+          [...groups.values()].map(async (group) => {
+            try {
+              const sections = await fetchCourseSections(
+                group.termCode,
+                group.subject,
+                group.courseNumber
+              )
+              return group.crns
+                .map((crn) => sections.find((s) => s.courseReferenceNumber === crn))
+                .filter(Boolean)
+                .map((course) => ({ termCode: group.termCode, course }))
+            } catch (error) {
+              console.error(`Failed to hydrate ${group.subject} ${group.courseNumber}:`, error)
+              return []
+            }
+          })
+        )
+        if (cancelled) return
+
+        setScheduleByTerm((prev) => {
+          const next = { ...prev }
+          hydrated.flat().forEach(({ termCode, course }) => {
+            const current = next[termCode] || []
+            const exists = current.some(
+              (c) => c.courseReferenceNumber === course.courseReferenceNumber
+            )
+            if (exists) return
+            next[termCode] = [
+              ...current,
+              { ...course, scheduleColor: pickDefaultColor(current) }
+            ]
+          })
+          return next
+        })
+      } catch (error) {
+        console.error('Failed to load schedule from database:', error)
+      } finally {
+        if (!cancelled) setScheduleLoading(false)
+      }
+    }
+
+    syncFromDatabase()
+
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated])
 
   const showConflictNotice = useCallback((notice) => {
     clearTimeout(conflictTimerRef.current)
@@ -80,7 +192,7 @@ export function ScheduleProvider({ children }) {
 
       // Optimistic update: UI state is already changed, DB sync runs in background.
       if (added && isAuthenticated) {
-        addCourse(termCode, normalizedCourse.courseReferenceNumber).catch((error) => {
+        addCourse(termCode, normalizedCourse).catch((error) => {
           console.error('Failed to sync schedule add to database:', error)
         })
       }
@@ -191,6 +303,7 @@ export function ScheduleProvider({ children }) {
 
   const value = {
     scheduleByTerm,
+    scheduleLoading,
     addCourseToSchedule,
     removeCourseFromSchedule,
     removeTermsFromSchedule,

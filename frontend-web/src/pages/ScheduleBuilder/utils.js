@@ -29,7 +29,7 @@ const ICS_DAY_MAP = {
   Saturday: 'SA'
 };
 
-const DAY_ABBREVIATIONS = {
+export const DAY_ABBREVIATIONS = {
   Sunday: 'Sun',
   Monday: 'Mon',
   Tuesday: 'Tue',

@@ -2,6 +2,7 @@ package edu.gsu.pantherwatch.pantherwatch.service;
 
 import edu.gsu.pantherwatch.pantherwatch.model.User;
 import edu.gsu.pantherwatch.pantherwatch.repository.UserRepository;
+import edu.gsu.pantherwatch.pantherwatch.repository.UserScheduleRepository;
 import edu.gsu.pantherwatch.pantherwatch.repository.WatchedClassRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +24,9 @@ public class UserService {
 
     @Autowired
     private WatchedClassRepository watchedClassRepository;
+
+    @Autowired
+    private UserScheduleRepository userScheduleRepository;
 
     public User findById(UUID id) {
         return userRepository.findById(id).orElse(null);
@@ -90,6 +94,7 @@ public class UserService {
         try {
             logger.info("Deleting account and related data for user {}", user.getEmail());
             watchedClassRepository.deleteAllByUser(user);
+            userScheduleRepository.deleteByUserId(user.getId());
             userRepository.delete(user);
             logger.info("Successfully deleted account from database for user {}", user.getEmail());
         } catch (Exception e) {

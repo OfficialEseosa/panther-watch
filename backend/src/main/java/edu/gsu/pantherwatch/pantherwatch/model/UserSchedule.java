@@ -31,6 +31,18 @@ public class UserSchedule {
     @Column(nullable = false, length = 10)
     private String crn;
 
+    // Course identity, stored so another device can hydrate this entry back
+    // into a full course object (GoSolar search needs subject + courseNumber;
+    // it cannot look up by CRN).
+    @Column(length = 10)
+    private String subject;
+
+    @Column(name = "course_number", length = 10)
+    private String courseNumber;
+
+    @Column(name = "course_title")
+    private String courseTitle;
+
     @Column(name = "added_at", nullable = false)
     private LocalDateTime addedAt;
 

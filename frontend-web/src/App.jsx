@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import Home from './pages/Home'
 import Dashboard from './pages/Dashboard'
 import CourseSearch from './pages/CourseSearch'
 import CourseResultsPage from './pages/CourseResults'
 import TrackedClasses from './pages/TrackedClasses'
-import AdminPanel from './pages/Admin'
 import Settings from './pages/Settings'
 import ScheduleBuilder from './pages/ScheduleBuilder'
 import { PrivacyPolicy, TermsOfService } from './pages/Legal'
@@ -18,6 +17,9 @@ import { ThemeProvider } from './contexts/ThemeContext.jsx'
 import { TutorialProvider } from './contexts/TutorialContext.jsx'
 import { authService } from './config/authService.js'
 import './App.css'
+
+// Admin-only and rarely visited — keep it out of the main bundle.
+const AdminPanel = lazy(() => import('./pages/Admin'))
 
 // Landing spot for the Google OAuth redirect. authService captures the token from the
 // URL fragment on page load (see handleOAuthCallback); here we just send the user on.
@@ -132,7 +134,11 @@ function App() {
                   element={
                     isLoggedIn ?
                       <TermsProvider>
-                        <DashboardLayout onLogout={handleLogout}><AdminPanel /></DashboardLayout>
+                        <DashboardLayout onLogout={handleLogout}>
+                          <Suspense fallback={<div className="loading-state">Loading…</div>}>
+                            <AdminPanel />
+                          </Suspense>
+                        </DashboardLayout>
                       </TermsProvider> :
                       <Navigate to="/" replace />
                   }

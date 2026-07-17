@@ -26,10 +26,13 @@ public interface WatchedClassRepository extends JpaRepository<WatchedClass, Long
     
     long countByUser(User user);
 
-    @Query("SELECT DISTINCT w.crn, w.term FROM WatchedClass w")
-    List<Object[]> findAllUniqueCrnTermPairs();
-
-    List<WatchedClass> findByCrnAndTerm(String crn, String term);
+    /**
+     * All watch entries with their users pre-fetched, for the watch cycle.
+     * The fetch join matters: the watcher reads user email/name on async
+     * threads where no Hibernate session is open (OSIV is disabled).
+     */
+    @Query("SELECT w FROM WatchedClass w JOIN FETCH w.user")
+    List<WatchedClass> findAllWithUser();
 
     @Query("SELECT DISTINCT w.term FROM WatchedClass w")
     List<String> findDistinctTerms();

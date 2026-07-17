@@ -5,4 +5,16 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   envDir: './env', // Look for .env files in the env directory
+  build: {
+    rollupOptions: {
+      output: {
+        // Split the big stable libraries into their own cacheable chunks so
+        // app code changes don't force users to re-download React/framer.
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'framer-motion': ['framer-motion']
+        }
+      }
+    }
+  }
 })

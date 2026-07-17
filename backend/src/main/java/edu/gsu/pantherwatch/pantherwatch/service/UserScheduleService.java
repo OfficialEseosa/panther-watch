@@ -30,21 +30,11 @@ public class UserScheduleService {
     }
 
     /**
-     * Get schedule entries for a specific term
-     */
-    public List<ScheduleEntryResponse> getUserScheduleForTerm(UUID userId, String termCode) {
-        log.info("Fetching schedule for user: {} and term: {}", userId, termCode);
-        return scheduleRepository.findByUserIdAndTermCodeOrderByAddedAtDesc(userId, termCode)
-            .stream()
-            .map(this::toResponse)
-            .collect(Collectors.toList());
-    }
-
-    /**
      * Add a course to user's schedule
      */
     @Transactional
-    public ScheduleEntryResponse addScheduleEntry(UUID userId, String termCode, String crn) {
+    public ScheduleEntryResponse addScheduleEntry(UUID userId, String termCode, String crn,
+                                                  String subject, String courseNumber, String courseTitle) {
         log.info("Adding schedule entry for user: {}, term: {}, crn: {}", userId, termCode, crn);
 
         if (pantherWatchService.isViewOnlyTerm(termCode)) {
@@ -54,8 +44,16 @@ public class UserScheduleService {
         // Check if already exists
         Optional<UserSchedule> existing = scheduleRepository.findByUserIdAndTermCodeAndCrn(userId, termCode, crn);
         if (existing.isPresent()) {
-            log.info("Schedule entry already exists: {}", existing.get().getId());
-            return toResponse(existing.get());
+            UserSchedule entry = existing.get();
+            log.info("Schedule entry already exists: {}", entry.getId());
+            // Backfill course identity on rows created before it was stored.
+            if (entry.getSubject() == null && subject != null) {
+                entry.setSubject(subject);
+                entry.setCourseNumber(courseNumber);
+                entry.setCourseTitle(courseTitle);
+                entry = scheduleRepository.save(entry);
+            }
+            return toResponse(entry);
         }
 
         // Create new entry
@@ -63,6 +61,9 @@ public class UserScheduleService {
             .userId(userId)
             .termCode(termCode)
             .crn(crn)
+            .subject(subject)
+            .courseNumber(courseNumber)
+            .courseTitle(courseTitle)
             .build();
 
         UserSchedule saved = scheduleRepository.save(schedule);
@@ -79,76 +80,14 @@ public class UserScheduleService {
         scheduleRepository.deleteByUserIdAndTermCodeAndCrn(userId, termCode, crn);
     }
 
-    /**
-     * Sync schedule from client (batch update)
-     */
-    @Transactional
-    public Map<String, List<ScheduleEntryResponse>> syncSchedule(UUID userId, Map<String, List<String>> scheduleByTerm) {
-        log.info("Syncing schedule for user: {}", userId);
-        
-        // Get current schedule from DB
-        Map<String, Set<String>> currentSchedule = scheduleRepository.findByUserIdOrderByAddedAtDesc(userId)
-            .stream()
-            .collect(Collectors.groupingBy(
-                UserSchedule::getTermCode,
-                Collectors.mapping(UserSchedule::getCrn, Collectors.toSet())
-            ));
-
-        Set<String> viewOnlyTerms = pantherWatchService.getViewOnlyTermCodes();
-
-        // Process each term
-        for (Map.Entry<String, List<String>> entry : scheduleByTerm.entrySet()) {
-            String termCode = entry.getKey();
-            // Registration is closed for view-only terms, so drop client adds for them.
-            if (viewOnlyTerms.contains(termCode)) {
-                log.info("Skipping sync adds for view-only term: {}", termCode);
-                continue;
-            }
-            Set<String> clientCrns = new HashSet<>(entry.getValue());
-            Set<String> dbCrns = currentSchedule.getOrDefault(termCode, new HashSet<>());
-
-            // Add missing CRNs
-            for (String crn : clientCrns) {
-                if (!dbCrns.contains(crn)) {
-                    UserSchedule schedule = UserSchedule.builder()
-                        .userId(userId)
-                        .termCode(termCode)
-                        .crn(crn)
-                        .build();
-                    scheduleRepository.save(schedule);
-                    log.info("Added missing CRN: {} for term: {}", crn, termCode);
-                }
-            }
-
-            // Remove extra CRNs
-            for (String crn : dbCrns) {
-                if (!clientCrns.contains(crn)) {
-                    scheduleRepository.deleteByUserIdAndTermCodeAndCrn(userId, termCode, crn);
-                    log.info("Removed extra CRN: {} for term: {}", crn, termCode);
-                }
-            }
-        }
-
-        // Remove terms that are in DB but not in client
-        Set<String> clientTerms = scheduleByTerm.keySet();
-        for (String termCode : currentSchedule.keySet()) {
-            if (!clientTerms.contains(termCode)) {
-                for (String crn : currentSchedule.get(termCode)) {
-                    scheduleRepository.deleteByUserIdAndTermCodeAndCrn(userId, termCode, crn);
-                    log.info("Removed CRN: {} from deleted term: {}", crn, termCode);
-                }
-            }
-        }
-
-        // Return updated schedule
-        return getUserSchedule(userId);
-    }
-
     private ScheduleEntryResponse toResponse(UserSchedule schedule) {
         return ScheduleEntryResponse.builder()
             .id(schedule.getId())
             .termCode(schedule.getTermCode())
             .crn(schedule.getCrn())
+            .subject(schedule.getSubject())
+            .courseNumber(schedule.getCourseNumber())
+            .courseTitle(schedule.getCourseTitle())
             .addedAt(schedule.getAddedAt())
             .build();
     }

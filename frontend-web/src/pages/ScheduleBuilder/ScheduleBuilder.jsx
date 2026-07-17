@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Icon from '../../components/Icon';
 import ScheduleCalendar from '../../components/ScheduleCalendar';
 import AddClassesModal from '../../components/AddClassesModal';
@@ -7,7 +7,6 @@ import './ScheduleBuilder.css';
 
 function ScheduleBuilder() {
   const navigate = useNavigate();
-  const location = useLocation();
 
   const {
     visibleDays,
@@ -37,7 +36,7 @@ function ScheduleBuilder() {
     buildMeetingSummaries,
     formatMinutesToLabel,
     isLoading
-  } = useSchedulePlanner(location.search);
+  } = useSchedulePlanner();
 
   const handleOpenAddModal = (mode = 'tracked') => {
     resetSearchState();

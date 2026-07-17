@@ -34,6 +34,12 @@ public class WatchedClass {
     private String subject;
     private String instructor;
 
+    // When the "seat opened" email for the current opening was sent. Cleared
+    // when the class fills up again, so each seat-opening event produces
+    // exactly one email instead of one every watch cycle.
+    @Column(name = "notified_at")
+    private LocalDateTime notifiedAt;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
