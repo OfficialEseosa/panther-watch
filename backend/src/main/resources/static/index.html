@@ -4,180 +4,274 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>PantherWatch API</title>
+  <meta name="description" content="REST API reference for PantherWatch — real-time GSU course availability, grade history, professor ratings, and schedules." />
+  <link rel="icon" href="https://www.pantherwatch.app/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/index.css" />
 </head>
 <body>
   <div class="wrap">
-    <header>
-      <h1>PantherWatch API</h1>
-      <div class="muted">Base URL: <code>https://api.pantherwatch.app</code></div>
-      <p class="muted small">This page lists available endpoints, request parameters and example responses. Public endpoints can be called directly. Protected endpoints require a Supabase JWT in the Authorization header.</p>
+    <header class="hero">
+      <img src="https://www.pantherwatch.app/email-logo.png" width="56" height="56" alt="PantherWatch" class="hero-logo" />
+      <div>
+        <h1>PantherWatch API</h1>
+        <p class="muted">Base URL: <code>https://api.pantherwatch.app</code></p>
+        <p class="muted small">Real-time GSU course availability, grade history, professor ratings, syllabi, watch lists, and schedules. Public endpoints can be called directly; protected endpoints require a PantherWatch JWT.</p>
+      </div>
     </header>
 
-    <section class="card">
+    <nav class="toc card">
+      <a href="#auth">Authentication</a>
+      <a href="#courses">Courses</a>
+      <a href="#watched">Watched classes</a>
+      <a href="#schedule">Schedule</a>
+      <a href="#announcements">Announcements</a>
+      <a href="#account">Account</a>
+      <a href="#admin">Admin</a>
+      <a href="#notes">Notes</a>
+    </nav>
+
+    <section class="card" id="auth">
       <h2>Authentication</h2>
-      <p class="small">Protected endpoints require:</p>
-      <pre><code>Authorization: Bearer &lt;your_supabase_jwt&gt;</code></pre>
-      <p class="muted small">A 401 is returned if the header is missing/invalid. CORS and OPTIONS requests are allowed.</p>
+      <p class="small">PantherWatch issues its own JWT after Google sign-in. Start the browser flow at:</p>
+      <pre><code>GET https://api.pantherwatch.app/api/auth/google/login</code></pre>
+      <p class="small muted">The backend redirects through Google and lands back on the app at <code>/auth/callback#token=&lt;jwt&gt;</code>. Send that token on protected endpoints:</p>
+      <pre><code>Authorization: Bearer &lt;your_pantherwatch_jwt&gt;</code></pre>
+      <p class="muted small">Requests without a valid token get <code>401</code>. Tokens expire after ~30 days.</p>
     </section>
 
-    <section class="card">
-      <h2>Courses (Public)</h2>
+    <section class="card" id="courses">
+      <h2>Courses <span class="chip public">public</span></h2>
 
       <div class="endpoint">
-        <div><span class="method GET">GET</span> <code>/api/courses/terms</code> <span class="chip public">public</span></div>
-        <p class="small muted">Returns a list of available terms.</p>
-        <div class="small">Response (200):</div>
+        <div class="endpoint-title"><span class="method get">GET</span> <code>/api/courses/terms</code></div>
+        <p class="small muted">Available registration terms. Descriptions ending in “(View Only)” are closed for registration.</p>
         <pre><code>[
-  {
-    "code": "202508",
-    "description": "Fall 2025"
-  }
+  { "code": "202608", "description": "Fall Semester 2026" },
+  { "code": "202601", "description": "Spring Semester 2026 (View Only)" }
 ]</code></pre>
-        <div class="small">curl:</div>
         <pre><code>curl -s https://api.pantherwatch.app/api/courses/terms</code></pre>
       </div>
 
       <div class="endpoint">
-        <div><span class="method GET">GET</span> <code>/api/courses/search</code> <span class="chip public">public</span></div>
-        <p class="small muted">Searches courses. Supply query parameters below. Returns a paged result with data array of course sections.</p>
-        <div class="small">Query params:</div>
+        <div class="endpoint-title"><span class="method get">GET</span> <code>/api/courses/search</code></div>
+        <p class="small muted">Search course sections with live seat counts. Returns a paged result with a <code>data</code> array.</p>
+        <div class="small">Query parameters:</div>
         <ul class="small">
-          <li><code>txt_subject</code> (e.g., <code>CS</code>)</li>
-          <li><code>txt_courseNumber</code> (e.g., <code>1301</code>)</li>
-          <li><code>txt_term</code> (term code, see terms endpoint)</li>
-          <li><code>txt_level</code> (optional)</li>
+          <li><code>txtTerm</code> — term code (required, see terms endpoint)</li>
+          <li><code>txtSubject</code> — subject code, e.g. <code>CSC</code> (required)</li>
+          <li><code>txtCourseNumber</code> — e.g. <code>1301</code> (required)</li>
+          <li><code>txtLevel</code> — <code>US</code> undergraduate / <code>GS</code> graduate (optional)</li>
+          <li><code>pageOffset</code> (default 0), <code>pageMaxSize</code> (default 200)</li>
         </ul>
-        <div class="small">Response (200):</div>
         <pre><code>{
   "success": true,
-  "totalCount": 1,
+  "totalCount": 3,
   "data": [
     {
-      "termDesc": "Fall 2025",
-      "courseReferenceNumber": "12345",
-      "courseNumber": "1301",
-      "subject": "CS",
+      "termDesc": "Fall Semester 2026",
+      "courseReferenceNumber": "89270",
+      "subject": "CSC",
       "subjectDescription": "Computer Science",
-      "courseTitle": "Intro to Programming",
+      "courseNumber": "1301",
+      "courseTitle": "Principles of Computer Science I",
       "seatsAvailable": 5,
-      "faculty": [ { "displayName": "Prof. Ada" } ],
-      "meetingsFaculty": [ { "meetingTime": { "monday": true, "beginTime": "09:00" }} ]
+      "enrollment": 20,
+      "maximumEnrollment": 25,
+      "waitCount": 0,
+      "faculty": [ { "displayName": "Doe, Jane" } ],
+      "meetingsFaculty": [ { "meetingTime": { "monday": true, "beginTime": "0930", "endTime": "1045" } } ]
     }
-  ],
-  "pageOffset": 1,
-  "pageMaxSize": 10
+  ]
 }</code></pre>
-        <div class="small">curl:</div>
-        <pre><code>curl -s "https://api.pantherwatch.app/api/courses/search?txt_subject=CS&txt_courseNumber=1301&txt_term=202508"</code></pre>
+        <pre><code>curl -s "https://api.pantherwatch.app/api/courses/search?txtTerm=202608&txtSubject=CSC&txtCourseNumber=1301"</code></pre>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-title"><span class="method get">GET</span> <code>/api/courses/subjects</code></div>
+        <p class="small muted">Subject-code autocomplete for a term.</p>
+        <ul class="small">
+          <li><code>searchTerm</code> — prefix to match, e.g. <code>CS</code></li>
+          <li><code>term</code> — term code</li>
+          <li><code>offset</code> (default 1), <code>max</code> (default 10)</li>
+        </ul>
+        <pre><code>curl -s "https://api.pantherwatch.app/api/courses/subjects?searchTerm=CS&term=202608"</code></pre>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-title"><span class="method get">GET</span> <code>/api/courses/grades</code></div>
+        <p class="small muted">Historical grade distribution for a course, aggregated across recent terms. With <code>instructor</code>, also resolves that professor's specific distribution.</p>
+        <ul class="small">
+          <li><code>subject</code>, <code>courseNumber</code> — required</li>
+          <li><code>instructor</code> — optional, display name as returned by search</li>
+        </ul>
+        <pre><code>curl -s "https://api.pantherwatch.app/api/courses/grades?subject=CSC&courseNumber=1301&instructor=Doe,%20Jane"</code></pre>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-title"><span class="method get">GET</span> <code>/api/courses/ratings</code></div>
+        <p class="small muted">RateMyProfessors summary for an instructor, resolved by name against GSU. Returns <code>found: false</code> when there's no profile.</p>
+        <pre><code>curl -s "https://api.pantherwatch.app/api/courses/ratings?professor=Doe,%20Jane"</code></pre>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-title"><span class="method get">GET</span> <code>/api/courses/syllabus</code></div>
+        <p class="small muted">Whether a section has a published syllabus in GSU's repository, plus the embeddable PDF URL when it does.</p>
+        <pre><code>curl -s "https://api.pantherwatch.app/api/courses/syllabus?term=202608&crn=89270"</code></pre>
       </div>
     </section>
 
-    <section class="card">
-      <h2>Watched Classes (Protected)</h2>
-      <p class="small muted">All endpoints below require <code>Authorization: Bearer &lt;token&gt;</code>.</p>
+    <section class="card" id="watched">
+      <h2>Watched classes <span class="chip protected">protected</span></h2>
+      <p class="small muted">Your seat-alert watch list. Watchers get one email per seat opening. All endpoints require <code>Authorization: Bearer &lt;token&gt;</code>.</p>
 
       <div class="endpoint">
-        <div><span class="method GET">GET</span> <code>/api/watched-classes</code> <span class="chip protected">protected</span></div>
-        <p class="small muted">Returns your current watch list.</p>
-        <div class="small">Response:</div>
+        <div class="endpoint-title"><span class="method get">GET</span> <code>/api/watched-classes</code></div>
+        <p class="small muted">Your current watch list.</p>
         <pre><code>{
   "success": true,
   "data": [
     {
       "id": 1,
-      "crn": "12345",
-      "term": "202508",
-      "courseTitle": "Intro to Programming",
+      "crn": "89270",
+      "term": "202608",
+      "courseTitle": "Principles of Computer Science I",
       "courseNumber": "1301",
-      "subject": "CS",
-      "instructor": "Prof. Ada",
-      "createdAt": "2025-08-30T12:34:56"
+      "subject": "CSC",
+      "instructor": "Doe, Jane",
+      "createdAt": "2026-07-01T12:34:56"
     }
   ],
   "count": 1
 }</code></pre>
-        <div class="small">curl:</div>
         <pre><code>curl -s -H "Authorization: Bearer $TOKEN" https://api.pantherwatch.app/api/watched-classes</code></pre>
       </div>
 
       <div class="endpoint">
-        <div><span class="method POST">POST</span> <code>/api/watched-classes</code> <span class="chip protected">protected</span></div>
+        <div class="endpoint-title"><span class="method post">POST</span> <code>/api/watched-classes</code></div>
         <p class="small muted">Add a class to your watch list.</p>
-        <div class="small">Body (JSON):</div>
         <pre><code>{
-  "crn": "12345",
-  "term": "202508",
-  "courseTitle": "Intro to Programming",
+  "crn": "89270",
+  "term": "202608",
+  "courseTitle": "Principles of Computer Science I",
   "courseNumber": "1301",
-  "subject": "CS",
-  "instructor": "Prof. Ada"
+  "subject": "CSC",
+  "instructor": "Doe, Jane"
 }</code></pre>
-        <div class="small">Response:</div>
-        <pre><code>{ "success": true, "message": "Class added to watch list", "data": { ... } }</code></pre>
-        <div class="small">curl:</div>
         <pre><code>curl -s -X POST \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"crn":"12345","term":"202508","courseTitle":"Intro to Programming","courseNumber":"1301","subject":"CS","instructor":"Prof. Ada"}' \
+  -d '{"crn":"89270","term":"202608","courseTitle":"Principles of Computer Science I","courseNumber":"1301","subject":"CSC","instructor":"Doe, Jane"}' \
   https://api.pantherwatch.app/api/watched-classes</code></pre>
       </div>
 
       <div class="endpoint">
-        <div><span class="method DELETE">DELETE</span> <code>/api/watched-classes?crn=...&amp;term=...</code> <span class="chip protected">protected</span></div>
+        <div class="endpoint-title"><span class="method delete">DELETE</span> <code>/api/watched-classes?crn=…&amp;term=…</code></div>
         <p class="small muted">Remove a class from your watch list.</p>
-        <div class="small">Response:</div>
-        <pre><code>{ "success": true, "message": "Class removed from watch list" }</code></pre>
-        <div class="small">curl:</div>
         <pre><code>curl -s -X DELETE -H "Authorization: Bearer $TOKEN" \
-  "https://api.pantherwatch.app/api/watched-classes?crn=12345&term=202508"</code></pre>
+  "https://api.pantherwatch.app/api/watched-classes?crn=89270&term=202608"</code></pre>
       </div>
 
       <div class="endpoint">
-        <div><span class="method GET">GET</span> <code>/api/watched-classes/check?crn=...&amp;term=...</code> <span class="chip protected">protected</span></div>
-        <p class="small muted">Check if you are watching a specific class.</p>
-        <div class="small">Response:</div>
-        <pre><code>{ "success": true, "isWatching": true }</code></pre>
+        <div class="endpoint-title"><span class="method get">GET</span> <code>/api/watched-classes/check?crn=…&amp;term=…</code></div>
+        <p class="small muted">Whether you're watching a specific class. Returns <code>{ "success": true, "isWatching": true }</code>.</p>
       </div>
 
       <div class="endpoint">
-        <div><span class="method GET">GET</span> <code>/api/watched-classes/count</code> <span class="chip protected">protected</span></div>
-        <p class="small muted">Get the number of classes you are watching.</p>
-        <div class="small">Response:</div>
-        <pre><code>{ "success": true, "count": 3 }</code></pre>
+        <div class="endpoint-title"><span class="method get">GET</span> <code>/api/watched-classes/count</code></div>
+        <p class="small muted">Number of classes you're watching. Returns <code>{ "success": true, "count": 3 }</code>.</p>
       </div>
 
       <div class="endpoint">
-        <div><span class="method GET">GET</span> <code>/api/watched-classes/full-details</code> <span class="chip protected">protected</span></div>
-        <p class="small muted">Returns full course details (CourseData objects) for your watch list.</p>
-        <div class="small">Response (example fields):</div>
-        <pre><code>{
-  "success": true,
-  "data": [
-    {
-      "termDesc": "Fall 2025",
-      "courseReferenceNumber": "12345",
-      "subject": "CS",
-      "courseNumber": "1301",
-      "courseTitle": "Intro to Programming",
-      "seatsAvailable": 5
-    }
-  ],
-  "count": 1
-}</code></pre>
+        <div class="endpoint-title"><span class="method get">GET</span> <code>/api/watched-classes/full-details</code></div>
+        <p class="small muted">Full live course objects (same shape as search results) for every class on your watch list. Sections that can't be resolved come back as placeholders with <code>isPartialData: true</code>.</p>
       </div>
     </section>
 
-    <section class="card">
-      <h2>Notes</h2>
+    <section class="card" id="schedule">
+      <h2>Schedule <span class="chip protected">protected</span></h2>
+      <p class="small muted">The Schedule Builder's cloud copy. The database stores course identity per entry; clients hydrate entries into full course objects via <code>/api/courses/search</code>.</p>
+
+      <div class="endpoint">
+        <div class="endpoint-title"><span class="method get">GET</span> <code>/api/schedule</code></div>
+        <p class="small muted">All schedule entries for the current user, grouped by term code.</p>
+        <pre><code>{
+  "202608": [
+    {
+      "id": 1,
+      "termCode": "202608",
+      "crn": "89270",
+      "subject": "CSC",
+      "courseNumber": "1301",
+      "courseTitle": "Principles of Computer Science I",
+      "addedAt": "2026-07-01T12:34:56"
+    }
+  ]
+}</code></pre>
+        <pre><code>curl -s -H "Authorization: Bearer $TOKEN" https://api.pantherwatch.app/api/schedule</code></pre>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-title"><span class="method post">POST</span> <code>/api/schedule</code></div>
+        <p class="small muted">Add a course to your schedule. Rejected with <code>400</code> for view-only terms.</p>
+        <pre><code>{
+  "termCode": "202608",
+  "crn": "89270",
+  "subject": "CSC",
+  "courseNumber": "1301",
+  "courseTitle": "Principles of Computer Science I"
+}</code></pre>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-title"><span class="method delete">DELETE</span> <code>/api/schedule/{termCode}/{crn}</code></div>
+        <p class="small muted">Remove a course from your schedule.</p>
+        <pre><code>curl -s -X DELETE -H "Authorization: Bearer $TOKEN" \
+  https://api.pantherwatch.app/api/schedule/202608/89270</code></pre>
+      </div>
+    </section>
+
+    <section class="card" id="announcements">
+      <h2>Announcements</h2>
+      <div class="endpoint">
+        <div class="endpoint-title"><span class="method get">GET</span> <code>/api/announcements/active</code> <span class="chip public">public</span></div>
+        <p class="small muted">Currently active site-wide announcements (shown as the banner in the app).</p>
+      </div>
+      <p class="small muted">Creating, updating, activating, and deleting announcements is admin-only.</p>
+    </section>
+
+    <section class="card" id="account">
+      <h2>Account <span class="chip protected">protected</span></h2>
+      <div class="endpoint">
+        <div class="endpoint-title"><span class="method delete">DELETE</span> <code>/api/users/me</code></div>
+        <p class="small muted">Permanently delete your account and all related data (watch list, schedule).</p>
+      </div>
+    </section>
+
+    <section class="card" id="admin">
+      <h2>Admin <span class="chip admin">admin only</span></h2>
+      <p class="small muted">Restricted to configured admin accounts; regular tokens get <code>403</code>.</p>
       <ul class="small">
-        <li>All responses are JSON. Errors include { "success": false, "message": "..." } for watched-classes endpoints.</li>
-        <li>CORS allows localhost dev origins and pantherwatch.app where configured; browser clients should include credentials only where needed.</li>
-        <li>Terms and Course search proxy the university schedule service via the backend.</li>
+        <li><code>GET /api/admin/check</code> — whether the current user is an admin</li>
+        <li><code>GET /api/admin/users</code>, <code>POST /api/admin/users/search</code> — user administration</li>
+        <li><code>POST /api/admin/email/send</code>, <code>GET /api/admin/emails/stats</code>, <code>POST /api/admin/emails/cleanup</code> — email tooling</li>
+        <li><code>POST /api/admin/grades/refresh</code>, <code>GET /api/admin/grades/status</code> — grade-data pipeline</li>
+        <li><code>/api/announcements</code> management (create / update / activate / deactivate / delete)</li>
       </ul>
     </section>
 
-    <footer class="muted small">© PantherWatch API</footer>
+    <section class="card" id="notes">
+      <h2>Notes</h2>
+      <ul class="small">
+        <li>All responses are JSON. Errors from watched-classes and schedule endpoints use <code>{ "success": false, "message": "…" }</code>.</li>
+        <li>Course, terms, and subject data proxy GSU's registration system (GoSolar) live — treat responses as real-time, not cached.</li>
+        <li>There is no lookup by CRN alone; resolve a CRN by searching its subject + course number and matching <code>courseReferenceNumber</code>.</li>
+        <li>CORS allows <code>pantherwatch.app</code> origins and localhost dev ports.</li>
+      </ul>
+    </section>
+
+    <footer class="muted small">© PantherWatch · <a href="https://www.pantherwatch.app">pantherwatch.app</a></footer>
   </div>
 </body>
 </html>
