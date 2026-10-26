@@ -74,34 +74,33 @@ pg_restore --clean --if-exists --no-owner --no-privileges --dbname="$PGURL" "pan
 
 ## 2. Stop the old backend, migrate the schema, load grades
 
-The migration (`web/scripts/README.md`, files in `web/scripts/prod-migrate/`) drops the empty Hibernate tables and replaces `users`/`announcements` with the Drizzle schema. Spring runs with `ddl-auto=update`: started against the new schema it would recreate `watched_classes`/`user_schedules`/`email_logs` and add its own columns to `users`. So the old backend stops **before** the migration and does not run again, and from here until step 6 the old SPA has no API (pick the low-traffic window for this).
+The migration (`web/scripts/README.md`, files in `web/scripts/prod-migrate/`) carries every legacy row over to the Drizzle schema: `users` (ids kept), `announcements`, `watched_classes` → `watched_sections` and `user_schedules` → `schedule_entries`. Only the send log `email_logs` is dropped (it stays in the backup). Spring runs with `ddl-auto=update`: started against the new schema it would recreate `watched_classes`/`user_schedules`/`email_logs` and add its own columns to `users`. So the old backend stops **before** the migration and does not run again, and from here until step 6 the old SPA has no API (pick the low-traffic window for this).
 
-- [ ] Koyeb dashboard → service → **Pause**, or `koyeb service pause <app>/<service>` (check the syntax with `koyeb service --help`). Don't delete it; it stays paused for a week (step 10). Koyeb shows it as paused, and `curl -sI https://api.pantherwatch.app/actuator/health` no longer returns 200.
-- [ ] Pre-flight, per `web/scripts/README.md` "Before you start": `select count(*) from users` matches the expected count in `02-copy-and-drop.sql` (27 at audit; edit the file if it changed), and `watched_classes`, `user_schedules`, `email_logs` are still empty.
+The SQL runs through the Supabase MCP connector (`execute_sql`, or `apply_migration` for the `drizzle/` files), one file per call, full file text unchanged. The files are plain SQL, so the dashboard SQL editor or `psql "$PGURL" -v ON_ERROR_STOP=1 -f <file>` work too.
 
-Apply, from `web/`, in this order:
+- [ ] **a. Pause Koyeb.** Koyeb dashboard → service → **Pause**, or `koyeb service pause <app>/<service>` (check the syntax with `koyeb service --help`). Don't delete it; it stays paused for a week (step 10). Koyeb shows it as paused, and `curl -sI https://api.pantherwatch.app/actuator/health` no longer returns 200.
+- [ ] **b. Pre-flight counts** (`execute_sql`). Note them; the old app can no longer change them.
+  ```sql
+  select 'users', count(*) from users union all
+  select 'announcements', count(*) from announcements union all
+  select 'watched_classes', count(*) from watched_classes union all
+  select 'user_schedules', count(*) from user_schedules union all
+  select 'email_logs', count(*) from email_logs;
+  ```
+  On 2026-10-26 17:22 UTC: 27 / 1 / 0 / 1 / 0. Set the `EXPECTED USERS` line near the top of `web/scripts/prod-migrate/02-copy-and-drop.sql` to the `users` count.
+- [ ] **c. Backup export.** Re-run the step 1 `pg_dump` and row-count commands with a fresh `STAMP`, now that nothing writes. This dump is the one to restore from on rollback.
+- [ ] **d. `web/scripts/prod-migrate/01-prepare.sql`** (`execute_sql`). Renames `users`, `announcements`, `watched_classes`, `user_schedules` to `*_legacy`, drops `email_logs`, revokes `anon`/`authenticated`. Summary: the four `*_legacy` counts equal the pre-flight counts, `email_logs_dropped = true`, `anon_auth_grants = 0`.
+- [ ] **e. `web/drizzle/0000_core.sql`, then `0001_course_meta.sql`, then `0002_watch_unlisted.sql`**, in that order (`apply_migration` named `0000_core` / `0001_course_meta` / `0002_watch_unlisted`, or `execute_sql`).
+- [ ] **f. `web/scripts/prod-migrate/02-copy-and-drop.sql`** (`execute_sql`). Copies every legacy row, checks the counts, drops `*_legacy`, revokes again. Summary: one row per table with `legacy_rows`, `copied_rows`, `skipped_rows`. Expect users = `EXPECTED USERS`, announcements 1, `schedule_entries` and `watched_sections` copied = legacy. Any skipped row is named in `note` with its legacy id and reason (missing subject/course number, malformed term/CRN, orphaned user, duplicate); look at those in the backup. Both `check:` rows are 0.
+- [ ] **g. `web/scripts/prod-migrate/03-drizzle-bookkeeping.sql`** (`execute_sql`). Records the three migrations in `drizzle.__drizzle_migrations`. Summary: 3 rows. Optional check: `cd web && DATABASE_URL="$PGURL" DATABASE_CA_CERT="$(cat ~/pantherwatch-backups/supabase-root.crt)" npm run db:migrate` applies nothing and the table still has 3 rows.
+- [ ] **h. Grade backfill.** Load grade history from `web/data/grade-csv/` (APEX is Cloudflare-blocked; there is no grades cron), either with the script or as MCP `execute_sql` batches generated from the same CSVs:
+  ```sh
+  cd web
+  DATABASE_URL="$PGURL" DATABASE_CA_CERT="$(cat ~/pantherwatch-backups/supabase-root.crt)" npx tsx scripts/backfill-grades.ts
+  ```
+  It prints 13 terms, all posted, 63,594 rows (as of 2026-10-26), and exits 0. Re-running it is safe. Check: `select count(*), count(*) filter (where posted) from grade_terms;` and `select count(*) from section_grades;`.
 
-```sh
-cd web
-export DIRECT_URL="$PGURL"                                           # session pooler, port 5432
-export DATABASE_CA_CERT="$(cat ~/pantherwatch-backups/supabase-root.crt)"
-
-# a. Drop the empty legacy tables, rename users/announcements to *_legacy, revoke anon/authenticated.
-psql "$DIRECT_URL" -v ON_ERROR_STOP=1 -f scripts/prod-migrate/01-prepare.sql
-
-# b. Create every table in drizzle/ (0000_core, 0001_course_meta) and record them as applied.
-DATABASE_URL="$DIRECT_URL" npm run db:migrate
-
-# c. Copy users and announcements into the new tables, check counts, drop *_legacy.
-psql "$DIRECT_URL" -v ON_ERROR_STOP=1 -f scripts/prod-migrate/02-copy-and-drop.sql
-
-# d. Load grade history from web/data/grade-csv/ (APEX is Cloudflare-blocked; there is no grades cron).
-DATABASE_URL="$DIRECT_URL" npx tsx scripts/backfill-grades.ts
-```
-
-- [ ] a–c each exit 0. Each is one transaction and aborts with no changes if a guard fails; fix the cause and rerun that step (a cannot be repeated, and need not be).
-- [ ] c prints `users = 27` (or your pre-flight count), `announcements = 1`, two rows in `drizzle.__drizzle_migrations`, and no `anon`/`authenticated` table grants.
-- [ ] d prints 13 terms, all posted, 63,594 rows (as of 2026-10-26), and exits 0. Re-running it is safe. Check: `psql "$DIRECT_URL" -c "select count(*), count(*) filter (where posted) from grade_terms" -c "select count(*) from section_grades"`.
+d, f and g are each one transaction and abort with no changes if a guard fails (already run, run out of order, counts wrong). Fix the cause and rerun that file. d cannot be repeated once committed, and need not be.
 
 ## 3. Deploy the new app to its pre-cutover URL
 
@@ -214,19 +213,20 @@ git status   # confirm only legacy paths are staged; keep docker-compose.yml (lo
 
 ## Rollback
 
-Use this if steps 2–9 fail, or if a serious bug turns up within the week. The old stack still exists: the domain can go back to `<OLD_PROJECT>`, and the Koyeb service is paused, not deleted, until step 10. The old backend cannot run on the migrated schema, though, so rolling back means restoring the step 1 dump, which **discards every write made since the backup** (sign-ups, watches, schedules, announcements). If step 2a itself aborted, nothing changed: skip item 2 and resume Koyeb (item 3).
+Use this if steps 2–9 fail, or if a serious bug turns up within the week. The old stack still exists: the domain can go back to `<OLD_PROJECT>`, and the Koyeb service is paused, not deleted, until step 10. The old backend cannot run on the migrated schema, though, so rolling back means restoring the step 2c dump, which **discards every write made since the backup** (sign-ups, watches, schedules, announcements). If step 2d (`01-prepare.sql`) itself aborted, nothing changed: skip item 2 and resume Koyeb (item 3).
 
 1. **Stop the new watcher first**, so the two don't double-alert:
    ```sql
    select cron.alter_job((select jobid from cron.job where jobname = 'pantherwatch-watch'), active := false);
    ```
-2. **Restore the old schema** (only if step 2a ran). Drop the new objects, then restore the step 1 dump:
+2. **Restore the old schema** (only if step 2d ran). Drop the new objects, then restore the step 2c dump:
    ```sh
    psql "$PGURL" -v ON_ERROR_STOP=1 -c "begin;
      drop table if exists public.section_grades, public.grade_terms, public.syllabi, public.rmp_cache,
        public.watched_sections, public.schedule_entries, public.email_log, public.announcements,
        public.job_runs, public.terms, public.users,
-       public.users_legacy, public.announcements_legacy cascade;
+       public.users_legacy, public.announcements_legacy,
+       public.watched_classes_legacy, public.user_schedules_legacy cascade;
      drop type if exists public.announcement_level, public.email_type;
      drop schema if exists drizzle cascade;
      commit;"
