@@ -17,8 +17,10 @@ export interface CleanupOptions {
 }
 
 export interface CleanupSummary extends Record<string, unknown> {
-  /** Terms whose watches and schedule entries were purged, sorted. */
+  /** Terms whose watches were purged (view-only or expired), sorted. */
   purgedTerms: string[];
+  /** Terms whose schedule entries were purged (view-only only), sorted. */
+  purgedScheduleTerms: string[];
   watchedSectionsDeleted: number;
   scheduleEntriesDeleted: number;
   emailLogDeleted: number;
@@ -27,10 +29,13 @@ export interface CleanupSummary extends Record<string, unknown> {
 }
 
 /**
- * Daily purge: watches and schedule entries for terms that are view-only (per the `terms`
- * cache) or expired (term start + 2 months), `email_log` rows older than 90 days and
- * `job_runs` older than 30 days. Idempotent, so the Vercel backup cron running it a second
- * time each day is harmless.
+ * Daily purge:
+ * - watches for terms that are view-only (per the `terms` cache) or expired (term start +
+ *   2 months; seat alerts are pointless after add/drop),
+ * - schedule entries only for view-only terms (never by the 2-month rule: students use the
+ *   schedule for the semester in progress),
+ * - `email_log` rows older than 90 days and `job_runs` older than 30 days.
+ * Idempotent, so the Vercel backup cron running it a second time each day is harmless.
  */
 export async function runCleanup({ now = new Date(), termsRefresh }: CleanupOptions = {}): Promise<
   JobOutcome<CleanupSummary>
@@ -44,8 +49,14 @@ export async function runCleanup({ now = new Date(), termsRefresh }: CleanupOpti
       db.selectDistinct({ term: scheduleEntries.term }).from(scheduleEntries),
     ]);
     const viewOnlyCodes = new Set(viewOnly.map((row) => row.code));
-    const inUse = new Set([...watchedTerms, ...scheduledTerms].map((row) => row.term));
-    const purgedTerms = [...inUse].filter((term) => viewOnlyCodes.has(term) || isTermExpired(term, now)).sort();
+    const purgedTerms = watchedTerms
+      .map((row) => row.term)
+      .filter((term) => viewOnlyCodes.has(term) || isTermExpired(term, now))
+      .sort();
+    const purgedScheduleTerms = scheduledTerms
+      .map((row) => row.term)
+      .filter((term) => viewOnlyCodes.has(term))
+      .sort();
 
     let watchedSectionsDeleted = 0;
     let scheduleEntriesDeleted = 0;
@@ -54,11 +65,13 @@ export async function runCleanup({ now = new Date(), termsRefresh }: CleanupOpti
         .delete(watchedSections)
         .where(inArray(watchedSections.term, purgedTerms))
         .returning({ id: watchedSections.id });
+      watchedSectionsDeleted = watches.length;
+    }
+    if (purgedScheduleTerms.length > 0) {
       const entries = await db
         .delete(scheduleEntries)
-        .where(inArray(scheduleEntries.term, purgedTerms))
+        .where(inArray(scheduleEntries.term, purgedScheduleTerms))
         .returning({ id: scheduleEntries.id });
-      watchedSectionsDeleted = watches.length;
       scheduleEntriesDeleted = entries.length;
     }
 
@@ -78,6 +91,7 @@ export async function runCleanup({ now = new Date(), termsRefresh }: CleanupOpti
 
     const summary: CleanupSummary = {
       purgedTerms,
+      purgedScheduleTerms,
       watchedSectionsDeleted,
       scheduleEntriesDeleted,
       emailLogDeleted: emails.length,

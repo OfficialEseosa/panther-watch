@@ -118,6 +118,16 @@ describe("schedule routes", () => {
     expect(await testDb.db.select().from(scheduleEntries)).toHaveLength(0);
   });
 
+  it("accepts an expired term that is still open (the semester in progress)", async () => {
+    // Fall 2026 seat alerts ended 2026-10-01 (term start + 2 months), but students keep
+    // building their schedule for it until GoSolar marks it view-only.
+    await testDb.db.insert(terms).values({ code: "202608", description: "Fall Semester 2026", viewOnly: false });
+    const added = await add(alice, entryBody("80001", { term: "202608" }));
+    expect(added.response.status).toBe(201);
+    expect(added.body).toMatchObject({ created: true, entry: { term: "202608", crn: "80001" } });
+    expect((await schedule(alice))["202608"].map((e) => e.crn)).toEqual(["80001"]);
+  });
+
   it("requires auth and same origin", async () => {
     const anonymous = await call(scheduleGet, await apiRequest("/api/schedule"));
     expect(anonymous.status).toBe(401);

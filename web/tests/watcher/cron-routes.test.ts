@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { setDbForTests } from "@/db";
-import { jobRuns, terms } from "@/db/schema";
+import { jobRuns, scheduleEntries, terms } from "@/db/schema";
 import { createMemoryTransport, setDefaultEmailTransport } from "@/lib/email";
 import { setJobsGoSolarOptionsForTests } from "@/lib/jobs/gosolar-options";
 import { recentRuns } from "@/lib/jobs/runs";
@@ -141,6 +141,8 @@ describe("cron routes", () => {
       const user = await seedUser(testDb.db);
       await seedWatchedSection(testDb.db, user.id, { term: "202208", crn: "81001" }); // long expired
       await seedWatchedSection(testDb.db, user.id, { term: "202701", crn: "81002" });
+      // Expired but never view-only: schedule entries are only purged for view-only terms.
+      await testDb.db.insert(scheduleEntries).values({ userId: user.id, term: "202208", crn: "82001", subject: "CSC", courseNumber: "1301" });
       gs.setTerms([makeTerm("202701", "Spring Semester 2027")]);
     }
 
@@ -150,7 +152,9 @@ describe("cron routes", () => {
       expect(response.status).toBe(200);
       expect(await response.json()).toMatchObject({
         purgedTerms: ["202208"],
+        purgedScheduleTerms: [],
         watchedSectionsDeleted: 1,
+        scheduleEntriesDeleted: 0,
         termsRefresh: { ok: true, terms: 1 },
       });
       expect(await testDb.db.select().from(terms)).toHaveLength(1);

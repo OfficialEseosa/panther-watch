@@ -143,25 +143,32 @@ describe("terms cache, cleanup and job runs (PGlite + fake GoSolar)", () => {
     return user;
   }
 
-  it("deletes only view-only and expired terms' rows and old logs", async () => {
+  it("deletes watches for view-only and expired terms, schedule entries only for view-only terms, and old logs", async () => {
     await seedAcrossTerms();
 
     const result = await runCleanup({ now: NOW });
     if (result.skipped) throw new Error("skipped");
     expect(result).toMatchObject({
       purgedTerms: ["202208", "202608", "202705"],
+      purgedScheduleTerms: ["202705"],
       watchedSectionsDeleted: 3,
-      scheduleEntriesDeleted: 3,
+      scheduleEntriesDeleted: 1,
       emailLogDeleted: 1,
       jobRunsDeleted: 1,
     });
 
     expect((await testDb.db.select().from(watchedSections)).map((w) => w.term)).toEqual(["202701"]);
-    expect((await testDb.db.select().from(scheduleEntries)).map((e) => e.term)).toEqual(["202701"]);
+    // Expired but not view-only (202608 still open, 202208 no longer listed): the schedule
+    // entries survive, students use them for the semester in progress.
+    expect((await testDb.db.select().from(scheduleEntries)).map((e) => e.term).sort()).toEqual([
+      "202208",
+      "202608",
+      "202701",
+    ]);
     expect((await testDb.db.select().from(emailLog)).map((e) => e.recipient)).toEqual(["b@student.gsu.test"]);
 
     const [run] = await recentRuns("cleanup", 1);
-    expect(run).toMatchObject({ ok: true, summary: { watchedSectionsDeleted: 3 } });
+    expect(run).toMatchObject({ ok: true, summary: { watchedSectionsDeleted: 3, scheduleEntriesDeleted: 1 } });
     expect(run.finishedAt).toBeInstanceOf(Date);
 
     // Idempotent.
@@ -169,18 +176,50 @@ describe("terms cache, cleanup and job runs (PGlite + fake GoSolar)", () => {
     expect(again).toMatchObject({ watchedSectionsDeleted: 0, scheduleEntriesDeleted: 0, emailLogDeleted: 0 });
   });
 
+  it("an expired-but-open term: the watch is deleted, the schedule entry survives until the term goes view-only", async () => {
+    const user = await seedUser(testDb.db);
+    await testDb.db.insert(terms).values({ code: "202608", description: "Fall Semester 2026", viewOnly: false });
+    await seedWatchedSection(testDb.db, user.id, { term: "202608", crn: "81000" });
+    await testDb.db
+      .insert(scheduleEntries)
+      .values({ userId: user.id, term: "202608", crn: "82486", subject: "NUTR", courseNumber: "3100" });
+
+    expect(await runCleanup({ now: NOW })).toMatchObject({
+      purgedTerms: ["202608"],
+      purgedScheduleTerms: [],
+      watchedSectionsDeleted: 1,
+      scheduleEntriesDeleted: 0,
+    });
+    expect(await testDb.db.select().from(watchedSections)).toHaveLength(0);
+    expect((await testDb.db.select().from(scheduleEntries)).map((e) => e.crn)).toEqual(["82486"]);
+
+    // Registration closes in GoSolar: now the schedule entry goes too.
+    await testDb.db.update(terms).set({ viewOnly: true, description: "Fall Semester 2026 (View only)" });
+    expect(await runCleanup({ now: NOW })).toMatchObject({
+      purgedTerms: [],
+      purgedScheduleTerms: ["202608"],
+      scheduleEntriesDeleted: 1,
+    });
+    expect(await testDb.db.select().from(scheduleEntries)).toHaveLength(0);
+  });
+
   it("runCleanupJob refreshes view-only flags first and still purges when the refresh fails", async () => {
     await seedAcrossTerms();
     // GoSolar now says 202701 is view-only too.
     gs.setTerms([makeTerm("202701", "Spring Semester 2027 (View only)")]);
     const result = await runCleanupJob({ now: NOW, gosolar: { baseUrl: gs.url } });
-    expect(result).toMatchObject({ termsRefresh: { ok: true, terms: 1 }, watchedSectionsDeleted: 4 });
+    expect(result).toMatchObject({
+      termsRefresh: { ok: true, terms: 1 },
+      watchedSectionsDeleted: 4,
+      purgedScheduleTerms: ["202701", "202705"],
+      scheduleEntriesDeleted: 2,
+    });
 
     await truncateAll(testDb.db);
     await seedAcrossTerms();
     gs.setTerms([]);
     const failed = await runCleanupJob({ now: NOW, gosolar: { baseUrl: gs.url } });
-    expect(failed).toMatchObject({ termsRefresh: { ok: false }, watchedSectionsDeleted: 3 });
+    expect(failed).toMatchObject({ termsRefresh: { ok: false }, watchedSectionsDeleted: 3, scheduleEntriesDeleted: 1 });
     const [run] = await recentRuns("cleanup", 1);
     expect(run.ok).toBe(false);
   });

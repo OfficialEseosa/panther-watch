@@ -5,8 +5,8 @@ import { errorMessage } from "@/lib/jobs/runs";
 export const maxDuration = 300;
 
 /**
- * Daily purge: refresh the terms cache, then delete watches/schedule entries for view-only or
- * expired terms and old email_log/job_runs rows. Runs inside the request (it takes about a
+ * Daily purge: refresh the terms cache, then delete watches for view-only or expired terms,
+ * schedule entries for view-only terms only, and old email_log/job_runs rows. Runs inside the request (it takes about a
  * second) and returns the summary.
  *
  * POST is pg_cron's primary trigger. GET is Vercel's backup cron (vercel.json), which sends

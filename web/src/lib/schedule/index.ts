@@ -96,14 +96,16 @@ export async function listSchedule(userId: string): Promise<Record<string, Sched
 /**
  * Adds a section to the schedule, or updates the existing entry (course identity, and the
  * color when one is given). A new entry without a color gets the first palette color not
- * used in that term. Throws ScheduleError for view-only or unlisted terms.
+ * used in that term. Throws ScheduleError for view-only or unlisted terms. Expired terms
+ * (term start + 2 months, when seat alerts stop) are still accepted: the schedule is used for
+ * the whole semester in progress.
  */
 export async function addEntry(
   userId: string,
   input: AddEntryInput,
 ): Promise<{ entry: ScheduleEntry; created: boolean }> {
   const data = addEntrySchema.parse(input);
-  const reason = await termClosedReason(data.term);
+  const reason = await termClosedReason(data.term, { ignoreExpiry: true });
   if (reason === "unknown") throw new ScheduleError("term_unknown", "That term is not offered in GoSolar.");
   if (reason) {
     throw new ScheduleError(
