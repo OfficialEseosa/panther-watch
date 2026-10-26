@@ -1,0 +1,195 @@
+.editCard {
+  animation: var(--kf-rise-in) var(--dur) var(--ease-out) both;
+}
+
+/* ---- sticky filter bar (spec.md §3.3, motion.md §4.17) ---- */
+.sentinel {
+  height: 1px;
+}
+
+.bar {
+  position: sticky;
+  top: var(--topbar-h);
+  z-index: var(--z-sticky);
+  margin: 0 calc(-1 * var(--gutter)) var(--space-4);
+  padding: var(--space-3) var(--gutter);
+  background: var(--bg);
+  border-bottom: 1px solid transparent;
+  transition:
+    box-shadow var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard);
+}
+
+.bar[data-stuck] {
+  box-shadow: var(--shadow-sm);
+  border-bottom-color: var(--border);
+}
+
+@media (min-width: 900px) {
+  .bar {
+    top: 0;
+  }
+}
+
+.barInner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.search {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+/* Inline controls at >= 640; the Filters sheet below that. */
+.inlineControls {
+  display: none;
+}
+
+.filtersButton {
+  flex: none;
+}
+
+@media (min-width: 640px) {
+  .search {
+    flex: 1 1 260px;
+    max-width: 360px;
+  }
+
+  .inlineControls {
+    display: contents;
+  }
+
+  .filtersButton {
+    display: none;
+  }
+}
+
+.days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.days .dayChip {
+  justify-content: center;
+  min-width: 36px;
+  padding: 0 var(--space-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Pressed day chips show only the letter (the check would crowd a 36 px chip). */
+.days .dayChip[aria-pressed="true"] > svg {
+  display: none;
+}
+
+.selectField {
+  flex: 0 1 auto;
+  min-width: 150px;
+}
+
+.count {
+  flex: 1 0 100%;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 640px) {
+  .count {
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+}
+
+.sheetControls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.sheetControls .selectField {
+  width: 100%;
+}
+
+/* ---- grid (spec.md §3.2: one column, two at >= 900) ---- */
+.gridTop {
+  scroll-margin-top: calc(var(--topbar-h) + var(--space-20));
+}
+
+@media (min-width: 900px) {
+  .gridTop {
+    scroll-margin-top: var(--space-20);
+  }
+}
+
+.grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+@media (min-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-6);
+  }
+}
+
+.item {
+  min-width: 0;
+}
+
+.groupHeader {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+  padding-top: var(--space-2);
+}
+
+.groupHeader:not(:first-child) {
+  padding-top: var(--space-4);
+}
+
+.groupTitle {
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.groupName {
+  font-weight: var(--weight-regular);
+  color: var(--text-muted);
+}
+
+.groupMeta {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--text-muted);
+}
+
+/* ---- pagination ---- */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  margin-top: var(--space-8);
+}
+
+.pageLabel {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}

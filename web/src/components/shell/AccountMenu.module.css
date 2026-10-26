@@ -1,0 +1,159 @@
+.summary {
+  display: flex;
+  flex-direction: column;
+  min-width: 248px;
+}
+
+.summaryName {
+  overflow: hidden;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  font-weight: var(--weight-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summaryEmail {
+  overflow: hidden;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme {
+  margin-top: var(--space-3);
+}
+
+.avatarButton {
+  position: relative;
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  cursor: pointer;
+}
+
+@media (pointer: coarse) {
+  .avatarButton::after {
+    content: "";
+    position: absolute;
+    inset: -6px;
+  }
+}
+
+/* Sidebar user button: avatar only on the rail (900–1199), full row at >= 1200. */
+.userButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 48px;
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-standard);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .userButton:hover {
+    background: var(--surface-2);
+  }
+}
+
+.userText,
+.chevron {
+  display: none;
+}
+
+.userText {
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.userName,
+.userEmail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.userName {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.userEmail {
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--text-muted);
+}
+
+.chevron {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.signInFull {
+  display: none;
+}
+
+.railSignIn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  color: var(--accent-text);
+  background: var(--accent-subtle);
+}
+
+.railOnly {
+  justify-content: center;
+}
+
+@media (min-width: 1200px) {
+  .userButton {
+    justify-content: flex-start;
+  }
+
+  .userText {
+    display: flex;
+  }
+
+  .chevron {
+    display: block;
+  }
+
+  .signInFull {
+    display: flex;
+  }
+
+  .railOnly {
+    display: none;
+  }
+}
+
+.fallback {
+  display: block;
+  width: 100%;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: var(--skeleton);
+}
+
+.fallbackTopbar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+}

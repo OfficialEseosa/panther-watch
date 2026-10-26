@@ -1,0 +1,15 @@
+.spinner {
+  display: inline-block;
+  flex: none;
+  border-radius: var(--radius-full);
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  opacity: 0.85;
+  animation: spin 0.7s linear infinite;
+}
+
+/* Component-specific keyframe (motion.md §4 allows these). A spinner must keep turning under
+   reduced motion, otherwise it reads as frozen; it is small and conveys state, not decoration. */
+@keyframes spin {
+  to { transform: rotate(1turn); }
+}

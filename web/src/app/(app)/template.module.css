@@ -1,0 +1,3 @@
+.page[data-enter] {
+  animation: var(--kf-rise-in) var(--dur) var(--ease-out) both;
+}

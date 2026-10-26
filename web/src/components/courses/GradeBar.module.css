@@ -1,0 +1,83 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.bar {
+  display: flex;
+  gap: 1px;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--surface);
+}
+
+.sm {
+  height: 8px;
+}
+
+.lg {
+  height: 12px;
+}
+
+.segment {
+  flex: var(--_share) 1 0;
+  min-width: 2px;
+}
+
+.segment[data-grade="A"],
+.swatch[data-grade="A"] {
+  background: var(--grade-a);
+}
+
+.segment[data-grade="B"],
+.swatch[data-grade="B"] {
+  background: var(--grade-b);
+}
+
+.segment[data-grade="C"],
+.swatch[data-grade="C"] {
+  background: var(--grade-c);
+}
+
+.segment[data-grade="D"],
+.swatch[data-grade="D"] {
+  background: var(--grade-d);
+}
+
+.segment[data-grade="F"],
+.swatch[data-grade="F"] {
+  background: var(--grade-f);
+}
+
+.legend {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-xs);
+}
+
+@media (forced-colors: active) {
+  .bar {
+    border: 1px solid CanvasText;
+  }
+}

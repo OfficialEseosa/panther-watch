@@ -1,0 +1,203 @@
+/* Mobile-first: the base is the bottom sheet; >= 640 px turns it into the centered modal. */
+.dialog {
+  --_w: 640px;
+  position: fixed;
+  inset: auto 0 0;
+  width: 100%;
+  max-width: 100%;
+  max-height: 92dvh;
+  margin: 0;
+  padding: 0 0 env(safe-area-inset-bottom);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  background: var(--surface-elevated);
+  color: var(--text);
+  box-shadow: var(--shadow-xl);
+}
+
+.dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.dialog::backdrop {
+  background: var(--overlay);
+}
+
+.sm {
+  --_w: 440px;
+}
+
+.md {
+  --_w: 640px;
+}
+
+.lg {
+  --_w: 960px;
+}
+
+.handle {
+  flex: none;
+  position: relative;
+  height: 20px;
+  touch-action: none;
+  cursor: grab;
+}
+
+.handle::before {
+  content: "";
+  position: absolute;
+  top: var(--space-2);
+  left: 50%;
+  width: 36px;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--border-strong);
+  transform: translateX(-50%);
+}
+
+.header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 56px;
+  padding: 0 var(--space-3) var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--border);
+  touch-action: none;
+}
+
+.titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.title:focus {
+  outline: none;
+}
+
+.subtitle {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--text-muted);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-5);
+}
+
+.footer {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--border);
+}
+
+@media (min-width: 640px) {
+  .dialog {
+    inset: 0;
+    width: min(var(--_w), 100vw - 48px);
+    max-height: min(860px, 100dvh - 48px);
+    margin: auto;
+    padding: 0;
+    border-bottom: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+  }
+
+  .fixedHeight {
+    height: min(860px, 100dvh - 48px);
+  }
+
+  .handle {
+    display: none;
+  }
+
+  .header {
+    min-height: 64px;
+    padding: var(--space-3) var(--space-4) var(--space-3) var(--space-6);
+    touch-action: auto;
+  }
+
+  .body {
+    padding: var(--space-6);
+  }
+
+  .footer {
+    padding: var(--space-4) var(--space-6);
+  }
+}
+
+/* ---- Motion (motion.md §4.8) ---- */
+.dialog[open] {
+  animation: var(--kf-sheet-in) var(--dur-slow) var(--ease-emphasized) both;
+}
+
+.dialog[open]::backdrop {
+  animation: var(--kf-fade-in) var(--dur) var(--ease-out) both;
+}
+
+.dialog[data-closing] {
+  animation: var(--kf-sheet-out) var(--dur) var(--ease-in) both;
+}
+
+.dialog[data-closing][data-drag-dismiss] {
+  animation-name: var(--kf-sheet-out-from);
+}
+
+.dialog[data-closing]::backdrop {
+  animation: var(--kf-fade-out) var(--dur) var(--ease-in) both;
+}
+
+@media (min-width: 640px) {
+  :global(html:not([data-vt])) .dialog[open] {
+    animation: var(--kf-pop-in) var(--dur) var(--ease-out) both;
+  }
+
+  :global(html[data-vt]) .dialog[open],
+  :global(html[data-vt]) .dialog[open]::backdrop {
+    animation: none;
+  }
+
+  .dialog[data-closing],
+  :global(html:not([data-vt])) .dialog[data-closing] {
+    animation: var(--kf-pop-out) var(--dur-fast) var(--ease-in) both;
+  }
+
+  .dialog[data-closing]::backdrop {
+    animation: var(--kf-fade-out) var(--dur-fast) var(--ease-in) both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog[open],
+  :global(html:not([data-vt])) .dialog[open] {
+    animation-name: var(--kf-fade-in);
+  }
+
+  .dialog[data-closing],
+  :global(html:not([data-vt])) .dialog[data-closing] {
+    animation-name: var(--kf-fade-out);
+  }
+}

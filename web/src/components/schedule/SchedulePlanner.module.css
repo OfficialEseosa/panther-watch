@@ -1,0 +1,62 @@
+.page {
+  width: 100%;
+  max-width: var(--content-wide);
+  margin-inline: auto;
+}
+
+/* Header buttons at >= 640; IconButtons in the toolbar below that (pages.md §6 mobile). */
+.wideOnly {
+  display: none;
+}
+
+.narrowOnly {
+  display: flex;
+  gap: var(--space-2);
+}
+
+@media (min-width: 640px) {
+  .wideOnly {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .narrowOnly {
+    display: none;
+  }
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.term {
+  flex: 1 1 200px;
+  max-width: 280px;
+}
+
+.toolbarEnd {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--text-muted);
+}

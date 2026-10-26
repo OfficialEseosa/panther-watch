@@ -1,0 +1,22 @@
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.mark {
+  flex: none;
+  object-fit: contain;
+}
+
+.name {
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  white-space: nowrap;
+}

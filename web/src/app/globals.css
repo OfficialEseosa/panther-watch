@@ -1,0 +1,128 @@
+/*
+ * Global base styles (docs/design/spec.md §1.11). Imported once, from src/app/layout.tsx.
+ * Everything else is a CSS Module next to its component. See src/styles/README.md.
+ */
+@import "../styles/tokens.css";
+@import "../styles/motion.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scrollbar-gutter: stable;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+/* Scroll lock while a modal dialog is open (native <dialog> already makes the page inert). */
+html:has(dialog[open]:modal) {
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+figure,
+dl,
+dd {
+  margin: 0;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+img,
+svg,
+video {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--accent-text);
+  text-underline-offset: 2px;
+}
+
+:focus-visible {
+  outline: var(--ring-width) solid var(--focus-ring);
+  outline-offset: var(--ring-offset);
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+::selection {
+  background: var(--selection);
+  color: var(--text);
+}
+
+/* Visually hidden but available to assistive tech. Also exported as <VisuallyHidden>. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Horizontal scrollers: fade the edge(s) that hide more content (data-fade from useScrollEdges). */
+.edge-fade[data-fade="end"] {
+  mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+}
+
+.edge-fade[data-fade="start"] {
+  mask-image: linear-gradient(to left, #000 calc(100% - 32px), transparent);
+}
+
+.edge-fade[data-fade="both"] {
+  mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 32px), transparent);
+}
+
+/* Numbers in columns or that change (seats, times, CRN, GPA, counts). */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Popover UA defaults (inset/margin/border/padding/background) are reset per component. */
+[popover] {
+  color: inherit;
+}

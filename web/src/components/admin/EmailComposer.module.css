@@ -1,0 +1,145 @@
+.composer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6);
+}
+
+@media (min-width: 900px) {
+  .page {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .page .preview {
+    position: sticky;
+    top: var(--space-6);
+  }
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.recipient,
+.templates {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.recipientLabel {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.recipientChip {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--space-2);
+  max-width: 100%;
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+}
+
+.recipientText {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-2);
+  min-width: 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+
+.recipientName {
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.recipientEmail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-muted);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.body {
+  min-height: 200px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.budget {
+  order: 0;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.frame,
+.previewEmpty {
+  width: 100%;
+  height: 480px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.frame {
+  display: block;
+}
+
+.previewEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  text-align: center;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--text-muted);
+}
+
+.confirmText {
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.confirmText strong {
+  color: var(--text);
+  font-weight: var(--weight-semibold);
+}

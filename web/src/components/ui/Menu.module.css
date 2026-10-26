@@ -1,0 +1,98 @@
+.popover {
+  /* reset popover UA styles; positioned in JS */
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  min-width: 200px;
+  max-width: min(320px, 100vw - 16px);
+  padding: var(--space-1);
+  overflow: visible;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-md);
+  color: var(--text);
+}
+
+.popover:popover-open {
+  animation: var(--kf-rise-in) var(--dur-fast) var(--ease-out) both;
+}
+
+/* Move away from the trigger when opening above it (motion.md §4.16). */
+.popover[data-side="above"] {
+  --move-sm: calc(var(--move-xs) * -1);
+}
+
+.header {
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  margin-bottom: var(--space-1);
+  border-bottom: 1px solid var(--border);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  height: 36px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.item:focus-visible {
+  outline-offset: -2px;
+}
+
+.item:focus,
+.item:hover {
+  background: var(--surface-2);
+}
+
+.item[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.danger {
+  color: var(--danger);
+}
+
+.itemIcon {
+  display: flex;
+  flex: none;
+  color: var(--text-muted);
+}
+
+.danger .itemIcon {
+  color: var(--danger);
+}
+
+.itemIcon > svg {
+  width: 16px;
+  height: 16px;
+}
+
+.itemLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.separator {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--border);
+}

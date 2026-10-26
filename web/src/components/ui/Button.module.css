@@ -1,0 +1,178 @@
+.button {
+  --_h: var(--control-h-md);
+  --_px: var(--space-4);
+  --_gap: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--_gap);
+  min-height: var(--_h);
+  padding: 0 var(--_px);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  font-weight: var(--weight-semibold);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-standard);
+}
+
+.button > svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.button:active:not(:disabled, [aria-busy="true"]) {
+  transform: scale(var(--scale-press));
+  transition-duration: var(--dur-instant);
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.button[aria-busy="true"] {
+  cursor: progress;
+}
+
+/* Sizes */
+.sm {
+  --_h: var(--control-h-sm);
+  --_px: var(--space-3);
+  --_gap: 6px;
+}
+
+.sm > svg {
+  width: 16px;
+  height: 16px;
+}
+
+.md {
+  --_h: var(--control-h-md);
+}
+
+.lg {
+  --_h: var(--control-h-lg);
+  --_px: var(--space-5);
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+}
+
+.fullWidth {
+  display: flex;
+  width: 100%;
+}
+
+/* Variants */
+.primary {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.secondary {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+  box-shadow: var(--shadow-xs);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.danger {
+  background: var(--danger-fill);
+  color: var(--danger-contrast);
+}
+
+.danger-ghost {
+  background: transparent;
+  color: var(--danger);
+}
+
+/* Pressed (toggle) state for secondary buttons, e.g. Watch / Watching (spec.md §2.2, §2.6). */
+.secondary[aria-pressed="true"] {
+  background: var(--accent-subtle);
+  border-color: var(--accent-subtle-border);
+  color: var(--accent-subtle-text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .primary:hover:not(:disabled) {
+    background: var(--accent-hover);
+  }
+
+  .secondary:hover:not(:disabled) {
+    background: var(--surface-2);
+    border-color: var(--border-strong);
+  }
+
+  .secondary[aria-pressed="true"]:hover:not(:disabled) {
+    background: var(--accent-subtle-hover);
+    border-color: var(--accent-subtle-border);
+  }
+
+  .ghost:hover:not(:disabled) {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+
+  .danger:hover:not(:disabled) {
+    background: var(--danger-fill-hover);
+  }
+
+  .danger-ghost:hover:not(:disabled) {
+    background: var(--danger-subtle);
+  }
+}
+
+.primary:active:not(:disabled) {
+  background: var(--accent-active);
+}
+
+.secondary:active:not(:disabled),
+.ghost:active:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.danger:active:not(:disabled) {
+  background: var(--danger-fill-hover);
+}
+
+.danger-ghost:active:not(:disabled) {
+  background: var(--danger-subtle);
+}
+
+@media (pointer: coarse) {
+  .sm {
+    position: relative;
+  }
+
+  .sm::after {
+    content: "";
+    position: absolute;
+    inset: -6px 0;
+  }
+}
+
+@media (forced-colors: active) {
+  .button {
+    border-color: ButtonText;
+  }
+}

@@ -1,0 +1,152 @@
+.region {
+  /* reset popover UA styles */
+  position: fixed;
+  inset: auto var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom));
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+  background: transparent;
+  pointer-events: none;
+}
+
+/* Above the bottom nav while it's showing (< 900 px). */
+:global(html:has([data-bottom-nav])) .region {
+  bottom: calc(var(--bottomnav-h) + env(safe-area-inset-bottom) + var(--space-3));
+}
+
+@media (min-width: 640px) {
+  .region {
+    left: auto;
+    right: var(--space-6);
+    bottom: var(--space-6);
+  }
+}
+
+@media (min-width: 900px) {
+  :global(html:has([data-bottom-nav])) .region {
+    bottom: var(--space-6);
+  }
+}
+
+/* While a modal dialog is open, keep toasts off its bottom actions ([Done], [Delete account]):
+   phones (bottom sheets) move the stack to the top; wider screens lift it above a dialog
+   footer's height (16 + 40 + 16 px). */
+:global(html:has(dialog:modal)) .region {
+  top: calc(var(--space-4) + env(safe-area-inset-top));
+  bottom: auto;
+}
+
+@media (min-width: 640px) {
+  :global(html:has(dialog:modal)) .region {
+    top: auto;
+    bottom: calc(var(--space-6) + 72px + var(--space-2));
+  }
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 640px) {
+  .stack {
+    align-items: flex-end;
+  }
+}
+
+.slot {
+  display: grid;
+  grid-template-rows: 1fr;
+  width: min(400px, 100vw - 32px);
+  transition: grid-template-rows var(--dur-fast) var(--ease-in);
+}
+
+.slot[data-closing] {
+  grid-template-rows: 0fr;
+}
+
+.slot + .slot > .toast {
+  margin-top: var(--space-2);
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-height: 0;
+  overflow: hidden;
+  padding: var(--space-3) var(--space-2) var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-lg);
+  color: var(--text);
+  pointer-events: auto;
+  animation: var(--kf-pop-in) var(--dur) var(--ease-out) both;
+}
+
+.slot[data-closing] > .toast {
+  animation: var(--kf-sink-out) var(--dur-fast) var(--ease-in) both;
+}
+
+.icon {
+  display: flex;
+  flex: none;
+  padding-top: 0;
+}
+
+.icon > svg {
+  width: 20px;
+  height: 20px;
+}
+
+.success .icon {
+  color: var(--success);
+}
+
+.info .icon {
+  color: var(--accent-text);
+}
+
+.warning .icon {
+  color: var(--warning);
+}
+
+.error .icon {
+  color: var(--danger);
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+  padding-top: 0;
+}
+
+.title {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.body {
+  margin-top: 2px;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--text-muted);
+}
+
+.action {
+  flex: none;
+  margin-top: -6px;
+}
+
+.toast > :last-child {
+  margin-top: -6px;
+}

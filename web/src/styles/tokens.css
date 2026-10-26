@@ -1,0 +1,386 @@
+/*
+ * PantherWatch design tokens
+ * Source of truth for values: docs/design/spec.md. Motion: docs/design/motion.md.
+ *
+ * Imported once, first, from src/app/globals.css (copied from docs/design/tokens.css).
+ *
+ * Theme: the pre-paint script in app/layout.tsx sets data-theme="light" | "dark"
+ * on <html>. :root carries the light theme; :root[data-theme="dark"] overrides
+ * the semantic aliases. There is no other theming mechanism (no .theme-dark, no
+ * per-component theme variables, no [data-theme] selectors outside this file).
+ *
+ * Rules
+ *  - Components reference SEMANTIC tokens (--bg, --text, --accent, ...).
+ *    Palette tokens (--blue-600, --neutral-200, ...) are referenced only here
+ *    and in data-viz code. No hex or rgb() literals in CSS Modules.
+ *  - Breakpoints cannot be used inside @media. Use the literal values
+ *    640px / 900px / 1200px with min-width (mobile-first). The --bp-* tokens
+ *    exist for JS (matchMedia) and documentation only.
+ *  - Every var() in this file resolves to a property defined in this file,
+ *    except --font-inter, which next/font sets on <html>; it always has a
+ *    fallback here.
+ */
+
+/* ------------------------------------------------------------------ */
+/* 1. Palette, scales, and the LIGHT theme                             */
+/* ------------------------------------------------------------------ */
+:root {
+  color-scheme: light;
+
+  /* Primary: GSU blue. 600 is the brand blue (#0039A6, PMS 293). */
+  --blue-50: #eef3fc;
+  --blue-100: #dce6f9;
+  --blue-200: #bcd0f4;
+  --blue-300: #8ab0f0;
+  --blue-400: #4a80e3;
+  --blue-500: #1f5fc3;
+  --blue-600: #0039a6;
+  --blue-700: #002f8a;
+  --blue-800: #062670;
+  --blue-900: #0b1c3d;
+
+  /* Neutral: cool slate with a slight blue cast. */
+  --neutral-0: #ffffff;
+  --neutral-50: #f5f7fb;
+  --neutral-100: #ecf0f6;
+  --neutral-200: #dde3ed;
+  --neutral-300: #c0c9d7;
+  --neutral-400: #98a4b8;
+  --neutral-500: #7d889c;
+  --neutral-600: #5e6a82;
+  --neutral-700: #4f5b72;
+  --neutral-800: #2a3650;
+  --neutral-900: #172036;
+  --neutral-950: #0b1222;
+
+  /* Status scales */
+  --green-50: #ecf8f1;
+  --green-100: #d3f0df;
+  --green-300: #5cc98a;
+  --green-500: #1f9d5a;
+  --green-700: #13703a;
+  --green-800: #1f5137;
+  --green-900: #0f2a1d;
+
+  --amber-50: #fef6e7;
+  --amber-100: #fce7bf;
+  --amber-300: #f2b84b;
+  --amber-500: #d9900f;
+  --amber-700: #96550a;
+  --amber-800: #5c3a0a;
+  --amber-900: #2b1f0a;
+
+  --red-50: #fef1f0;
+  --red-100: #fddcd9;
+  --red-300: #ff8a7f;
+  --red-500: #d93a2b;
+  --red-700: #b42318;
+  --red-800: #6b1d16;
+  --red-900: #3a1512;
+
+  /* Dark-theme surfaces (between neutral-950 and neutral-800). */
+  --night-0: #0b1222;
+  --night-1: #121b2f;
+  --night-2: #1a2439;
+  --night-3: #1e2942;
+  --night-accent: #16264a;
+  --night-accent-hover: #1c2f59;
+  --night-accent-border: #27427a;
+
+  /* Schedule block colors. All are >= 5:1 against white text. Existing stored
+     hex values are migrated by lib/scheduleColors.ts (see spec.md 2.9). */
+  --sched-blue: #1d4ed8;
+  --sched-teal: #0f766e;
+  --sched-violet: #6d28d9;
+  --sched-pink: #be185d;
+  --sched-orange: #c2410c;
+  --sched-green: #15803d;
+  --sched-cyan: #0e7490;
+  --sched-slate: #475569;
+  --sched-text: #ffffff;
+
+  /* Grade distribution fills (data marks, always paired with a text label). */
+  --grade-a: #1f9d5a;
+  --grade-b: #4a80e3;
+  --grade-c: #e0a52b;
+  --grade-d: #e07a2b;
+  --grade-f: #d93a2b;
+
+  /* Rate My Professors badge (their mark: black chip, white text). */
+  --rmp-bg: #000000;
+  --rmp-text: #ffffff;
+
+  /* ---------------- Semantic aliases: LIGHT ---------------- */
+  --bg: var(--neutral-50);
+  --surface: var(--neutral-0);
+  --surface-2: var(--neutral-100);
+  --surface-elevated: var(--neutral-0);
+  --overlay: rgb(11 18 34 / 0.48);
+
+  --text: var(--neutral-900);
+  --text-muted: var(--neutral-700);
+  --text-subtle: var(--neutral-600);
+  --text-inverse: var(--neutral-0);
+
+  --border: var(--neutral-200);
+  --border-strong: var(--neutral-500);
+
+  --accent: var(--blue-600);
+  --accent-hover: var(--blue-700);
+  --accent-active: var(--blue-800);
+  --accent-contrast: var(--neutral-0);
+  --accent-text: var(--blue-600);
+  --accent-subtle: var(--blue-50);
+  --accent-subtle-hover: var(--blue-100);
+  --accent-subtle-text: var(--blue-600);
+  --accent-subtle-border: var(--blue-200);
+
+  /* Selected-state marks that must reach 3:1 against surfaces: active nav bar,
+     selected tab underline, checked checkbox/switch fill, selected chip border.
+     (--accent itself is only 2.85:1 on dark surfaces; it is for button fills.) */
+  --indicator: var(--blue-600);
+  --indicator-contrast: var(--neutral-0);
+
+  --focus-ring: var(--blue-500);
+
+  --success: var(--green-700);
+  --success-subtle: var(--green-50);
+  --success-border: var(--green-100);
+  --warning: var(--amber-700);
+  --warning-subtle: var(--amber-50);
+  --warning-border: var(--amber-100);
+  --danger: var(--red-700);
+  --danger-fill: var(--red-700);
+  --danger-fill-hover: #9a1c12;
+  --danger-contrast: var(--neutral-0);
+  --danger-subtle: var(--red-50);
+  --danger-border: var(--red-100);
+
+  /* Enrollment meter */
+  --meter-track: var(--neutral-200);
+  --meter-open: var(--green-500);
+  --meter-low: var(--amber-500);
+  --meter-full: var(--red-500);
+
+  --skeleton: var(--neutral-100);
+  --skeleton-shine: rgb(255 255 255 / 0.6);
+  --selection: var(--blue-100);
+
+  /* Shadows: LIGHT */
+  --shadow-xs: 0 1px 2px rgb(16 24 40 / 0.06);
+  --shadow-sm: 0 1px 3px rgb(16 24 40 / 0.08), 0 1px 2px rgb(16 24 40 / 0.04);
+  --shadow-md: 0 6px 16px -4px rgb(16 24 40 / 0.1), 0 2px 4px -2px rgb(16 24 40 / 0.06);
+  --shadow-lg: 0 16px 32px -8px rgb(16 24 40 / 0.16), 0 4px 8px -4px rgb(16 24 40 / 0.06);
+  --shadow-xl: 0 28px 64px -12px rgb(16 24 40 / 0.28);
+
+  /* ---------------- Typography ---------------- */
+  --font-sans: var(--font-inter, "Inter"), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+
+  --text-xs: 0.75rem;     /* 12px */
+  --text-sm: 0.875rem;    /* 14px */
+  --text-base: 1rem;      /* 16px */
+  --text-md: 1.125rem;    /* 18px */
+  --text-lg: 1.25rem;     /* 20px */
+  --text-xl: 1.5rem;      /* 24px */
+  --text-2xl: 1.875rem;   /* 30px */
+  --text-3xl: 2.25rem;    /* 36px */
+  --text-display: clamp(2.25rem, 1.6rem + 2.6vw, 3.5rem); /* 36 -> 56px */
+
+  --leading-xs: 1rem;     /* 16px */
+  --leading-sm: 1.25rem;  /* 20px */
+  --leading-base: 1.5rem; /* 24px */
+  --leading-md: 1.625rem; /* 26px */
+  --leading-lg: 1.75rem;  /* 28px */
+  --leading-xl: 2rem;     /* 32px */
+  --leading-2xl: 2.25rem; /* 36px */
+  --leading-3xl: 2.5rem;  /* 40px */
+  --leading-display: 1.08;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-caps: 0.06em;
+
+  /* ---------------- Spacing (4px base) ---------------- */
+  --space-0: 0;
+  --space-px: 1px;
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* ---------------- Radius ---------------- */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* ---------------- Z-index ---------------- */
+  --z-base: 0;
+  --z-raised: 1;
+  --z-sticky: 100;
+  --z-header: 200;
+  --z-nav: 300;
+  --z-drawer: 400;
+  --z-overlay: 500;
+  --z-modal: 600;
+  --z-popover: 700;
+  --z-toast: 800;
+  --z-tooltip: 900;
+  --z-skip-link: 1000;
+
+  /* ---------------- Breakpoints (JS/docs only) ---------------- */
+  --bp-sm: 640px;
+  --bp-md: 900px;
+  --bp-lg: 1200px;
+
+  /* ---------------- Layout ---------------- */
+  --sidebar-w: 248px;
+  --rail-w: 72px;
+  --topbar-h: 56px;
+  --bottomnav-h: 64px;
+  --content-max: 1200px;
+  --content-wide: 1440px;
+  --content-narrow: 720px;
+  --gutter: clamp(16px, 4vw, 32px);
+  --control-h-sm: 32px;
+  --control-h-md: 40px;
+  --control-h-lg: 48px;
+  --tap-min: 44px;
+  --hour-h: 48px;
+
+  /* ---------------- Focus ---------------- */
+  --ring-width: 2px;
+  --ring-offset: 2px;
+
+  /* ---------------- Motion (see motion.md) ---------------- */
+  --dur-instant: 80ms;
+  --dur-fast: 120ms;
+  --dur: 200ms;
+  --dur-slow: 320ms;
+  --dur-slower: 480ms;
+  --stagger: 30ms;
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-emphasized: cubic-bezier(0.32, 0.72, 0, 1);
+  /* ~3% overshoot spring. Browsers without linear() treat a property using it
+     as invalid at computed-value time and fall back to `ease`; acceptable. */
+  --ease-spring: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.281 6.7%, 0.723 12.9%,
+    0.938 16.7%, 1.017 20.6%, 1.033 24.4%, 1.026 28.1%, 1.003 37.9%, 0.996 46.1%, 1);
+
+  /* Movement amounts. Zeroed under reduced motion so every enter/exit built on
+     them degrades to a pure opacity fade without per-component code. */
+  --move-xs: 2px;
+  --move-sm: 4px;
+  --move-md: 8px;
+  --move-lg: 16px;
+  --scale-enter: 0.98;
+  --scale-press: 0.98;
+  --hover-lift: -2px;
+}
+
+/* ------------------------------------------------------------------ */
+/* 2. Semantic aliases: DARK                                           */
+/*    (0,2,0) specificity so it wins over :root regardless of order.  */
+/* ------------------------------------------------------------------ */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: var(--night-0);
+  --surface: var(--night-1);
+  --surface-2: var(--night-2);
+  --surface-elevated: var(--night-3);
+  --overlay: rgb(3 6 14 / 0.66);
+
+  --text: var(--neutral-100);
+  --text-muted: var(--neutral-400);
+  --text-subtle: #8a96ab;
+  --text-inverse: var(--neutral-950);
+
+  --border: var(--neutral-800);
+  --border-strong: var(--neutral-500);
+
+  --accent: var(--blue-500);
+  --accent-hover: #2a68cc;
+  --accent-active: var(--blue-600);
+  --accent-contrast: var(--neutral-0);
+  --accent-text: var(--blue-300);
+  --accent-subtle: var(--night-accent);
+  --accent-subtle-hover: var(--night-accent-hover);
+  --accent-subtle-text: #a9c4f5;
+  --accent-subtle-border: var(--night-accent-border);
+
+  --indicator: var(--blue-300);
+  --indicator-contrast: var(--neutral-950);
+
+  --focus-ring: var(--blue-300);
+
+  --success: var(--green-300);
+  --success-subtle: var(--green-900);
+  --success-border: var(--green-800);
+  --warning: var(--amber-300);
+  --warning-subtle: var(--amber-900);
+  --warning-border: var(--amber-800);
+  --danger: var(--red-300);
+  --danger-fill: var(--red-700);
+  --danger-fill-hover: #c4301f;
+  --danger-contrast: var(--neutral-0);
+  --danger-subtle: var(--red-900);
+  --danger-border: var(--red-800);
+
+  --meter-track: var(--neutral-800);
+  --meter-open: var(--green-300);
+  --meter-low: var(--amber-300);
+  --meter-full: var(--red-300);
+
+  --skeleton: var(--night-2);
+  --skeleton-shine: rgb(255 255 255 / 0.06);
+  --selection: var(--night-accent-border);
+
+  /* Shadows: DARK. Shadows read poorly on dark backgrounds, so each level adds
+     a faint 1px top highlight; elevation is carried mainly by --surface-* steps. */
+  --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.5), inset 0 1px 0 rgb(255 255 255 / 0.03);
+  --shadow-md: 0 8px 20px -6px rgb(0 0 0 / 0.6), inset 0 1px 0 rgb(255 255 255 / 0.04);
+  --shadow-lg: 0 18px 40px -10px rgb(0 0 0 / 0.7), inset 0 1px 0 rgb(255 255 255 / 0.05);
+  --shadow-xl: 0 32px 72px -12px rgb(0 0 0 / 0.8), inset 0 1px 0 rgb(255 255 255 / 0.06);
+}
+
+/* ------------------------------------------------------------------ */
+/* 3. Reduced motion: remove movement, keep short fades                */
+/* ------------------------------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --move-xs: 0px;
+    --move-sm: 0px;
+    --move-md: 0px;
+    --move-lg: 0px;
+    --scale-enter: 1;
+    --scale-press: 1;
+    --hover-lift: 0px;
+    --stagger: 0ms;
+    --dur-slow: 200ms;
+    --dur-slower: 200ms;
+    --ease-spring: cubic-bezier(0.2, 0, 0, 1);
+  }
+}

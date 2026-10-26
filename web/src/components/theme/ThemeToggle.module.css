@@ -1,0 +1,17 @@
+/*
+ * The header toggle shows the icon of the theme it switches to: moon in light, sun in dark.
+ * Chosen in CSS from <html data-theme> (set before first paint by the theme script), so the
+ * server-rendered markup, which can't know the theme, never shows the wrong icon first.
+ * This is the one component rule keyed on [data-theme] (src/styles/README.md).
+ */
+.sun {
+  display: none;
+}
+
+:global(html[data-theme="dark"]) .sun {
+  display: block;
+}
+
+:global(html[data-theme="dark"]) .moon {
+  display: none;
+}

@@ -1,0 +1,29 @@
+/* Watch / schedule toggle success pulse (motion.md §4.10). */
+.toggle {
+  position: relative;
+}
+
+.toggle::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  border: 2px solid var(--indicator);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toggle[data-pulse]::before {
+  animation: var(--kf-pulse-ring) var(--dur-slow) var(--ease-out) both;
+}
+
+.toggle[data-pulse] .icon {
+  animation: var(--kf-icon-pop) var(--dur) var(--ease-spring) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toggle[data-pulse]::before,
+  .toggle[data-pulse] .icon {
+    animation: none;
+  }
+}

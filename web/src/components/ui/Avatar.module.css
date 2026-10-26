@@ -1,0 +1,38 @@
+.avatar {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--accent-subtle);
+  color: var(--accent-subtle-text);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+  user-select: none;
+}
+
+/* 1 px inner ring so light photos don't bleed into light surfaces */
+.avatar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px var(--border);
+  pointer-events: none;
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.initials {
+  letter-spacing: 0.02em;
+}
+
+.initials::before {
+  content: attr(data-initials);
+}

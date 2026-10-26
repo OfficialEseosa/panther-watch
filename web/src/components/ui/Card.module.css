@@ -1,0 +1,130 @@
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+}
+
+.header,
+.body,
+.footer {
+  padding: var(--space-4);
+}
+
+.header {
+  border-bottom: 1px solid var(--border);
+}
+
+.footer {
+  border-top: 1px solid var(--border);
+}
+
+.flush {
+  padding: 0;
+}
+
+@media (min-width: 640px) {
+  .header,
+  .body,
+  .footer {
+    padding: var(--space-5);
+  }
+
+  .flush {
+    padding: 0;
+  }
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--control-h-sm);
+}
+
+.title {
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Interactive card: motion.md §4.3. The hover shadow is a pseudo-element faded with opacity. */
+.interactive {
+  transition:
+    transform var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard);
+}
+
+.interactive::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease-standard);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .interactive:hover {
+    transform: translateY(var(--hover-lift));
+    border-color: var(--border-strong);
+  }
+
+  .interactive:hover::before {
+    opacity: 1;
+  }
+}
+
+.interactive:active {
+  transform: translateY(0);
+  transition-duration: var(--dur-instant);
+}
+
+.interactive:active::before {
+  opacity: 0;
+}
+
+.interactive:has(.stretchedLink:focus-visible) {
+  outline: var(--ring-width) solid var(--focus-ring);
+  outline-offset: var(--ring-offset);
+}
+
+.stretchedLink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.stretchedLink:focus-visible {
+  outline: none;
+}
+
+.stretchedLink::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+}
+
+.raised {
+  position: relative;
+  z-index: var(--z-raised);
+}

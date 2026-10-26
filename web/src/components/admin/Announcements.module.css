@@ -1,0 +1,94 @@
+.rowBody {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.message {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.window {
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.label {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.counter {
+  font-variant-numeric: tabular-nums;
+}
+
+.over {
+  color: var(--danger);
+}
+
+.dates {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+@media (min-width: 640px) {
+  .dates {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.tzNote {
+  margin-top: calc(-1 * var(--space-2));
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--text-muted);
+}
+
+/* The banner is full-bleed in the shell; frame it as a card-like preview here. */
+.preview {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  pointer-events: none;
+}
+
+.confirmText {
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}

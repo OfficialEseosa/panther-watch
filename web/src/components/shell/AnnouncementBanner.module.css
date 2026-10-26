@@ -1,0 +1,140 @@
+.wrapper {
+  display: grid;
+  grid-template-rows: 1fr;
+}
+
+.wrapper > .banner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Dismiss: collapse + fade (motion.md §4.13). */
+.collapsing {
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--dur) var(--ease-in);
+  animation: var(--kf-fade-out) var(--dur) var(--ease-in) both;
+}
+
+.banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: 10px var(--gutter);
+  border-bottom: 1px solid;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+
+.info {
+  background: var(--accent-subtle);
+  color: var(--accent-subtle-text);
+  border-color: var(--accent-subtle-border);
+}
+
+.warning {
+  background: var(--warning-subtle);
+  color: var(--text);
+  border-color: var(--warning-border);
+}
+
+.warning .icon {
+  color: var(--warning);
+}
+
+.error {
+  background: var(--danger-subtle);
+  color: var(--text);
+  border-color: var(--danger-border);
+}
+
+.error .icon {
+  color: var(--danger);
+}
+
+.icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.message {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+@media (min-width: 640px) {
+  .message {
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+  }
+}
+
+.message.expanded {
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: none;
+}
+
+.enter {
+  --move-sm: var(--move-xs);
+  animation: var(--kf-rise-in) var(--dur) var(--ease-out) both;
+}
+
+.message[data-closing] {
+  animation: var(--kf-fade-out) var(--dur-fast) var(--ease-in) both;
+}
+
+.more {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-weight: var(--weight-semibold);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.pager {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  margin-top: -6px;
+  margin-bottom: -6px;
+}
+
+.count {
+  min-width: 3ch;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.banner :global(button[aria-label]) {
+  color: inherit;
+}
+
+.banner > :last-child {
+  margin-top: -6px;
+  margin-bottom: -6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enter,
+  .message[data-closing] {
+    animation: none;
+  }
+}

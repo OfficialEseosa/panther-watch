@@ -1,7 +1,7 @@
-
 # Claude Code local tooling state
 .claude/
 
-# Cached APEX grade-distribution CSV exports (re-downloadable)
-grade-data/
-backend/grade-data/
+# web/.gitignore covers node_modules, .next, .env* (except .env.example), .vercel and build
+# output; web/e2e/.gitignore covers Playwright's .output/. Not covered there:
+# local PGlite data dir (docs/runbooks/local-dev.md, option B)
+web/.pglite/

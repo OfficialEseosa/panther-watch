@@ -1,0 +1,48 @@
+/* The ⋯ Menu trigger: an IconButton (ghost, md) look-alike, since Menu renders its own button. */
+.trigger {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-h-md);
+  height: var(--control-h-md);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
+}
+
+.trigger > svg {
+  width: 20px;
+  height: 20px;
+}
+
+.trigger[aria-expanded="true"] {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .trigger:hover {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+}
+
+@media (pointer: coarse) {
+  .trigger::after {
+    content: "";
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: var(--tap-min);
+    height: var(--tap-min);
+    transform: translate(-50%, -50%);
+  }
+}

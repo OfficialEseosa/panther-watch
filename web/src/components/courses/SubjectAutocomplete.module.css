@@ -1,0 +1,172 @@
+.root {
+  position: relative;
+  min-width: 0;
+}
+
+/* Field shell: looks like Input, wraps chips + the text input (spec.md §2.4). */
+.field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  min-height: var(--control-h-md);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  cursor: text;
+  transition: border-color var(--dur-fast) var(--ease-standard);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .field:hover:not(:focus-within) {
+    border-color: var(--text-subtle);
+  }
+}
+
+.field:focus-within {
+  border-color: var(--accent);
+  outline: var(--ring-width) solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.invalid,
+.invalid:focus-within {
+  border-color: var(--danger);
+}
+
+.chips {
+  display: contents;
+  list-style: none;
+}
+
+.chip {
+  height: 28px;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-semibold);
+}
+
+.input {
+  flex: 1 1 120px;
+  min-width: 80px;
+  height: 30px;
+  padding: 0 var(--space-1);
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+}
+
+.input:focus,
+.input:focus-visible {
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--text-subtle);
+  opacity: 1;
+}
+
+.input:disabled {
+  cursor: not-allowed;
+}
+
+@media (min-width: 640px) {
+  .input {
+    font-size: var(--text-sm);
+    line-height: var(--leading-sm);
+  }
+}
+
+.hint {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--warning);
+}
+
+/* Listbox popup (motion.md §4.16: rise-in, instant close). */
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  right: 0;
+  z-index: var(--z-popover);
+  max-height: 320px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-md);
+  --move-sm: var(--move-xs);
+  animation: var(--kf-rise-in) var(--dur-fast) var(--ease-out) both;
+}
+
+.list[hidden] {
+  display: none;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 36px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  cursor: pointer;
+}
+
+/* Highlight is instant: it follows the arrow keys. */
+.option[data-active] {
+  background: var(--accent-subtle);
+  color: var(--accent-subtle-text);
+}
+
+.code {
+  flex: none;
+  min-width: 4.5ch;
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.desc {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.option[data-active] .desc {
+  color: inherit;
+}
+
+.check {
+  flex: none;
+  margin-left: auto;
+}
+
+.status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--text-muted);
+}
+
+@media (pointer: coarse) {
+  .option {
+    min-height: var(--tap-min);
+  }
+}

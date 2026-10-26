@@ -1,0 +1,91 @@
+.button {
+  --_size: var(--control-h-md);
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--_size);
+  height: var(--_size);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-standard);
+}
+
+.button > svg {
+  width: 20px;
+  height: 20px;
+}
+
+.sm {
+  --_size: var(--control-h-sm);
+}
+
+.sm > svg {
+  width: 16px;
+  height: 16px;
+}
+
+.outline {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.danger-ghost {
+  color: var(--danger);
+}
+
+.button[aria-pressed="true"] {
+  background: var(--accent-subtle);
+  border-color: var(--accent-subtle-border);
+  color: var(--accent-subtle-text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ghost:hover:not(:disabled),
+  .outline:hover:not(:disabled) {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+
+  .outline:hover:not(:disabled) {
+    border-color: var(--border-strong);
+  }
+
+  .danger-ghost:hover:not(:disabled) {
+    background: var(--danger-subtle);
+  }
+
+  .button[aria-pressed="true"]:hover:not(:disabled) {
+    background: var(--accent-subtle-hover);
+    color: var(--accent-subtle-text);
+  }
+}
+
+.button:active:not(:disabled) {
+  transform: scale(var(--scale-press));
+  transition-duration: var(--dur-instant);
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (pointer: coarse) {
+  .sm::after {
+    content: "";
+    position: absolute;
+    inset: -6px;
+  }
+}

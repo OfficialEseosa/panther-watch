@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<!-- Minimal hand-made stand-in for dssapex.gsu.edu/ords/f?p=140:184 (APEX Universal Theme).
+     Only the parts the client reads are kept: p_instance, the P_TERM_184 select and the
+     two report regions with their column headers. -->
+<html lang="en">
+<head><title>Grade Distributions By Course Sections</title></head>
+<body class="t-PageBody">
+<form role="none" action="wwv_flow.accept" method="post" name="wwv_flow" id="wwvFlowForm" novalidate>
+  <input type="hidden" name="p_flow_id" value="140" id="pFlowId" />
+  <input type="hidden" name="p_flow_step_id" value="184" id="pFlowStepId" />
+  <input type="hidden" name="p_instance" value="13926150374803" id="pInstance" />
+  <input type="hidden" name="p_page_submission_id" value="MTM5MjYxNTAzNzQ4MDM" id="pPageSubmissionId" />
+
+  <div class="t-Region" id="R40828346286500" data-region-id="R40828346286500">
+    <div class="t-Region-header"><h2 class="t-Region-title">Filters</h2></div>
+    <div class="t-Region-body">
+      <label for="P_TERM_184">Term</label>
+      <select id="P_TERM_184" name="P_TERM_184" class="selectlist apex-item-select" size="1">
+        <option value="">- Select -</option>
+        <option value="202505">Summer 2025</option>
+        <option value="202601">Spring 2026</option>
+        <option value="202508" selected="selected">Fall 2025</option>
+        <option value="202608">Fall 2026</option>
+        <option value="202508">Fall 2025</option>
+        <option value="%null%">All</option>
+      </select>
+      <select id="P_PREFIX_184" name="P_PREFIX_184"><option value="%null%">All</option><option value="CSC">CSC</option></select>
+    </div>
+  </div>
+
+  <div class="t-Region t-Region--scrollBody" id="R40828346286637" data-region-id="R40828346286637">
+    <div class="t-Region-header"><h2 class="t-Region-title">Grade Distribution</h2></div>
+    <table class="t-Report-report" summary="Grade Distribution">
+      <thead><tr>
+        <th class="t-Report-colHead" id="CRN">CRN</th>
+        <th class="t-Report-colHead" id="COURSE">Course</th>
+        <th class="t-Report-colHead" id="PROFESSOR">Professor</th>
+        <th class="t-Report-colHead" id="A">A  (90-100)</th>
+        <th class="t-Report-colHead" id="F">F &lt;60</th>
+        <th class="t-Report-colHead" id="CRS_AVG">CRS AVG</th>
+      </tr></thead>
+      <tbody><tr><td headers="CRN">80104</td><td headers="COURSE">CSC 4520 </td><td headers="PROFESSOR">Bal, Abdullah</td><td>33</td><td>1</td><td>3.31</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="t-Region t-Region--scrollBody" id="R40828346286712" data-region-id="R40828346286712">
+    <div class="t-Region-header"><h2 class="t-Region-title">Detailed Grade Distribution</h2></div>
+    <table class="t-Report-report" summary="Detailed">
+      <thead><tr>
+        <th class="t-Report-colHead">CRN</th>
+        <th class="t-Report-colHead"> A+ </th>
+        <th class="t-Report-colHead">A</th>
+        <th class="t-Report-colHead">A-</th>
+      </tr></thead>
+      <tbody><tr><td>80104</td><td>4</td><td>17</td><td>12</td></tr></tbody>
+    </table>
+  </div>
+</form>
+</body>
+</html>

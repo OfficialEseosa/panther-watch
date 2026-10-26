@@ -1,0 +1,95 @@
+/* Stat tile (spec.md §2.19): a Card box with --space-5 padding. */
+.stat {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+}
+
+.top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: var(--leading-xs);
+}
+
+.label {
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--text-subtle);
+}
+
+.value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--leading-xl);
+  margin-top: var(--space-2);
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+@media (min-width: 900px) {
+  .value {
+    min-height: var(--leading-2xl);
+    font-size: var(--text-2xl);
+    line-height: var(--leading-2xl);
+  }
+}
+
+.stat[data-tone="success"] .value {
+  color: var(--success);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: var(--radius-full);
+  background: var(--success);
+}
+
+/* Count-up (motion.md §4.14): --pw-n is registered as <integer> in motion.css. */
+.countUp {
+  --pw-n: var(--_to);
+  display: inline-block;
+  min-width: 3ch;
+  counter-reset: pw var(--pw-n);
+  animation: var(--kf-count-up) var(--dur-slower) var(--ease-out) both;
+  font-variant-numeric: tabular-nums;
+}
+
+.countUp::after {
+  content: counter(pw) / "";
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .countUp {
+    animation: none;
+  }
+}
+
+.helper {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}

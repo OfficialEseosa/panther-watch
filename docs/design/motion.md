@@ -1,0 +1,556 @@
+# PantherWatch motion
+
+Status: approved for implementation · Companion to [`spec.md`](./spec.md) and [`tokens.css`](./tokens.css).
+
+Motion in PantherWatch has two jobs: confirm that something happened (you're watching this class now) and show where something went (this card became that dialog). It never decorates. Most animations finish in 200 ms or less, and nothing loops except a loading shimmer.
+
+---
+
+## 1. Decision: no framer-motion
+
+**framer-motion is removed from the dependency list.** The old app shipped it (127 KB, 42 KB gz) as a modulepreload on every page. It drove `layoutId` on every course card with no `layoutDependency`, which re-measured all cards on every render, so each filter keystroke did layout work for 12+ cards.
+
+I checked the three places where a library could still earn its weight:
+
+| Candidate | What it needs | Decision |
+|---|---|---|
+| Card → detail dialog shared-element transition | Morph one box into another, crossfade content | **View Transitions API** (same-document): Chrome/Edge 111+, Safari 18+, Firefox 144+. 0 KB. Without support, the dialog opens with its normal CSS entrance. |
+| Calendar block drag / appear / remove | Drag needs gesture physics; appear/remove needs reflow animation of sibling lanes | **No drag.** Meeting times are set by the registrar, so dragging a block implies an edit the product can't make. Appear/remove/reflow uses **View Transitions** with one name per block, which animates the lane re-split for free. |
+| Page transitions on the app shell | Enter, and ideally exit, on route change | **CSS enter animation in `app/(app)/template.tsx`.** No exit animation. App Router has no supported exit hook. The known `AnimatePresence` workaround freezes Next's internal `LayoutRouterContext`, which is fragile across Next releases and fights streaming. An exit animation also delays the next page by its duration. |
+
+None of the three needs framer, so it doesn't come back as a lazy chunk either. CI rejects `framer-motion` and `motion` in `package.json` (spec.md §5).
+
+**Future rule:** if a later feature truly needs gesture physics (e.g. drag-to-reorder tracked classes), add `motion` then. Import `m` + `LazyMotion` inside that feature's client component only, load `domAnimation` with a dynamic `import()` on first interaction, and keep it at 25 KB gz or less, off the critical path. It must not be imported by any shared component.
+
+The View Transitions code goes in our own components (`document.startViewTransition` + `flushSync`). Don't use React's experimental `<ViewTransition>` component or Next's `experimental.viewTransition` flag. They're unstable APIs, and the manual call is about 15 lines.
+
+---
+
+## 2. Principles
+
+1. **Respond within one frame, finish within 200 ms.** Feedback (hover, press, toggle state) starts immediately and uses `--dur-fast` or `--dur-instant`. Only spatial transitions (card→dialog, sheet) use `--dur-slow`.
+2. **Exits are faster than entrances.** Enter with `--ease-out` at `--dur`; exit with `--ease-in` at `--dur-fast`.
+3. **Animate `transform` and `opacity` only.** The documented exceptions are §4.6 (toast stack collapse) and §4.13 (banner dismiss collapse). Both are one-off, user-triggered, and run on tiny layout regions.
+4. **No entrance animation on the initial document load.** SSR content is painted where it belongs. Entrances play on client navigations and on content that arrives after paint. This keeps LCP honest.
+5. **View Transitions only for discrete, user-initiated changes.** Never for typing, polling, auto-rotation, or anything that fires on its own. A VT makes the page non-interactive for its duration. One at a time: call `skipTransition()` on a running VT before starting another.
+6. **Reduced motion keeps meaning and drops movement.** Tokens zero all distances (tokens.css §3). Morphs, shimmer, count-up, pulse rings and auto-rotation are disabled. State changes still show (color, icon, text).
+7. **Never more than about 12 elements animating at once.**
+8. **No `will-change` in stylesheets.** It's only set inline during an active gesture (sheet drag), then removed.
+
+---
+
+## 3. Tokens and the shared motion stylesheet
+
+### 3.1 Tokens (defined in tokens.css)
+
+| Token | Value | Use |
+|---|---|---|
+| `--dur-instant` | 80 ms | Press feedback (`:active` scale) |
+| `--dur-fast` | 120 ms | Hover, color/state changes, exits, popover enter, tab panel fade |
+| `--dur` | 200 ms | Default enter: page, cards, dialog, toast, tab indicator, theme crossfade |
+| `--dur-slow` | 320 ms | Spatial: card→dialog morph, sheet enter, meter fill, pulse ring |
+| `--dur-slower` | 480 ms | Count-up, fresh-block highlight |
+| `--stagger` | 30 ms | Per-item delay in a staggered list (capped at 8 steps = 240 ms) |
+| `--ease-standard` | `cubic-bezier(0.2, 0, 0, 1)` | State changes, hover, reflow |
+| `--ease-out` | `cubic-bezier(0.16, 1, 0.3, 1)` | Entrances |
+| `--ease-in` | `cubic-bezier(0.4, 0, 1, 1)` | Exits |
+| `--ease-in-out` | `cubic-bezier(0.65, 0, 0.35, 1)` | Crossfades that are neither enter nor exit (theme) |
+| `--ease-emphasized` | `cubic-bezier(0.32, 0.72, 0, 1)` | Card→dialog morph, sheet |
+| `--ease-spring` | `linear(...)` (~3% overshoot) | Icon pop on watch/schedule toggle only |
+| `--move-xs/sm/md/lg` | 2 / 4 / 8 / 16 px | Translate distances. All become 0 under reduced motion. |
+| `--scale-enter` | 0.98 | Dialog/toast starting scale (1 under reduced motion) |
+| `--scale-press` | 0.98 | Button/IconButton `:active` (1 under reduced motion) |
+| `--hover-lift` | −2 px | Card hover (0 under reduced motion) |
+
+Under `prefers-reduced-motion: reduce`, tokens.css also clamps `--dur-slow` and `--dur-slower` to 200 ms, sets `--stagger` to 0, and swaps `--ease-spring` for `--ease-standard`.
+
+### 3.2 `app/motion.css`
+
+This file and tokens.css are the only places where raw durations may appear (the shimmer loop period). Components reference these keyframes through their `--kf-*` aliases (`animation: var(--kf-rise-in) ...`), never by bare name: CSS Modules rename bare animation names (see the rule at the top of §4). Their CSS Modules don't define keyframes of their own, except the component-specific ones named in §4.
+
+```css
+/* ---------- registered properties ---------- */
+@property --pw-n { syntax: '<integer>'; inherits: false; initial-value: 0; }
+
+/* ---------- shared keyframes ---------- */
+@keyframes fade-in   { from { opacity: 0; } }
+@keyframes fade-out  { to   { opacity: 0; } }
+@keyframes rise-in   { from { opacity: 0; transform: translateY(var(--move-sm)); } }
+@keyframes sink-out  { to   { opacity: 0; transform: translateY(var(--move-sm)); } }
+@keyframes pop-in    { from { opacity: 0; transform: translateY(var(--move-md)) scale(var(--scale-enter)); } }
+@keyframes pop-out   { to   { opacity: 0; transform: translateY(var(--move-sm)) scale(var(--scale-enter)); } }
+@keyframes sheet-in  { from { transform: translateY(100%); } }
+@keyframes sheet-out { to   { transform: translateY(100%); } }
+@keyframes sheet-out-from { from { transform: translateY(var(--from)); } to { transform: translateY(100%); } }  /* after a drag */
+@keyframes drawer-in { from { transform: translateX(-100%); } }
+@keyframes drawer-out{ to   { transform: translateX(-100%); } }
+@keyframes icon-pop  { from { transform: scale(0.6); opacity: 0; } }
+@keyframes pulse-ring{ from { opacity: 0.6; transform: scale(1); } to { opacity: 0; transform: scale(1.18); } }
+@keyframes fresh-ring{ 0% { outline-color: var(--indicator); outline-offset: 0; } 100% { outline-color: transparent; outline-offset: 6px; } }
+@keyframes shimmer   { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+@keyframes count-up  { from { --pw-n: 0; } }
+
+/* ---------- aliases for CSS Modules (§4 rule): one per keyframe above ---------- */
+:root, ::backdrop { --kf-fade-in: fade-in; --kf-fade-out: fade-out; --kf-rise-in: rise-in; /* ... */ --kf-count-up: count-up; }
+
+/* ---------- theme switch: suppress component transitions for the swap ---------- */
+html[data-theme-switching] *,
+html[data-theme-switching] *::before,
+html[data-theme-switching] *::after { transition: none !important; }
+
+/* ---------- View Transitions (see §4.1, §4.4, §4.11, §4.12) ---------- */
+::view-transition-group(root) { animation-duration: var(--dur); animation-timing-function: var(--ease-in-out); }
+
+/* card/block -> course dialog */
+::view-transition-group(course-detail) {
+  animation-duration: var(--dur-slow);
+  animation-timing-function: var(--ease-emphasized);
+}
+::view-transition-image-pair(course-detail) { overflow: clip; border-radius: var(--radius-lg); }
+::view-transition-old(course-detail),
+::view-transition-new(course-detail) {
+  /* no stretching: each snapshot keeps its natural size, pinned top-left,
+     and is clipped by the morphing box */
+  width: auto; height: auto; object-fit: none; object-position: left top;
+}
+::view-transition-old(course-detail) { animation: fade-out var(--dur-fast) var(--ease-in) both; }
+::view-transition-new(course-detail) { animation: fade-in var(--dur) var(--ease-out) 60ms both; }
+
+/* schedule blocks */
+::view-transition-group(*.sched-block) { animation-duration: var(--dur); animation-timing-function: var(--ease-standard); }
+::view-transition-old(*.sched-block):only-child { animation: pop-out var(--dur-fast) var(--ease-in) both; }
+::view-transition-new(*.sched-block):only-child { animation: pop-in var(--dur) var(--ease-out) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) { animation: none !important; }
+}
+```
+
+(The reduced-motion VT rule is a backstop. Code paths already skip `startViewTransition` when reduced motion is on.)
+
+### 3.3 Helpers (in `lib/motion.ts`, < 2 KB total)
+
+```ts
+export const prefersReducedMotion = () =>
+  typeof window !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+let running: ViewTransition | null = null;
+/** Runs `update` inside a view transition when supported and allowed; otherwise runs it directly.
+ *  `update` must apply the DOM change synchronously (wrap React state in flushSync). */
+export function withViewTransition(kind: string, update: () => void): Promise<void> {
+  if (!document.startViewTransition || prefersReducedMotion()) { update(); return Promise.resolve(); }
+  running?.skipTransition();
+  const root = document.documentElement;
+  root.dataset.vt = kind;
+  const vt = document.startViewTransition(update);
+  running = vt;
+  return vt.finished.finally(() => { if (running === vt) { running = null; delete root.dataset.vt; } });
+}
+
+/** Plays a CSS exit (element gets data-closing) and resolves on animationend, or after a 300 ms safety timeout. */
+export function playExit(el: HTMLElement): Promise<void> { /* set data-closing, await animationend|timeout, remove attr */ }
+```
+
+---
+
+## 4. Animation catalogue
+
+> **Rule: CSS Modules never name a shared keyframe directly.** Turbopack compiles CSS Modules with
+> Lightning CSS, which renames every identifier in `animation` / `animation-name` per module
+> (`rise-in` becomes `Gga1VW_rise-in`), while the keyframes live once, globally, in `motion.css`
+> under their plain names. A module that writes `animation: rise-in ...` therefore points at
+> nothing: no animation, and no `animationend`, which silently broke banner dismissal, rotation,
+> `data-fresh` and every `playExit` (they sat on the safety timeout). Modules use the `--kf-*`
+> aliases that `motion.css` defines on `:root` (`--kf-rise-in: rise-in`, one per shared keyframe):
+> `animation: var(--kf-rise-in) var(--dur) var(--ease-out) both;`, or
+> `animation-name: var(--kf-fade-in);` in an override. Values inside `var()` are never renamed.
+> `motion.css` itself (global, not a module) names keyframes directly, as do module-local
+> `@keyframes` (renamed consistently, e.g. the spinner's `spin`). `npm run check:css` (after
+> `npm run build`) fails if any built `animation` name has no `@keyframes`, or any `var(--x)` is
+> defined nowhere. Code that waits for `animationend` also keeps a safety timeout.
+>
+> The snippets below are written as they appear in the component modules.
+
+Summary first, details below. "Initial load" means the first document render (SSR paint).
+
+| # | Animation | Trigger | Technique | Duration / easing | Reduced motion |
+|---|---|---|---|---|---|
+| 4.1 | Page enter | Client navigation between app routes | `template.tsx` wrapper, CSS `rise-in` | `--dur` / `--ease-out` | Opacity fade only (tokens) |
+| 4.2 | Card stagger-in | Results arrive after a client navigation or "Show more" | CSS `rise-in` with `animation-delay: calc(min(i,8) × --stagger)` | `--dur` / `--ease-out`, ≤ 240 ms total stagger | All fade together, no offset |
+| 4.3 | Card hover / press | Pointer hover (fine pointers), `:active` | CSS `transition` on transform; shadow via pseudo-element opacity | `--dur-fast` / `--ease-standard`; press `--dur-instant` | No lift; shadow change only |
+| 4.4 | Expand to dialog | Open course detail from card or calendar block (≥640) | View Transition, shared name `course-detail` | `--dur-slow` / `--ease-emphasized` | No morph; dialog fades in (`--dur`) |
+| 4.5 | Tab switch | Select a tab | Indicator: transform via CSS vars. Panel: `fade-in` + `--move-xs` | Indicator `--dur` / `--ease-standard`; panel `--dur-fast` / `--ease-out` | Indicator jumps; panel fades |
+| 4.6 | Toast in / out | Toast added / dismissed / timed out | Enter `pop-in`; exit `sink-out` + stack collapse (`grid-template-rows`) | In `--dur` / `--ease-out`; out `--dur-fast` / `--ease-in` | Fades only |
+| 4.7 | Skeleton shimmer | Skeleton visible for > 150 ms | One `::after` sweep per skeleton group, `transform` only | 1.4 s linear loop; group fades in after 150 ms | Static blocks, no sweep |
+| 4.8 | Dialog / Sheet | Any `Dialog` open/close | Keyframes on `[open]` + JS-driven exit (`data-closing`) | Modal in `--dur` `pop-in`, out `--dur-fast` `pop-out`; sheet in `--dur-slow` `--ease-emphasized`, out `--dur` `--ease-in` | Fades only (sheet included) |
+| 4.9 | Enrollment meter fill | Meter first renders; value changes | `transform: scaleX()` + `@starting-style` from 0 | `--dur-slow` / `--ease-out`, delay follows card stagger | No transition; final width |
+| 4.10 | Watch toggle success pulse | Watch or schedule toggled **on** | Icon `icon-pop` (`--ease-spring`) + `::after` `pulse-ring` (transform/opacity) | Icon `--dur`; ring `--dur-slow` / `--ease-out` | Color/icon swap only |
+| 4.11 | Schedule block add / remove | Remove from calendar; add while the calendar is visible; close of Add classes dialog | View Transition with per-block names + `view-transition-class: sched-block`; `fresh-ring` highlight | Reflow `--dur`; exit `--dur-fast`; highlight `--dur-slower` | Instant; static 2 px ring for 2 s on fresh blocks |
+| 4.12 | Theme toggle crossfade | Theme change from header, menu or Settings | View Transition on root + transition suppression | `--dur` / `--ease-in-out` | Instant swap |
+| 4.13 | Announcement rotate | Every 8 s when > 1 announcement and not paused | CSS `fade-out` then `rise-in` on the message span (no VT) | Out `--dur-fast`, in `--dur` | No auto-rotation; pager only |
+| 4.14 | Dashboard count-up | Stat tile renders a value 10–999 | CSS `@property --pw-n` integer animation + `counter()` | `--dur-slower` / `--ease-out` | Final value immediately |
+| 4.15 | Drawer and "More" sheet | Rail expand button; bottom-nav "More" | Drawer `drawer-in/out`; More uses the Sheet (4.8) | In `--dur` / `--ease-out`; out `--dur-fast` / `--ease-in` | Fades only |
+| 4.16 | Menus, listbox, tooltip | Open popover | `rise-in` (`--move-xs`, direction away from trigger) | `--dur-fast` / `--ease-out`; close instant | Fade only |
+| 4.17 | Sticky filter bar shadow | Bar becomes stuck | `transition: box-shadow, border-color` | `--dur-fast` / `--ease-standard` | Same (no movement) |
+| 4.18 | Buttons / IconButtons / Chips | Hover, press, pressed-state change | `transition` on background-color, border-color, color; `:active` scale | `--dur-fast`; press `--dur-instant` | No scale |
+
+### 4.1 Page enter
+
+- `app/(app)/template.tsx` (client component) wraps `children` in `<div className={styles.page} data-enter={enter || undefined}>`.
+- `enter` is false on the initial document load and true on every later mount. Use a module-level flag:
+
+```tsx
+'use client';
+let hydrated = false;                         // module scope: false on server and on first client mount
+export default function Template({ children }: { children: React.ReactNode }) {
+  const [enter] = useState(() => hydrated);
+  useEffect(() => { hydrated = true; }, []);
+  return <NavEntranceContext.Provider value={enter}>
+    <div className={styles.page} data-enter={enter || undefined}>{children}</div>
+  </NavEntranceContext.Provider>;
+}
+```
+
+```css
+.page[data-enter] { animation: var(--kf-rise-in) var(--dur) var(--ease-out) both; }
+```
+
+- No exit animation. The outgoing page is replaced immediately, and `loading.tsx` skeletons cover slow segments.
+- `NavEntranceContext` is read by 4.2 so lists stagger only when the page itself entered.
+- Searchparam-only navigations (results filters, `?course=` dialog) don't remount the template, so they don't animate. That's intended.
+- Not used on `/` (landing) or the legal pages, which sit outside the `(app)` group.
+
+### 4.2 Card stagger-in
+
+- Applies to the Results grid, the Tracked grid, the Add-classes result list, and admin user cards. Only when `NavEntranceContext` is true, or for a batch appended by "Show more" (that batch's indices restart at 0).
+- Each item gets an inline `style={{ '--i': Math.min(index, 8) }}`. Items with index ≥ 12 get no animation attribute at all; they're below the fold.
+
+```css
+.grid[data-enter] > .item:nth-child(-n + 12) {
+  animation: var(--kf-rise-in) var(--dur) var(--ease-out) both;
+  animation-delay: calc(var(--i) * var(--stagger));
+}
+```
+
+- Filtering, sorting and term changes never stagger. Cards that become visible just appear. Animating on every filter keystroke was the old app's biggest motion cost.
+- Total time to last card settled: 240 + 200 = 440 ms at most.
+
+### 4.3 Card hover / press
+
+```css
+.card { position: relative; transition: transform var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard); }
+.card::before {                                     /* hover shadow layer: opacity is composited */
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  box-shadow: var(--shadow-md); opacity: 0; pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease-standard);
+}
+@media (hover: hover) and (pointer: fine) {
+  .card:hover { transform: translateY(var(--hover-lift)); border-color: var(--border-strong); }
+  .card:hover::before { opacity: 1; }
+}
+.card:active { transform: translateY(0); transition-duration: var(--dur-instant); }   /* settle back down */
+.card:active::before { opacity: 0; }
+```
+
+- Press "settles" the card (cancels the lift) rather than scaling it. Scaling a 600 px card reads as wobble.
+- Don't transition `box-shadow` directly. Painting a large blurred shadow on every frame across a grid is the expensive path.
+- Don't put `will-change` on cards (50 promoted layers costs memory for nothing).
+
+### 4.4 Expand to dialog (card or calendar block → course detail)
+
+Only at ≥640 px, with View Transitions supported, and without reduced motion. Otherwise the dialog opens with 4.8 (modal fade or sheet slide).
+
+**Open:**
+
+```ts
+function openCourse(crn: string, sourceEl: HTMLElement | null) {
+  const wide = matchMedia('(min-width: 640px)').matches;
+  if (!sourceEl || !wide) return setOpenCrn(crn);                  // 4.8 handles it
+  sourceEl.style.viewTransitionName = 'course-detail';
+  withViewTransition('course', () => {
+    flushSync(() => setOpenCrn(crn));      // Dialog renders; its panel has view-transition-name: course-detail;
+                                           // showModal() runs in useLayoutEffect, i.e. inside this flushSync
+    sourceEl.style.viewTransitionName = '';// only one element may hold the name in the new state
+  });
+  history.pushState(null, '', withParam('course', crn));            // spec.md §2.7
+}
+```
+
+**Close:** the reverse. Inside the update callback, close the dialog (`dialog.close()` + state) and set `view-transition-name: course-detail` on the source element. When `finished` resolves, clear it. If the source element is gone (filtered out, removed from tracked) or is outside the viewport (`getBoundingClientRect` doesn't intersect it), skip the morph and use the 4.8 exit.
+
+**What the user sees:** the card's box grows into the dialog panel over 320 ms. The card's contents fade out in the first 120 ms. The dialog's contents fade in from 60 ms, pinned top-left inside the growing box, so text is never stretched (`object-fit: none` + `overflow: clip`, §3.2). The page behind crossfades to the dimmed backdrop over 200 ms (root group).
+
+**Rules:**
+- While `html[data-vt="course"]` is set, the dialog's own keyframe entrance (4.8) is suppressed: `html:not([data-vt]) dialog[open] { animation: ... }`.
+- The detail dialog has a **fixed height** at ≥640 (`height: min(860px, 100dvh - 48px)`), so tab switches inside it never resize the panel.
+- Calendar blocks use the same function with the block as `sourceEl`.
+- Interaction is blocked for 320 ms during the morph. That's acceptable for an explicit open/close, and it's why VT is never used for passive updates.
+
+### 4.5 Tab switch
+
+**Indicator:** a single `<span class="indicator">` inside the tablist, `position: absolute; bottom: 0; left: 0; height: 2px; width: 1px; transform-origin: left`. When the selection changes (and on `ResizeObserver` of the tablist), set `--x` = the selected tab's `offsetLeft` and `--w` = its `offsetWidth` on the tablist:
+
+```css
+.indicator {
+  background: var(--indicator); border-radius: var(--radius-full);
+  transform: translateX(calc(var(--x) * 1px)) scaleX(var(--w));
+}
+.tablist[data-ready] .indicator { transition: transform var(--dur) var(--ease-standard); }
+```
+
+`data-ready` is added after the first measurement, so the initial position doesn't animate from 0. Composited transform only, no width animation.
+
+**Panel:** the incoming panel mounts with `animation: var(--kf-rise-in) var(--dur-fast) var(--ease-out)` using `--move-xs` (override `--move-sm` locally: `.panel { --move-sm: var(--move-xs); }`). The outgoing panel unmounts instantly. No crossfade overlap, no height animation.
+
+### 4.6 Toast in / out
+
+- **Enter:** the toast item mounts with `animation: var(--kf-pop-in) var(--dur) var(--ease-out) both`.
+- **Exit** (dismiss, timeout, or Undo pressed): `playExit(el)` → `[data-closing] { animation: var(--kf-sink-out) var(--dur-fast) var(--ease-in) both }`. At the same time, the item's wrapper collapses so the stack closes the gap:
+
+```css
+.slot { display: grid; grid-template-rows: 1fr; transition: grid-template-rows var(--dur-fast) var(--ease-in); }
+.slot[data-closing] { grid-template-rows: 0fr; }
+.slot > .toast { min-height: 0; overflow: hidden; }
+```
+
+- Remove from state on `animationend` (300 ms safety timeout).
+- Hover and focus pause the timer only. There's no visual change.
+
+### 4.7 Skeleton shimmer
+
+- A skeleton **group** (one card, one stat, one table row) is the shimmer unit, not each bar, so 12 card skeletons create 12 animated layers, not about 100.
+
+```css
+.group { position: relative; overflow: hidden; animation: var(--kf-fade-in) var(--dur-fast) linear 150ms both; }
+.group::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--skeleton-shine), transparent);
+  animation: var(--kf-shimmer) 1.4s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) { .group::after { animation: none; opacity: 0; } }
+```
+
+- The 150 ms delayed fade-in means responses faster than 150 ms never show a skeleton.
+- The shimmer sweeps across gaps between bars too. On `--surface` this is invisible in light mode (white on white) and nearly invisible in dark (6% white), so no masking is needed.
+- No skeleton ever exists to cover an artificial delay (the old 500 ms dashboard loader is deleted).
+
+### 4.8 Dialog and Sheet (generic)
+
+There is one `Dialog` element with class `.dialog`. Mobile-first: the base styles are the bottom sheet, and `@media (min-width: 640px)` turns it into the centered modal (spec.md §2.7). The animations follow the same structure.
+
+**Enter** is a keyframe on `[open]`, which plays whenever the dialog goes from `display: none` to shown. That works in every target browser and needs no `@starting-style`.
+
+```css
+/* base (< 640px): sheet */
+.dialog[open]           { animation: var(--kf-sheet-in) var(--dur-slow) var(--ease-emphasized) both; }
+.dialog[open]::backdrop { animation: var(--kf-fade-in) var(--dur) var(--ease-out) both; }
+
+@media (min-width: 640px) {
+  /* modal; skipped while a card->dialog View Transition is running (4.4) */
+  html:not([data-vt]) .dialog[open] { animation: var(--kf-pop-in) var(--dur) var(--ease-out) both; }
+  html[data-vt] .dialog[open],
+  html[data-vt] .dialog[open]::backdrop { animation: none; }
+}
+```
+
+**Exit** is JS-driven, because animating `display`/`overlay` out of the top layer is not reliable outside Chromium. A dialog that leaves the top layer without `overlay` support can flash at its in-flow position. So: on any close request (X, Esc via the `cancel` event with `preventDefault()`, backdrop click, Back button), set `data-closing`, run:
+
+```css
+.dialog[data-closing]           { animation: var(--kf-sheet-out) var(--dur) var(--ease-in) both; }
+.dialog[data-closing]::backdrop { animation: var(--kf-fade-out) var(--dur) var(--ease-in) both; }
+@media (min-width: 640px) {
+  .dialog[data-closing]           { animation: var(--kf-pop-out) var(--dur-fast) var(--ease-in) both; }
+  .dialog[data-closing]::backdrop { animation: var(--kf-fade-out) var(--dur-fast) var(--ease-in) both; }
+}
+```
+
+and call `dialog.close()` on `animationend`.
+
+**Sheet drag** (spec.md §2.7): during the drag, set `transform: translateY(<dy>px)` and `will-change: transform` inline, with no transition. On release: if dismissed, set `--from: <dy>px` inline and play `sheet-out-from` (§3.2) so the exit continues from where the finger let go. Otherwise transition back to 0 over `--dur` `--ease-out`. Remove `will-change` afterwards.
+
+**Reduced motion:** the modal is already a fade (tokens zero `--move-*` and set `--scale-enter: 1`). The sheet needs an explicit override because its distance is 100%. Place this after the rules above:
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  .dialog[open]          { animation-name: var(--kf-fade-in); }
+  .dialog[data-closing]  { animation-name: var(--kf-fade-out); }
+}
+```
+
+### 4.9 Enrollment meter fill
+
+```css
+.fill {
+  transform-origin: left; transform: scaleX(var(--fill));           /* --fill = enrolled / capacity, 0..1, inline */
+  transition: transform var(--dur-slow) var(--ease-out);
+  transition-delay: calc(var(--i, 0) * var(--stagger) + 80ms);       /* follows the card's stagger */
+  @starting-style { transform: scaleX(0); }
+}
+@media (prefers-reduced-motion: reduce) { .fill { transition: none; } }
+```
+
+- `@starting-style` makes it fill from empty on first render. A later value change (seat counts refreshed, or a user returning to a cached page) transitions smoothly from the old value to the new one. That's the one place in the app where `@starting-style` is the right tool, because keyframes can't animate later updates.
+- This runs on initial load too. It's exempt from principle 4 because the meter is `aria-hidden` and the number next to it is already painted, so nothing the user reads is delayed.
+- Color changes (open → low → full) are instant: no color transition, which would show a muddy midpoint.
+
+### 4.10 Watch / schedule toggle success pulse
+
+Sequence when the user turns Watch **on**:
+1. Click: optimistic state, `aria-pressed="true"` immediately. Background/border/color transition `--dur-fast`.
+2. The icon swaps `eye` → `eyeCheck`. The new icon mounts with `animation: var(--kf-icon-pop) var(--dur) var(--ease-spring) both`.
+3. The button gets `data-pulse` for one run of its `::after` ring:
+
+```css
+.toggle { position: relative; }
+.toggle::after {
+  content: ''; position: absolute; inset: -1px; border-radius: inherit;
+  border: 2px solid var(--indicator); opacity: 0; pointer-events: none;
+}
+.toggle[data-pulse]::after { animation: var(--kf-pulse-ring) var(--dur-slow) var(--ease-out) both; }
+@media (prefers-reduced-motion: reduce) {
+  .toggle[data-pulse]::after { animation: none; }
+  .toggle .icon { animation: none; }
+}
+```
+
+4. `data-pulse` is removed on `animationend`.
+5. If the server action fails, revert `aria-pressed`, show an error toast, and play no animation for the revert.
+
+Turning **off** gets no pulse: just the state change plus the Undo toast. The schedule IconButton uses the same pattern (`calendarPlus` → `calendarCheck`). When the added section conflicts with the schedule, the add still succeeds (pages.md, Schedule builder). There's no pulse; instead a warning toast names the conflict, e.g. "Added CSC 2720 · overlaps MATH 2211 on Mon/Wed". No shake.
+
+### 4.11 Schedule block add / remove
+
+- Every week-view block gets `style={{ viewTransitionName: 'sb-' + crn + '-' + meetingIndex }}` and `view-transition-class: sched-block` (in its CSS Module). A term has 30 blocks at most, which VT handles cheaply. Agenda rows don't get names.
+- **Remove** (from the detail dialog's "Remove from schedule", or the agenda): close the dialog first (4.4/4.8). Once it has closed, run `withViewTransition('schedule', () => flushSync(() => removeCourse(crn)))`. The removed blocks `pop-out` (`--dur-fast`). Blocks in the same days that were sharing lanes widen back to full width via the group morph (`--dur`, `--ease-standard`), so the user sees the conflict resolve. Undo in the toast re-adds the course the same way (the new blocks `pop-in`).
+- **Add while the calendar is visible** (Undo, or the agenda's re-add): same VT. New blocks `pop-in`, and neighbours split into lanes with a morph.
+- **Add from the Add classes dialog:** the calendar is behind the dialog, so animating then would be invisible. Track the blocks added during the dialog session. After the dialog's exit completes, give them `data-fresh` → `outline: 2px solid transparent; animation: var(--kf-fresh-ring) var(--dur-slower) var(--ease-out) 1`. Scroll the earliest fresh block into view with `scrollIntoView({ block: 'nearest', behavior: 'smooth' })` (`'auto'` under reduced motion). Remove `data-fresh` on `animationend`.
+- **Color change** (detail dialog color picker): `transition: background-color var(--dur-fast) var(--ease-standard)` on the block. This is the only color transition in the app.
+- **Term switch, Week↔Agenda switch:** instant, no animation.
+- **Reduced motion:** no VT (`withViewTransition` short-circuits). Fresh blocks show a static 2 px `--indicator` outline for 2 s, then it's removed with no animation.
+- `view-transition-class` is in Chrome 125+, Safari 18.2+ and Firefox 144+. Where it's missing, blocks get the browser's default 250 ms crossfade/morph, which is acceptable.
+
+### 4.12 Theme toggle crossfade
+
+```ts
+function applyTheme(next: 'light' | 'dark') {
+  const root = document.documentElement;
+  root.dataset.themeSwitching = '';
+  const commit = () => { root.dataset.theme = next; flushSync(() => setResolved(next)); };
+  withViewTransition('theme', commit).finally(() => {
+    requestAnimationFrame(() => requestAnimationFrame(() => delete root.dataset.themeSwitching));
+  });
+}
+```
+
+- With VT: one 200 ms crossfade of the whole page (root group, `--ease-in-out`). It looks like a single clean dissolve, not 200 elements each easing their colors at slightly different rates (the old app's `transition: background-color .3s` everywhere).
+- `data-theme-switching` suppresses all component transitions for two frames, so the new snapshot is the final state and the no-VT path is an instant swap rather than a smear.
+- Reduced motion or no VT: instant swap.
+- `"system"` preference changes coming from the OS also go through `applyTheme`.
+
+### 4.13 Announcement banner rotate
+
+- Auto-advances every 8 s, only when there are 2+ announcements. Pauses while the banner is hovered, while focus is inside it, while `document.visibilityState === 'hidden'`, and **stops for the session** after any manual prev/next. That last rule also satisfies WCAG 2.2.2.
+- Transition on the message span only: the current message gets `data-closing` → `animation: var(--kf-fade-out) var(--dur-fast) var(--ease-in) both`. On `animationend`, the next message mounts with `animation: var(--kf-rise-in) var(--dur) var(--ease-out) both` (using `--move-xs`). The pager count updates instantly.
+- No View Transition. This change is automatic, and a VT would block clicks across the page every 8 s.
+- Height changes between messages are instant. Messages clamp to 1 line at ≥640 and 2 lines below (spec.md §2.14), so it rarely changes.
+- **Dismiss:** the banner wrapper collapses with the same `grid-template-rows: 1fr → 0fr` technique as 4.6, plus `fade-out`, over `--dur` `--ease-in`, then unmounts. The page shift is user-initiated, so it doesn't count toward CLS.
+- **First appearance:** none. The banner is server-rendered in the `(app)` layout, so it is present at first paint, with no pop-in and no layout shift (the old banner loaded client-side and pushed the page down).
+- **Reduced motion:** no auto-rotation at all. Message swaps from the pager are instant.
+
+### 4.14 Dashboard count-up
+
+Used by the `Stat` component (spec.md §2.19) on the Dashboard and Admin › Stats.
+
+- Count-up runs only when the value is an integer from **10 to 999**. Below 10, a count-up is a slot-machine flicker that adds nothing ("0, 1, 2, 3"). At 1000 and above, the CSS counter can't render thousands separators, and four-digit tickers are showy. Values outside the range render statically.
+- It's pure CSS, so it needs no hydration, starts on first paint or on stream-in, and never flashes 0 after SSR:
+
+```tsx
+<p className={styles.value}>
+  <span className="sr-only">{format(value)}</span>
+  {animate
+    ? <span aria-hidden data-countup style={{ '--to': value } as React.CSSProperties} />
+    : <span aria-hidden>{format(value)}</span>}
+</p>
+```
+
+```css
+.value [data-countup] {
+  --pw-n: var(--to);
+  counter-reset: pw var(--pw-n);
+  animation: var(--kf-count-up) var(--dur-slower) var(--ease-out) both;
+  font-variant-numeric: tabular-nums;
+  display: inline-block; min-width: 3ch;                     /* no width jitter while counting */
+}
+.value [data-countup]::after { content: counter(pw) / ""; } /* empty alt text: AT reads the sr-only span */
+@media (prefers-reduced-motion: reduce) { .value [data-countup] { animation: none; } }
+```
+
+- `--pw-n` is registered as `<integer>` in motion.css, so it interpolates. Baseline: Chrome 85+, Safari 16.4+, Firefox 128+, all within the support matrix (§6).
+- Stats inside a `<Suspense>` boundary count up when they stream in. On client navigation they count up when they mount. That's the intent: a stat arriving is the moment worth marking.
+
+### 4.15 Drawer and "More" sheet
+
+- **Rail drawer** (900–1199 px): a `<dialog>` positioned at the left. Enter: `animation: var(--kf-drawer-in) var(--dur) var(--ease-out) both`, backdrop `fade-in`. Exit (Esc, scrim, nav click, close button): `drawer-out var(--dur-fast) var(--ease-in)` via `playExit`. When a nav item in the drawer is clicked, start the navigation and the exit at the same time; don't wait for the exit to finish before navigating.
+- **Bottom-nav "More":** the Sheet (4.8).
+- **Desktop sidebar (≥1200):** always visible, with no collapse feature and no animation. A collapse toggle would mean animating the content column's width (a layout animation of the entire page) for a feature nobody asked for.
+- **Reduced motion:** the drawer fades (`@media (prefers-reduced-motion: reduce) { .drawer[open] { animation-name: var(--kf-fade-in) } .drawer[data-closing] { animation-name: var(--kf-fade-out) } }`).
+
+### 4.16 Menus, autocomplete listbox, tooltip
+
+- **Enter:** `animation: var(--kf-rise-in) var(--dur-fast) var(--ease-out) both`. Set `--move-sm: calc(var(--move-xs) * -1)` locally when the popover opens *above* its trigger, so it always moves away from the trigger.
+- **Exit:** instant. Light-dismiss popovers close in many ways (outside click, Esc, focus loss), and a lagging menu reads as unresponsive.
+- **Tooltip:** appears after a 400 ms hover delay (spec.md §2.20) with `fade-in var(--dur-fast)`. No movement.
+- **Autocomplete option highlight:** instant background change, with no transition. It moves with the arrow keys, and any easing makes it lag.
+
+### 4.17 Sticky filter bar
+
+`.bar { transition: box-shadow var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard); }` `.bar[data-stuck] { box-shadow: var(--shadow-sm); border-bottom-color: var(--border); }`. It's one element, transitions once per stick/unstick, and doesn't move.
+
+### 4.18 Controls
+
+- Buttons, IconButtons, Chips, nav items and inputs: `transition: background-color, border-color, color` at `--dur-fast` `--ease-standard`.
+- `:active { transform: scale(var(--scale-press)); transition-duration: var(--dur-instant); }` on Button and IconButton only, not nav items or chips.
+- Focus rings never animate.
+
+### 4.19 Deliberately not animated
+
+| Thing | Why |
+|---|---|
+| Landing hero and feature cards | The old hero faded in over 0.6 s with delays up to 0.3 s, which delayed LCP. The old background "pulse" looped forever. The new landing is static apart from card hover. |
+| Filter / sort / term changes on Results | Fast feedback matters more than choreography. Re-animating cards on every keystroke was the old app's main motion cost. |
+| Course search form steps | The old form revealed fields after picking a term. The new form shows all fields at once (pages.md). |
+| Sidebar active-item indicator | It doesn't slide between items. On navigation the page changes anyway, so a sliding bar is noise. |
+| Number changes inside cards (seat counts) | Text changes instantly. The meter (4.9) carries the transition. |
+| Scrolling | No global `scroll-behavior: smooth`. Smooth scroll is used only for the explicit fresh-block reveal (4.11), and is `auto` under reduced motion. |
+| What's new | The old 3D rotating showcase (438 lines, the largest framer consumer) is replaced by a static dialog (pages.md, Dashboard). It uses the 4.8 entrance. |
+| Route loading | No top progress bar (the old `LoadingBar`). `loading.tsx` skeletons per segment cover it. |
+
+---
+
+## 5. Performance budget and verification
+
+- **Library JS for motion: 0 KB.** First-party motion helpers (`lib/motion.ts`, tab indicator, sheet drag): under 3 KB gz total. Sheet drag is only in the Dialog chunk.
+- **Animated properties:** `transform` and `opacity` everywhere, with three exceptions: `grid-template-rows` for toast/banner collapse, the `--pw-n` counter on Stat values, and `outline-*` for the fresh ring.
+- **Concurrent animations:** at most 12 staggered items plus one dialog. The shimmer is 1 layer per skeleton group.
+- **Check before merge** (Chrome DevTools, Performance panel, 4× CPU throttle, mid-tier mobile emulation):
+  1. Results page with 50 sections: type in the filter box. No animation work should appear; each keystroke should cause at most one style/layout pass, with no task > 50 ms.
+  2. Hover across 10 cards quickly: no paint of the card shadows (Rendering → Paint flashing shows only the pseudo-element layers compositing).
+  3. Open and close the course detail 5 times: each VT finishes in under 350 ms, with no dropped frames in the frames track beyond 2.
+  4. Toggle the theme on the schedule builder with 20 blocks: one crossfade, with no per-element transition events.
+  5. Lighthouse mobile on `/` and `/dashboard`: CLS 0.00. LCP isn't delayed by any animation (LCP element = h1, painted at full opacity).
+- **Reduced-motion pass:** with DevTools → Rendering → `prefers-reduced-motion: reduce`, walk every row of the §4 table and confirm the fallback column.
+
+## 6. Support matrix (as of Oct 2026)
+
+| Feature | Used for | Chrome/Edge | Safari | Firefox | Fallback when missing |
+|---|---|---|---|---|---|
+| Same-document View Transitions | 4.4, 4.11, 4.12 | 111+ | 18+ | 144+ | Direct DOM update; dialogs use 4.8 |
+| `view-transition-class` | 4.11 styling | 125+ | 18.2+ | 144+ | Default 250 ms crossfade/morph |
+| `@starting-style` | 4.9 | 117+ | 17.5+ | 129+ | Meter renders at final width |
+| `@property` | 4.14 | 85+ | 16.4+ | 128+ | Count jumps at 50% (acceptable on very old browsers) |
+| `linear()` easing | `--ease-spring` | 113+ | 17.2+ | 112+ | Computes to `ease` |
+| `<dialog>` + `::backdrop` animations | 4.8 | yes | yes | yes | n/a |
+| Popover API | Menus, toasts, tooltips | 114+ | 17+ | 125+ | n/a (baseline) |
+| CSS nesting (`@starting-style` inside a rule) | 4.9 | 112+ | 17.2+ | 117+ | Write it un-nested if the build target complains |

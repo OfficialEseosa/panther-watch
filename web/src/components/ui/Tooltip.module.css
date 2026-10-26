@@ -1,0 +1,26 @@
+.anchor {
+  display: inline-flex;
+}
+
+.tip {
+  /* reset popover UA styles */
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  border: 0;
+  overflow: visible;
+  max-width: 240px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--text);
+  color: var(--text-inverse);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: var(--weight-medium);
+  white-space: normal;
+  pointer-events: none;
+}
+
+.tip:popover-open {
+  animation: var(--kf-fade-in) var(--dur-fast) var(--ease-out) both;
+}

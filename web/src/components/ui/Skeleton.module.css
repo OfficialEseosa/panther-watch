@@ -1,0 +1,28 @@
+.bar {
+  display: block;
+  flex: none;
+  max-width: 100%;
+  background: var(--skeleton);
+}
+
+.group {
+  position: relative;
+  overflow: hidden;
+  animation: var(--kf-fade-in) var(--dur-fast) linear 150ms both;
+}
+
+.group::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--skeleton-shine), transparent);
+  animation: var(--kf-shimmer) 1.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .group::after {
+    animation: none;
+    opacity: 0;
+  }
+}

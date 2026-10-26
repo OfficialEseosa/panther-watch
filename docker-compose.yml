@@ -1,16 +1,20 @@
+# Local Postgres for developing web/. See docs/runbooks/local-dev.md (option A).
+#   docker compose up -d postgres
+#   DATABASE_URL=postgres://pantherwatch:pantherwatch@localhost:5432/pantherwatch?sslmode=disable
+# Production is Supabase Postgres 17.4; the app's SQL does not depend on 15-vs-17 differences.
+# Reset all data with `docker compose down -v` (drops the postgres_data volume).
 services:
-  # PostgreSQL Database Service
   postgres:
     image: postgres:15-alpine
     container_name: pantherwatch-db
     ports:
-      - "5432:5432" # Exposes the database port to your local machine
+      - "5432:5432"
     environment:
       - POSTGRES_USER=pantherwatch
       - POSTGRES_PASSWORD=pantherwatch
       - POSTGRES_DB=pantherwatch
     volumes:
-      - postgres_data:/var/lib/postgresql/data # Persists data even if the container stops
+      - postgres_data:/var/lib/postgresql/data
 
 volumes:
   postgres_data:

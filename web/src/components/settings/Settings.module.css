@@ -1,0 +1,165 @@
+/* /settings (pages.md §7): narrow column of cards. */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+@media (min-width: 640px) {
+  .stack {
+    gap: var(--space-6);
+  }
+}
+
+/* ---- Profile ---- */
+.profile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.profileText {
+  min-width: 0;
+}
+
+.name {
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.email {
+  font-weight: var(--weight-medium);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.profileEmail {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.managed {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--text-subtle);
+}
+
+/* ---- Rows (label + control) ---- */
+.row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+@media (min-width: 640px) {
+  .row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-6);
+  }
+}
+
+.rowText {
+  min-width: 0;
+  max-width: 60ch;
+}
+
+.rowTitle {
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.rowBody {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--text-muted);
+}
+
+.rowAction {
+  flex: none;
+}
+
+.rule {
+  height: 1px;
+  margin: var(--space-5) 0;
+  border: 0;
+  background: var(--border);
+}
+
+/* ---- Notifications ---- */
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.noticeIcon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: var(--accent-subtle);
+  color: var(--accent-subtle-text);
+}
+
+.noticeText {
+  min-width: 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--text-muted);
+}
+
+.noticeText > p + p {
+  margin-top: var(--space-2);
+}
+
+.noticeLead {
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+/* ---- Delete dialog ---- */
+.confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--text-muted);
+}
+
+.list {
+  margin: 0;
+  padding-left: var(--space-5);
+  color: var(--text);
+}
+
+.list > li + li {
+  margin-top: var(--space-1);
+}
+
+/* ---- Legal footnote ---- */
+.legal {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--text-subtle);
+}

@@ -1,0 +1,153 @@
+/*
+ * PantherWatch motion: shared keyframes and View Transition rules (docs/design/motion.md §3.2).
+ * This file and tokens.css are the only places raw durations may appear.
+ * CSS Modules never name these keyframes directly: Turbopack's CSS Modules (Lightning CSS) rename
+ * every identifier in `animation` / `animation-name` per module (`rise-in` -> `Gga1VW_rise-in`),
+ * which then matches no @keyframes. Modules reference the `--kf-*` aliases below instead
+ * (`animation: var(--kf-rise-in) var(--dur) ...`); values inside var() are never renamed.
+ * `npm run check:css` fails the build output on any animation name without @keyframes.
+ * CSS Modules don't define keyframes of their own, except the ones listed in motion.md §4
+ * (a module-local @keyframes is renamed consistently, so it may be named directly).
+ */
+
+/* ---------- registered properties ---------- */
+@property --pw-n {
+  syntax: "<integer>";
+  inherits: false;
+  initial-value: 0;
+}
+
+/* ---------- shared keyframes ---------- */
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+@keyframes fade-out {
+  to { opacity: 0; }
+}
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(var(--move-sm)); }
+}
+@keyframes sink-out {
+  to { opacity: 0; transform: translateY(var(--move-sm)); }
+}
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(var(--move-md)) scale(var(--scale-enter)); }
+}
+@keyframes pop-out {
+  to { opacity: 0; transform: translateY(var(--move-sm)) scale(var(--scale-enter)); }
+}
+@keyframes sheet-in {
+  from { transform: translateY(100%); }
+}
+@keyframes sheet-out {
+  to { transform: translateY(100%); }
+}
+/* after a drag: continue from where the finger let go */
+@keyframes sheet-out-from {
+  from { transform: translateY(var(--from)); }
+  to { transform: translateY(100%); }
+}
+@keyframes drawer-in {
+  from { transform: translateX(-100%); }
+}
+@keyframes drawer-out {
+  to { transform: translateX(-100%); }
+}
+@keyframes icon-pop {
+  from { transform: scale(0.6); opacity: 0; }
+}
+@keyframes pulse-ring {
+  from { opacity: 0.6; transform: scale(1); }
+  to { opacity: 0; transform: scale(1.18); }
+}
+@keyframes fresh-ring {
+  0% { outline-color: var(--indicator); outline-offset: 0; }
+  100% { outline-color: transparent; outline-offset: 6px; }
+}
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+@keyframes count-up {
+  from { --pw-n: 0; }
+}
+
+/* ---------- keyframe aliases for CSS Modules (see the header comment) ---------- */
+/* ::backdrop is listed for engines where it doesn't inherit from its dialog. */
+:root,
+::backdrop {
+  --kf-fade-in: fade-in;
+  --kf-fade-out: fade-out;
+  --kf-rise-in: rise-in;
+  --kf-sink-out: sink-out;
+  --kf-pop-in: pop-in;
+  --kf-pop-out: pop-out;
+  --kf-sheet-in: sheet-in;
+  --kf-sheet-out: sheet-out;
+  --kf-sheet-out-from: sheet-out-from;
+  --kf-drawer-in: drawer-in;
+  --kf-drawer-out: drawer-out;
+  --kf-icon-pop: icon-pop;
+  --kf-pulse-ring: pulse-ring;
+  --kf-fresh-ring: fresh-ring;
+  --kf-shimmer: shimmer;
+  --kf-count-up: count-up;
+}
+
+/* ---------- theme switch: suppress component transitions for the swap ---------- */
+html[data-theme-switching] *,
+html[data-theme-switching] *::before,
+html[data-theme-switching] *::after {
+  transition: none !important;
+}
+
+/* ---------- View Transitions (motion.md §4.1, §4.4, §4.11, §4.12) ---------- */
+::view-transition-group(root) {
+  animation-duration: var(--dur);
+  animation-timing-function: var(--ease-in-out);
+}
+
+/* card/block -> course dialog */
+::view-transition-group(course-detail) {
+  animation-duration: var(--dur-slow);
+  animation-timing-function: var(--ease-emphasized);
+}
+::view-transition-image-pair(course-detail) {
+  overflow: clip;
+  border-radius: var(--radius-lg);
+}
+::view-transition-old(course-detail),
+::view-transition-new(course-detail) {
+  /* no stretching: each snapshot keeps its natural size, pinned top-left,
+     and is clipped by the morphing box */
+  width: auto;
+  height: auto;
+  object-fit: none;
+  object-position: left top;
+}
+::view-transition-old(course-detail) {
+  animation: fade-out var(--dur-fast) var(--ease-in) both;
+}
+::view-transition-new(course-detail) {
+  animation: fade-in var(--dur) var(--ease-out) 60ms both;
+}
+
+/* schedule blocks */
+::view-transition-group(*.sched-block) {
+  animation-duration: var(--dur);
+  animation-timing-function: var(--ease-standard);
+}
+::view-transition-old(*.sched-block):only-child {
+  animation: pop-out var(--dur-fast) var(--ease-in) both;
+}
+::view-transition-new(*.sched-block):only-child {
+  animation: pop-in var(--dur) var(--ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}

@@ -1,0 +1,132 @@
+.agenda {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.day {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.dayTitle {
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.list > li + li {
+  border-top: 1px solid var(--border);
+}
+
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 4px auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--space-2) var(--space-3) var(--space-2) 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-standard);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .row:hover {
+    background: var(--surface-2);
+  }
+}
+
+.row:focus-visible {
+  outline-offset: calc(var(--ring-width) * -1);
+}
+
+.bar {
+  align-self: stretch;
+  width: 4px;
+  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+  background: var(--_color);
+}
+
+.time {
+  min-width: 9.5em;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Wide enough for "11:00 AM – 12:45 PM", so every row's title lines up (phones keep the room). */
+@media (min-width: 640px) {
+  .time {
+    min-width: 10.5em;
+  }
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.code {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.alert {
+  color: var(--danger);
+  flex: none;
+}
+
+.meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--text-muted);
+}
+
+.conflictText {
+  color: var(--danger);
+  font-weight: var(--weight-medium);
+}
+
+.location {
+  color: var(--text-muted);
+}
+
+.chevron {
+  color: var(--text-subtle);
+}
+
+.row[data-conflict] .bar {
+  box-shadow: 0 0 0 1px var(--danger);
+}
