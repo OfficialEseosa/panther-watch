@@ -39,6 +39,13 @@
   outline-offset: 2px;
 }
 
+/* While the detail dialog morphs out of / back into this card: no hover lift and no transition,
+   so it measures (and stays) exactly where it rests. It stays visible under the panel. */
+.card[data-morphing] {
+  transform: none;
+  transition: none;
+}
+
 /* Tracked removal exit (playExit sets data-closing). */
 .card[data-closing] {
   animation: var(--kf-pop-out) var(--dur-fast) var(--ease-in) both;

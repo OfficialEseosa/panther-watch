@@ -7,11 +7,25 @@ import { ToastProvider } from "@/components/ui/Toast";
 import { inter } from "@/styles/fonts";
 import "./globals.css";
 
+const SITE_DESCRIPTION =
+  "Track seats. Enroll faster. Real-time seat tracking, grade history, professor ratings and a schedule builder for Georgia State courses.";
+
 export const metadata: Metadata = {
+  // Resolves the relative og:image / twitter:image URLs from opengraph-image.tsx.
+  metadataBase: new URL(process.env.APP_URL ?? "https://pantherwatch.app"),
   title: { default: "PantherWatch", template: "%s · PantherWatch" },
-  description:
-    "Track Georgia State class seats, get an email the moment one opens, and plan your week.",
+  description: SITE_DESCRIPTION,
   applicationName: "PantherWatch",
+  // Images come from the opengraph-image / twitter-image file conventions.
+  openGraph: {
+    type: "website",
+    siteName: "PantherWatch",
+    url: "/",
+    title: "PantherWatch",
+    description: SITE_DESCRIPTION,
+    locale: "en_US",
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = {

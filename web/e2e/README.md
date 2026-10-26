@@ -96,7 +96,8 @@ Control endpoints: `POST /__control/reset`, `POST /__control/sections`
 ## Coverage
 
 - `home.spec.ts`: landing renders; theme toggle flips `<html data-theme>` and persists across
-  reload; `/privacy`, `/terms`; the 404 page.
+  reload; `/opengraph-image` is a 200 `image/png` and `/` carries `og:image`, `twitter:card` and
+  `twitter:image`; `/privacy`, `/terms`; the 404 page; the landing sample card flip.
 - `auth.spec.ts`: `/settings` signed out redirects to `/?next=%2Fsettings`; test login sets an
   HttpOnly SameSite=Lax `pw_session`, `/` then redirects to `/dashboard` and the shell shows the
   account menu; logout (303) clears it; logout with a foreign `Origin` is 403; the Google login
@@ -111,15 +112,21 @@ Control endpoints: `POST /__control/reset`, `POST /__control/sections`
 - `dashboard.spec.ts`: member greeting with the first name; Tracked / Seats opened / Scheduled
   tiles after seeding 2 watches + 1 schedule entry; feature cards link to the member routes;
   Getting started shows progress (0 → 2 of 3), hides when all done, and stays dismissed across a
-  reload; What's new dismisses for good.
+  reload; What's new dismisses for good; the active nav item's icon plays (`data-playing` on its
+  `svg[data-icon]` wrapper, then off) after Dashboard → Course search; the What's new finale ends
+  with "Welcome to PantherWatch" fading (an opacity transition to 0 while still mounted), then the
+  overlay fading, never a cut (the story's timers run on Playwright's fake clock).
 - `course-search.spec.ts`: the first load fetches terms from the fake's `getTerms` once, the
-  reload is served from the `terms` table; subject combobox (type "CS" → CSC ranks first → chip);
+  reload is served from the `terms` table; subject combobox (type "CS" → CSC ranks first → chip;
+  with a subject picked the list stays shut on focus/click until ArrowDown or typing);
   submit lands on `/course-results?term=202701&subjects=CSC`; the Recent searches chip; the
   missing-subject field error.
 - `course-results.spec.ts`: CSC 1301 shows 2 cards ("3 open" / "Full"); Open seats (inline, or
   the Filters sheet on mobile) and the text filter; Edit search from the results page (CSC 1302)
   shows the new results with the old `?q=` filter, edit form and URL state gone; the title opens
-  the dialog with `?crn=80001`, tabs switch (`?tab=`), Back closes it; a `?crn=` deep link; Watch
+  the dialog with `?crn=80001`, tabs switch (`?tab=`), Back closes it; `?crn=` is pushed only after
+  the open morph and dropped after the close (Close button, Escape), and a tab picked before the
+  push lands on the dialog's entry; a `?crn=` deep link; Watch
   on / off and Add to schedule as a member (visible "Watching" / "Added" labels that the names follow, `aria-pressed` state), checked through
   `/api/watches` and `/api/schedule`; the guest sign-in toast.
 - `tracked-classes.spec.ts`: two watches with live seats, open first; the All/Open/Full

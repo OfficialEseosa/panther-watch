@@ -42,6 +42,22 @@ test("subject picker and submit", async ({ page }) => {
   await expect(chips.getByRole("button", { name: "Remove CSC" })).toBeVisible();
   await expect(subjects).toHaveValue("");
 
+  // With a subject chosen the list stays shut (focus, click) until ArrowDown or typing opens it.
+  const list = page.getByRole("listbox", { name: "Subjects" });
+  await expect(list).toBeHidden();
+  await subjects.click();
+  await expect(list).toBeHidden();
+  await subjects.press("ArrowDown");
+  await expect(list).toBeVisible();
+  await subjects.press("Escape");
+  await expect(list).toBeHidden();
+  await subjects.pressSequentially("MATH");
+  await page.getByRole("option", { name: /^MATH/ }).click();
+  await expect(chips.getByRole("listitem")).toHaveCount(2);
+  await expect(list).toBeHidden();
+  await chips.getByRole("button", { name: "Remove MATH" }).click();
+  await expect(chips.getByRole("listitem")).toHaveCount(1);
+
   await page.getByRole("button", { name: "Search Classes", exact: true }).click();
   await expect(page).toHaveURL(/\/course-results\?/);
   const url = new URL(page.url());

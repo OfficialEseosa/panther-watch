@@ -19,62 +19,12 @@
 .modal[open] {
   display: flex;
   flex-direction: column;
-  animation: dialog-in 150ms var(--ease-out) both;
 }
 
+/* Open / close motion is driven from JS (dialogMotion.ts, Web Animations API): no CSS keyframes
+   here, so nothing can replay when an attribute changes after the morph. */
 .modal::backdrop {
   background: var(--color-overlay);
-}
-
-.modal[open]::backdrop {
-  animation: backdrop-in 150ms ease both;
-}
-
-/* One plain entrance and exit (no shared-element morph with the card). Module-local keyframes. */
-@keyframes dialog-in {
-  from {
-    opacity: 0;
-    transform: scale(0.98);
-  }
-}
-
-@keyframes dialog-out {
-  to {
-    opacity: 0;
-    transform: scale(0.98);
-  }
-}
-
-@keyframes backdrop-in {
-  from {
-    opacity: 0;
-  }
-}
-
-@keyframes backdrop-out {
-  to {
-    opacity: 0;
-  }
-}
-
-.modal[data-closing] {
-  animation: dialog-out 150ms var(--ease-in) both;
-}
-
-.modal[data-closing]::backdrop {
-  animation: backdrop-out 150ms ease both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .modal[open],
-  .modal[data-closing] {
-    animation-duration: 1ms;
-  }
-
-  .modal[open]::backdrop,
-  .modal[data-closing]::backdrop {
-    animation-duration: 1ms;
-  }
 }
 
 .content {

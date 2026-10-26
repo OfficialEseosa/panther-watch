@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import { unstable_rethrow } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { CourseResults, ResultsUnavailable, editSearchHref, resultsTitle } from "@/components/courses/CourseResults";
+import { CourseResults, ResultsUnavailable } from "@/components/courses/CourseResults";
 import { metaItemOf, type Section } from "@/components/courses/format";
 import pageStyles from "@/components/courses/page.module.css";
-import { parseDialog, parseFilters, parseSearch, resultsHref, type RawSearchParams } from "@/components/courses/params";
+import { parseDialog, parseFilters, parseSearch, resultsHref, resultsTitle, searchFormHref, type RawSearchParams } from "@/components/courses/params";
 import { ResultsSkeleton } from "@/components/courses/ResultsSkeleton";
 import { ResultsToolbar } from "@/components/courses/ResultsToolbar";
 import { ErrorMessage } from "@/components/courses/SectionParts";
@@ -109,7 +109,7 @@ async function Results({ searchParams }: PageProps) {
     return (
       <ResultsUnavailable
         title={resultsTitle({ subjects, courseNumber }, name)}
-        editHref={editSearchHref({ term, subjects, courseNumber, level })}
+        editHref={searchFormHref({ term, subjects, courseNumber, level })}
       />
     );
   }

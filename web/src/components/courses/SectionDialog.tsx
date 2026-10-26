@@ -7,8 +7,8 @@ import { GRADE_KEYS, type GradeAggregate, type GradeDistributionResponse } from 
 import type { ProfessorRating } from "@/lib/course-meta/rmp";
 import type { SectionMeta } from "@/lib/courses/meta";
 import { cn } from "@/lib/ui/cn";
-import { playExit } from "@/lib/ui/motion";
-import { instructorOf, instructorsOf, plural } from "@/lib/format";
+import { animateClose, animateOpen, morphTarget, releaseCards, type MotionRun } from "./dialogMotion";
+import { instructorOf, instructorsOf, keyOf, plural } from "@/lib/format";
 import { courseHeading, creditsValue } from "./CourseCard";
 import {
   foldText,
@@ -46,6 +46,11 @@ export type SectionDialogProps = {
   onRetryMeta?: () => void;
   /** Instructors teaching this course in the current results ("By professor" scope). */
   currentInstructors?: readonly string[];
+  /**
+   * Set (by useCourseDialog) when the dialog opens from a card: the dialog morphs out of that
+   * card. Consumed on open; null (deep link, Back/Forward) gets a plain fade.
+   */
+  originRef?: RefObject<HTMLElement | null>;
 };
 
 type Frozen = Pick<
@@ -80,8 +85,10 @@ export function SectionDialog({
   metaFailed = false,
   onRetryMeta,
   currentInstructors,
+  originRef,
 }: SectionDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
+  const motion = useRef<MotionRun | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const onCloseRef = useRef(onClose);
   const pressStartedOutside = useRef(false);
@@ -102,28 +109,54 @@ export function SectionDialog({
     onCloseRef.current = onClose;
   });
 
+  const currentKey = current ? keyOf(current) : null;
+
+  // Open / close motion (dialogMotion.ts): a FLIP morph from / back into the card, else a fade.
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
+    const content = el.firstElementChild as HTMLElement | null;
     if (open) {
+      if (el.open && !el.dataset.closing) return;
+      // Reopened mid-exit: drop the exit and start over.
+      motion.current?.cancel();
       delete el.dataset.closing;
-      if (!el.open) {
-        el.showModal();
-        headingRef.current?.focus();
-      }
+      const card = originRef?.current ? morphTarget(currentKey) : null;
+      if (originRef) originRef.current = null;
+      if (!el.open) el.showModal();
+      headingRef.current?.focus({ preventScroll: true });
+      const entrance = animateOpen(el, content, card);
+      motion.current = entrance;
+      void entrance.finished.then(() => {
+        if (motion.current === entrance) {
+          releaseCards();
+          motion.current = null;
+        }
+      });
       return;
     }
     if (!el.open) return;
+    motion.current?.cancel();
+    el.dataset.closing = "";
+    const exit = animateClose(el, content, currentKey);
+    motion.current = exit;
     let cancelled = false;
-    void playExit(el, { keep: true }).then(() => {
-      if (cancelled) return;
+    void exit.finished.then(() => {
+      if (cancelled || el.dataset.closing === undefined) return;
+      // Same frame: close the dialog, show the card it shrank into, drop the held end state.
       el.close();
       delete el.dataset.closing;
+      releaseCards();
+      for (const animation of el.getAnimations({ subtree: true })) animation.cancel();
+      motion.current = null;
     });
     return () => {
       cancelled = true;
     };
+    // currentKey is read at open/close time on purpose (the card of the section being shown).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
 
   const isOutside = (event: ReactPointerEvent<HTMLDialogElement>) => {
     const el = ref.current;

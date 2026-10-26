@@ -264,6 +264,7 @@ export function TrackedClasses({
         tab={dialog.tab}
         onTabChange={dialog.setTab}
         termName={openItem ? termName(openItem.watch.term) : undefined}
+        originRef={dialog.origin}
         actions={
           openSection && openItem ? (
             <>

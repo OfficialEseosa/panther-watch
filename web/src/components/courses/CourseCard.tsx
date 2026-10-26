@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { memo } from "react";
 import type { MouseEvent, ReactNode } from "react";
 import type { SectionMeta } from "@/lib/courses/meta";
 import { cn } from "@/lib/ui/cn";
@@ -106,7 +107,7 @@ function GradeLine({ meta }: { meta: SectionMeta | undefined }) {
  * link is stretched over the card, so the whole card opens the detail dialog; the buttons sit
  * above it.
  */
-export function CourseCard({
+export const CourseCard = memo(function CourseCard({
   section,
   meta,
   watched,
@@ -233,4 +234,4 @@ export function CourseCard({
       </div>
     </article>
   );
-}
+});

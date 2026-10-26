@@ -1,7 +1,7 @@
-import type { ReactNode } from "react";
 import { SIGN_IN_HREF } from "@/components/shell/nav";
 import { ButtonAnchor, ButtonLink } from "@/components/ui/Button";
-import { BookmarkIcon, CalendarIcon, LockIcon, SearchIcon } from "@/components/ui/icons";
+import { AnimatedIcon } from "@/components/shell/AnimatedIcon";
+import { BookmarkIcon, CalendarIcon, LockIcon, SearchIcon, type IconComponent } from "@/components/ui/icons";
 import { Skeleton, SkeletonGroup } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/ui/cn";
 import styles from "./FeatureCards.module.css";
@@ -16,7 +16,7 @@ export type FeatureCardsProps =
 
 type Feature = {
   key: string;
-  icon: ReactNode;
+  icon: IconComponent;
   title: string;
   description: string;
   actionLabel: string;
@@ -31,7 +31,7 @@ function features(props: FeatureCardsProps): Feature[] {
   return [
     {
       key: "search",
-      icon: <SearchIcon size={28} />,
+      icon: SearchIcon,
       title: "Course search",
       description:
         "Real-time seat availability plus grade history, Rate My Professors ratings, and syllabi for every section.",
@@ -41,7 +41,7 @@ function features(props: FeatureCardsProps): Feature[] {
     },
     {
       key: "tracked",
-      icon: <BookmarkIcon size={28} />,
+      icon: BookmarkIcon,
       title: "Tracked classes",
       description: "Get an email the moment a seat opens in a full section you are watching.",
       actionLabel: guest ? "Sign in to track" : tracked ? "Manage tracked list" : "Start tracking",
@@ -51,7 +51,7 @@ function features(props: FeatureCardsProps): Feature[] {
     },
     {
       key: "schedule",
-      icon: <CalendarIcon size={28} />,
+      icon: CalendarIcon,
       title: "Schedule builder",
       description:
         "Build your week from search results or tracked classes, spot conflicts on the calendar, and export to Google or Apple Calendar.",
@@ -72,9 +72,16 @@ export function FeatureCards(props: FeatureCardsProps) {
   return (
     <ul className={styles.grid} aria-label="Features">
       {features(props).map((card) => (
-        <li key={card.key} className={cn(styles.card, card.locked && styles.locked)} data-card={card.key}>
+        <li
+          key={card.key}
+          className={cn(styles.card, card.locked && styles.locked)}
+          data-card={card.key}
+          data-anim-host={card.locked ? undefined : true}
+        >
           <span className={styles.icon} aria-hidden="true">
-            {card.locked ? <LockIcon size={28} /> : card.icon}
+            {card.locked ? <LockIcon size={28} /> : <AnimatedIcon>
+                <card.icon size={28} />
+              </AnimatedIcon>}
           </span>
           <h2 className={styles.title}>{card.title}</h2>
           <p className={styles.description}>{card.description}</p>

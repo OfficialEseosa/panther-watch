@@ -7,7 +7,7 @@ import { ScheduleToggle, WatchToggle } from "./CourseActions";
 import { CourseCard } from "./CourseCard";
 import { foldText, sectionLabel, titleOf, type Section } from "./format";
 import { OldIcon } from "./icons";
-import { filterParams, resultsHref, type DialogTab, type Filters } from "./params";
+import { filterParams, resultsHref, resultsTitle, searchFormHref, type DialogTab, type Filters } from "./params";
 import { ResultsToolbar } from "./ResultsToolbar";
 import { RetryButton } from "./RetryButton";
 import { SectionDialog } from "./SectionDialog";
@@ -57,21 +57,6 @@ export type CourseResultsProps = {
   initialFilters: Filters;
   initialDialog: { crn: string | null; tab: DialogTab };
 };
-
-/** "CSC 1301 · Spring 2027": the results page's h1 (the original toolbar summary). */
-export function resultsTitle(search: Pick<ResultsSearch, "subjects" | "courseNumber">, termName: string): string {
-  return `${search.subjects.join(", ")}${search.courseNumber ? ` ${search.courseNumber}` : ""} · ${termName}`;
-}
-
-/** The search form, prefilled with this search (the toolbar's "New search"). */
-export function editSearchHref(search: ResultsSearch): string {
-  return `/course-search?${new URLSearchParams({
-    term: search.term,
-    subjects: search.subjects.join(","),
-    ...(search.courseNumber ? { courseNumber: search.courseNumber } : {}),
-    ...(search.level ? { level: search.level } : {}),
-  }).toString()}`;
-}
 
 type Indexed = { section: Section; key: string; text: string };
 
@@ -148,6 +133,12 @@ export function CourseResults({
     resolve,
   });
   const openSection = dialog.openKey ? (byKey.get(dialog.openKey) ?? null) : null;
+  // Stable, so opening the dialog doesn't re-render every (memoized) card.
+  const openDialog = dialog.open;
+  const openCard = useCallback(
+    (section: Section, card: HTMLElement) => openDialog(keyOf(section), section.courseReferenceNumber ?? "", card),
+    [openDialog],
+  );
 
   useEffect(() => {
     if (openSection) ensure([openSection]);
@@ -177,7 +168,7 @@ export function CourseResults({
     ? `Showing ${filtered.length} of ${plural(sections.length, "section")}`
     : `Found ${plural(sections.length, "section")}`;
   const announcedCount = useDebouncedValue(filtersTouched ? `${countText}.` : "", COUNT_ANNOUNCE_MS);
-  const editHref = editSearchHref(search);
+  const editHref = searchFormHref(search);
 
   const dialogActions = openSection ? (
     <>
@@ -261,7 +252,7 @@ export function CourseResults({
                       viewOnly={viewOnly}
                       onToggleWatch={actions.toggleWatch}
                       onToggleSchedule={actions.toggleSchedule}
-                      onOpen={(section, card) => dialog.open(keyOf(section), section.courseReferenceNumber ?? "", card)}
+                      onOpen={openCard}
                       href={`${resultsHref(search)}&crn=${item.section.courseReferenceNumber ?? ""}`}
                     />
                   </li>
@@ -306,6 +297,7 @@ export function CourseResults({
         actions={dialogActions}
         termName={termName}
         currentInstructors={currentInstructors}
+        originRef={dialog.origin}
       />
     </div>
   );

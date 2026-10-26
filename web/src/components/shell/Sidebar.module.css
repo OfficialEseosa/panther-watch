@@ -347,3 +347,9 @@
     animation-name: var(--kf-fade-out);
   }
 }
+
+/* The animated icon wrapper takes the size; its SVG fills it. */
+.icon > svg {
+  width: 100%;
+  height: 100%;
+}

@@ -84,6 +84,19 @@ export function resultsHref(search: { term: string; subjects: string[]; courseNu
   return `/course-results?${params.toString()}`;
 }
 
+/** The search form prefilled with `search` (the results page's "New search", and Back). */
+export function searchFormHref(search: { term: string; subjects: string[]; courseNumber: string | null; level: string | null }): string {
+  const params = new URLSearchParams({ term: search.term, subjects: search.subjects.join(",") });
+  if (search.courseNumber) params.set("courseNumber", search.courseNumber);
+  params.set("level", search.level ?? "all");
+  return `/course-search?${params.toString()}`;
+}
+
+/** "CSC 1301 · Spring 2027": the results page's h1 (the original toolbar summary). */
+export function resultsTitle(search: { subjects: string[]; courseNumber: string | null }, termName: string): string {
+  return `${search.subjects.join(", ")}${search.courseNumber ? ` ${search.courseNumber}` : ""} · ${termName}`;
+}
+
 // ------------------------------------------------------------------ filters
 
 /** The results page's text filter and page number (the original app's only controls). */

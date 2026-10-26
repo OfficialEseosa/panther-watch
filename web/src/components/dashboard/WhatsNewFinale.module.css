@@ -1,0 +1,558 @@
+/* What's new finale: the headline over the course card morphing into the expanded card (a
+   static replica of the real SectionDialog look: muted header with tags, sidebar with a sliding
+   highlight, crossfading pane). Morph keyframes are built in JS (Web Animations API). */
+.finale {
+  /* the expanded card width (overlay padding 24px + finale padding 8px on each side) */
+  --_w: min(760px, calc(100vw - 64px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.75rem;
+  width: 100%;
+  padding: 0 8px;
+}
+
+.headline {
+  margin: 0;
+  font-size: clamp(2rem, 6vw, 3.6rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  text-align: center;
+  color: #ffffff;
+  /* backwards, not both: a forwards fill would keep this animation in effect on opacity and
+     transform, and Chrome then skips the .headlineOut transition (the headline would vanish). */
+  animation: headline-in 0.8s ease-out backwards;
+  transition:
+    opacity 0.6s ease,
+    transform 0.6s ease;
+}
+
+.headlineOut {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+@keyframes headline-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+/* ---- the morph ---- */
+.stage {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.shell {
+  position: relative;
+  flex: none;
+  width: var(--_w);
+  height: 420px;
+  overflow: hidden;
+  border-radius: 18px;
+  transform-origin: 50% 50%;
+  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.55);
+  will-change: transform;
+}
+
+.expandedLayer,
+.cardLayer {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+}
+
+.expandedLayer {
+  width: var(--_w);
+  height: 420px;
+  margin: -210px 0 0 calc(var(--_w) / -2);
+}
+
+.cardLayer {
+  width: min(420px, 86vw);
+  translate: -50% -50%;
+}
+
+/* The card at the size it has in the showcase's card scene, so the morph starts from a box
+   smaller than the expanded card (zoom changes layout, so the FLIP measures this size). */
+.card {
+  zoom: 0.82;
+  box-shadow: none;
+}
+
+/* ---- expanded replica ---- */
+.expanded {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-align: left;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-shrink: 0;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-muted);
+}
+
+.heading {
+  min-width: 0;
+}
+
+.title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-heading);
+}
+
+.subtitle {
+  margin-top: 0.15rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  height: 1.5rem;
+  padding: 0 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tagCrn {
+  border-color: var(--accent-subtle-border);
+  background: var(--accent-subtle);
+  color: var(--accent-subtle-text);
+}
+
+.close {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-sm);
+  background: var(--danger-subtle);
+  color: var(--color-danger);
+}
+
+.main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.sidebar {
+  --_item: 2.5rem;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 0.25rem;
+  width: 12rem;
+  padding: 0.9rem 0.65rem;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface-muted);
+}
+
+.indicator {
+  position: absolute;
+  top: 0.9rem;
+  left: 0.65rem;
+  right: 0.65rem;
+  height: var(--_item);
+  border: 1px solid var(--accent-subtle-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-50);
+  transform: translateY(calc(var(--i, 0) * (var(--_item) + 0.25rem)));
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.navItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  height: var(--_item);
+  padding: 0 0.7rem;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: color 0.25s ease;
+}
+
+.navItemOn {
+  color: var(--accent-text);
+}
+
+.navShort {
+  display: none;
+}
+
+.pane {
+  position: relative;
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.paneLayer {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.1rem 1.25rem;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s ease;
+}
+
+.paneOn {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---- grade history ---- */
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.blockTitle {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--color-heading);
+}
+
+.blockSpan {
+  margin-top: -0.6rem;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+}
+
+.metricValue {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-heading);
+  font-variant-numeric: tabular-nums;
+}
+
+.good {
+  color: var(--color-success);
+}
+
+.metricLabel {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.8rem;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* ---- professor ratings ---- */
+.rmp {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.rmpHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.rmpScore {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.rmpNum {
+  font-size: 2.2rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--color-success);
+}
+
+.rmpMax {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.rmpMeta {
+  display: flex;
+  flex-direction: column;
+}
+
+.rmpLabel {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-heading);
+}
+
+.rmpSub {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.rmpStats {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.rmpStats strong {
+  color: var(--color-heading);
+}
+
+.dist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.distRow {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr 1.5rem;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.distTrack {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+}
+
+.distFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-primary-500);
+}
+
+.distCount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.rmpBrand {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: none;
+}
+
+/* ---- syllabus placeholder ---- */
+.syllabus {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  height: 15rem;
+  padding: 1.1rem 1.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+}
+
+.line {
+  display: block;
+  height: 7px;
+  border-radius: 4px;
+  background: var(--color-border);
+}
+
+.lineTitle {
+  width: 45%;
+  height: 11px;
+  background: var(--color-border-strong);
+}
+
+.lineShort {
+  width: 35%;
+}
+
+.lineMid {
+  width: 70%;
+}
+
+.gap {
+  height: 0.4rem;
+}
+
+.syllabusCaption {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+/* ---- phones: the sidebar becomes a strip of four tabs ---- */
+@media (max-width: 600px) {
+  .shell,
+  .expandedLayer {
+    height: 470px;
+  }
+
+  .expandedLayer {
+    margin-top: -235px;
+  }
+
+  .main {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    flex-direction: row;
+    gap: 0;
+    width: auto;
+    padding: 0.5rem;
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .indicator {
+    top: 0.5rem;
+    right: auto;
+    left: 0.5rem;
+    width: calc((100% - 1rem) / 4);
+    transform: translateX(calc(var(--i, 0) * 100%));
+  }
+
+  .navItem {
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.1rem;
+    padding: 0;
+    font-size: 0.68rem;
+  }
+
+  .navLabel {
+    display: none;
+  }
+
+  .navShort {
+    display: inline;
+  }
+
+  .paneLayer {
+    padding: 0.9rem;
+  }
+
+  .metricValue {
+    font-size: 1.05rem;
+  }
+
+  .distRow {
+    grid-template-columns: 5rem 1fr 1.25rem;
+  }
+
+  .page {
+    height: 12rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .headline {
+    animation: none;
+  }
+}
+
+/* The card's grade bar is a flex:1 row item; here it is a full-width 12px bar. */
+.gradeBar.gradeBar {
+  flex: none;
+  width: 100%;
+  height: 12px;
+}
+
+/* Overview shows three enrollment numbers (the card's grid may have more columns). */
+.enrollment.enrollment {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}

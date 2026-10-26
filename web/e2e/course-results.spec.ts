@@ -59,18 +59,23 @@ test("sections, the filter, and the detail dialog", async ({ page }) => {
   await expect(cards(page)).toHaveCount(2);
 });
 
-test("New search returns to the prefilled form; the next results start with a fresh filter", async ({ page }) => {
+test("New search keeps the search in the form; Back restores it; the next results start fresh", async ({ page }) => {
   await page.goto(`${RESULTS}&q=80001`);
   const search = await hydrated(page.getByRole("searchbox", { name: FILTER }));
   await expect(search).toHaveValue("80001");
   await expect(cards(page)).toHaveCount(1);
 
+  // "New search" keeps the whole search in the form: term, level, every subject, the number.
   await page.getByRole("link", { name: "New search" }).click();
   await expect(page).toHaveURL(/\/course-search\?term=202701&subjects=CSC&courseNumber=1301/);
   const form = page.getByRole("form", { name: "Search classes" });
   const number = await hydrated(form.getByRole("textbox", { name: "Enter a course number" }));
+  await expect(form.getByRole("combobox", { name: "Choose a term" })).toHaveValue(term);
+  await expect(form.getByRole("combobox", { name: "Choose a degree" })).toHaveValue("all");
   await expect(number).toHaveValue("1301");
-  await expect(form.getByRole("list", { name: "Selected subjects" }).getByText("CSC", { exact: true })).toBeVisible();
+  const chips = form.getByRole("list", { name: "Selected subjects" });
+  await expect(chips.getByRole("listitem")).toHaveCount(1);
+  await expect(chips.getByText("Computer Science", { exact: true })).toBeVisible();
   await number.fill(SEED.csc1302.courseNumber);
   await form.getByRole("button", { name: "Search Classes" }).click();
 
@@ -80,6 +85,48 @@ test("New search returns to the prefilled form; the next results start with a fr
   await expect(cards(page)).toHaveCount(1);
   await expect(page.getByRole("article", { name: `CSC 1302 · 001, ${SEED.csc1302.title}` })).toBeVisible();
   expect(new URL(page.url()).searchParams.get("q")).toBeNull();
+
+  // Back returns to the form as it was submitted (number 1302 included).
+  await page.goBack();
+  await expect(page).toHaveURL(/\/course-search\?/);
+  const back = page.getByRole("form", { name: "Search classes" });
+  await expect(back.getByRole("textbox", { name: "Enter a course number" })).toHaveValue(SEED.csc1302.courseNumber);
+  await expect(back.getByRole("combobox", { name: "Choose a term" })).toHaveValue(term);
+  await expect(back.getByRole("list", { name: "Selected subjects" }).getByText("Computer Science", { exact: true })).toBeVisible();
+});
+
+test("the dialog's URL follows its animations: ?crn= after the open, gone after the close", async ({ page }) => {
+  await page.goto(RESULTS);
+  const link = await hydrated(card(page, OPEN).getByRole("link", { name: "Computer Science (CSC 1301), section 001" }));
+  await link.click();
+  const dialog = page.getByRole("dialog", { name: /CSC 1301\), section 001$/ });
+  await expect(dialog).toBeVisible();
+  // Pushed once the open morph has played.
+  await expect(page).toHaveURL(/[?&]crn=80001/, { timeout: 5_000 });
+  await dialog.getByRole("button", { name: "Close" }).click();
+  await expect(dialog).toBeHidden();
+  // The history entry is left once the close has played; the page underneath is the results.
+  await expect.poll(() => new URL(page.url()).searchParams.get("crn"), { timeout: 5_000 }).toBeNull();
+  await expect(page).toHaveURL(/[?&]courseNumber=1301/);
+  await expect(cards(page)).toHaveCount(2);
+
+  // Escape works the same way, and a fresh open pushes again.
+  await link.click();
+  await expect(dialog).toBeVisible();
+  await expect(page).toHaveURL(/[?&]crn=80001/, { timeout: 5_000 });
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect.poll(() => new URL(page.url()).searchParams.get("crn"), { timeout: 5_000 }).toBeNull();
+
+  // A tab picked before the entry is pushed lands on the dialog's entry, not the page's.
+  await link.click();
+  // dispatchEvent: no waiting for the morph to settle, so this lands before the push.
+  await dialog.getByRole("tab", { name: "Grade history" }).dispatchEvent("click");
+  await expect(dialog.getByRole("tab", { name: "Grade history" })).toHaveAttribute("aria-selected", "true");
+  await expect(page).toHaveURL(/[?&]crn=80001.*[?&]tab=grades|[?&]tab=grades.*[?&]crn=80001/, { timeout: 5_000 });
+  await page.goBack();
+  await expect(dialog).toBeHidden();
+  await expect.poll(() => [...new URL(page.url()).searchParams.keys()].sort().join()).toBe("courseNumber,subjects,term");
 });
 
 test("a deep link opens the dialog", async ({ page }) => {

@@ -151,6 +151,14 @@ export function SubjectAutocomplete({
     onChange([...value, subject]);
     setText("");
     setActive(0);
+    // Most searches use one subject; once one is picked, keep the list closed
+    // until the user types again so the course-number field is the next step.
+    setOpen(false);
+  };
+
+  // With a subject already chosen, only typing (or the arrow keys) reopens the list.
+  const openIfUseful = () => {
+    if (value.length === 0 || text !== "") setOpen(true);
   };
 
   const remove = (code: string) => {
@@ -223,7 +231,7 @@ export function SubjectAutocomplete({
           if (event.target === event.currentTarget) {
             event.preventDefault();
             inputRef.current?.focus();
-            setOpen(true);
+            openIfUseful();
           }
         }}
       >
@@ -270,8 +278,8 @@ export function SubjectAutocomplete({
             setActive(0);
             setOpen(true);
           }}
-          onFocus={() => setOpen(true)}
-          onClick={() => setOpen(true)}
+          onFocus={openIfUseful}
+          onClick={openIfUseful}
           onKeyDown={onKeyDown}
         />
         {loading ? <span className={styles.spinner} aria-hidden="true" /> : null}

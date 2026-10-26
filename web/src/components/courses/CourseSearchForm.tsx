@@ -1,13 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
-import type { Subject, TermInfo } from "@/lib/client/courses";
+import { fetchSubjects, type Subject, type TermInfo } from "@/lib/client/courses";
 import { courseNumberSchema, termCodeSchema } from "@/lib/courses/validation";
 import { cn } from "@/lib/ui/cn";
 import { termName } from "@/lib/format";
-import { resultsHref } from "./params";
+import { resultsHref, searchFormHref } from "./params";
 import { COURSE_STORAGE_KEYS, useStoredValue, writeStored } from "./storage";
 import { SubjectAutocomplete } from "./SubjectAutocomplete";
 import buttons from "./buttons.module.css";
@@ -73,6 +73,26 @@ export function CourseSearchForm({ terms, initial }: CourseSearchFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
 
   const term = termChoice ?? preferred ?? defaultTerm;
+
+  // Prefilled subjects arrive as bare codes (from the URL): look up their names for the chips.
+  const unnamed = subjects.filter((s) => !s.description).map((s) => s.code).join(",");
+  useEffect(() => {
+    if (!unnamed || !term) return;
+    const controller = new AbortController();
+    void Promise.all(
+      unnamed.split(",").map((code) =>
+        fetchSubjects(term, code, controller.signal)
+          .then((list) => list.find((s) => s.code === code) ?? null)
+          .catch(() => null),
+      ),
+    ).then((found) => {
+      if (controller.signal.aborted) return;
+      const names = new Map(found.flatMap((s) => (s?.description ? [[s.code, s.description] as const] : [])));
+      if (names.size === 0) return;
+      setSubjects((prev) => prev.map((s) => (s.description ? s : { ...s, description: names.get(s.code) ?? "" })));
+    });
+    return () => controller.abort();
+  }, [unnamed, term]);
   const level = levelChoice ?? (isLevel(storedLevel) ? storedLevel : "US");
 
   const errors: Errors = {};
@@ -96,14 +116,16 @@ export function CourseSearchForm({ terms, initial }: CourseSearchFormProps) {
     const number = courseNumber.trim() ? courseNumberSchema.parse(courseNumber) : null;
     if (openTerms.some((t) => t.code === term)) writeStored(COURSE_STORAGE_KEYS.preferredTerm, term);
     writeStored(COURSE_STORAGE_KEYS.preferredLevel, level);
-    router.push(
-      resultsHref({
-        term,
-        subjects: subjects.map((s) => s.code),
-        courseNumber: number,
-        level: level === "all" ? null : level,
-      }),
-    );
+    const search = {
+      term,
+      subjects: subjects.map((s) => s.code),
+      courseNumber: number,
+      level: level === "all" ? null : level,
+    };
+    // Record this search in the form's own URL first, so Back from the results comes back to a
+    // filled-in form (the page prefills from its query string), not an empty one.
+    window.history.replaceState(window.history.state, "", searchFormHref(search));
+    router.push(resultsHref(search));
   };
 
   const ids = {

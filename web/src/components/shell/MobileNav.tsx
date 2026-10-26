@@ -8,6 +8,7 @@ import { ButtonAnchor, Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { ChevronRightIcon, LockIcon, LogoutIcon, MoreIcon } from "@/components/ui/icons";
 import { cn } from "@/lib/ui/cn";
+import { AnimatedIcon } from "./AnimatedIcon";
 import { ADMIN_NAV, isActive, PRIMARY_NAV, SETTINGS_NAV, SIGN_IN_HREF, type NavItem } from "./nav";
 import { useSignOut } from "./useSignOut";
 import { useViewer } from "./ViewerContext";
@@ -84,13 +85,19 @@ export function MobileNav() {
       <nav aria-label="Primary" className={styles.bar} data-bottom-nav="">
         <ul className={styles.list}>
           {PRIMARY_NAV.map((item) => {
-            const Icon = item.icon;
             const active = isActive(item, pathname);
             return (
               <li key={item.href} className={styles.cell}>
-                <Link href={item.href} className={styles.item} aria-current={active ? "page" : undefined}>
+                <Link
+                  href={item.href}
+                  className={styles.item}
+                  aria-current={active ? "page" : undefined}
+                  data-anim-host
+                >
                   <span className={styles.pill}>
-                    <Icon size={24} />
+                    <AnimatedIcon active={active} playKey={pathname}>
+                      <item.icon size={24} />
+                    </AnimatedIcon>
                     {item.membersOnly ? (
                       <Suspense fallback={null}>
                         <GuestLock />

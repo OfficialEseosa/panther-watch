@@ -6,10 +6,14 @@ import { CHROME_USER_AGENT, CourseMetaHttpError, defaultFetch, type FetchLike } 
 
 /**
  * GSU's public syllabi repository (the data behind cdn.gsu.edu/apps/syllabi-public)
- * publishes one static file per term, `{base}{term}.json`, listing ~11k course records with
- * a `syllabus` path like "syllabi/202508/83410.pdf" ("" when none was uploaded). The PDF is
- * at `{base}files/{path}`. The files send no CORS header, so the browser cannot read them;
- * a cron ingests each term into `syllabi` and requests are a primary-key lookup.
+ * publishes one static file per term, `{base}{term}.json`:
+ * `{ termName, datePublished, courses: [{ crn, subjectCode, courseNumber, syllabus, ... }] }`
+ * with thousands of course records. `syllabus` is the file name under `{base}files/`, "" when
+ * none was uploaded. Current uploads use a generated name like "0028109491792443249404.pdf"
+ * (rarely without the .pdf extension, e.g. "....0"); older ones a path like
+ * "syllabi/202508/83410.pdf". Both are stored verbatim and served at `{base}files/{path}`.
+ * The files send no CORS header, so the browser cannot read them; a cron ingests each term
+ * into `syllabi` and requests are a primary-key lookup.
  */
 
 export const SYLLABI_BASE_URL = "https://cdn.gsu.edu/static/syllabi-public/";

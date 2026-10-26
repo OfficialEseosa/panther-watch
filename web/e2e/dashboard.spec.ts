@@ -1,3 +1,4 @@
+import type { Locator, Page } from "@playwright/test";
 import { APP_URL } from "./env";
 import {
   SEED,
@@ -141,3 +142,107 @@ test("?whatsnew=1 replays the showcase; Skip closes it, remembers it and drops t
   await page.keyboard.press("Escape");
   await expect(showcase).toHaveCount(0);
 });
+
+test("the active nav item's icon plays its animation after Dashboard → Course search", async ({ page }) => {
+  await page.goto("/dashboard");
+  // Sidebar on desktop, bottom bar on phones: whichever primary nav is showing.
+  const link = page.locator('nav[aria-label="Primary"] a[href="/course-search"]').filter({ visible: true });
+  await hydrated(link);
+  await expect(link).not.toHaveAttribute("aria-current", "page");
+  await expect(link).toHaveAttribute("data-anim-host");
+
+  // The route play is brief (data-playing comes off at animationend), so record it as it happens.
+  // The link outlives the navigation; its icon wrapper is remounted, hence the subtree observer.
+  await link.evaluate((el) => {
+    const w = window as unknown as { __iconPlayed?: string | null };
+    w.__iconPlayed = null;
+    new MutationObserver(() => {
+      const playing = el.querySelector("[data-playing] > svg[data-icon]");
+      if (playing && !w.__iconPlayed) w.__iconPlayed = playing.getAttribute("data-icon");
+    }).observe(el, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-playing"] });
+  });
+  await link.click();
+  await expect(page).toHaveURL(/\/course-search$/);
+  await expect(link).toHaveAttribute("aria-current", "page");
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __iconPlayed?: string | null }).__iconPlayed)).toBe("search");
+  // It plays once: the attribute comes off when the animation ends (so hover can replay it).
+  await expect(link.locator("[data-playing]")).toHaveCount(0);
+});
+
+test("the showcase finale fades out (headline, then overlay) instead of vanishing", async ({ page }) => {
+  // The story runs ~20 s before the finale: drive its timers with the fake clock. CSS transitions
+  // and Web Animations still run in real time, which is what this test watches.
+  await page.clock.install();
+  await login(page.request, freshUser("whatsnew-finale"));
+  await page.goto("/dashboard?whatsnew=1");
+  const showcase = page.getByRole("dialog", { name: SHOWCASE });
+  await expect(showcase.getByRole("heading", { name: "Rebuilt from the ground up" })).toBeVisible();
+  const headline = showcase.getByText("Welcome to PantherWatch", { exact: true });
+  // Each scene's timer is armed once the previous scene has rendered, so step in small slices.
+  for (let i = 0; i < 120 && !(await headline.isVisible()); i++) await page.clock.runFor(250);
+  await expect(headline).toBeVisible();
+  // Let its entrance animation settle (real time) before the fade is due.
+  await expect
+    .poll(() => headline.evaluate((el) => el.getAnimations().every((a) => a.playState === "finished")))
+    .toBe(true);
+
+  // When the headline's class flips, the fade must be an opacity transition that ends at 0 with
+  // the headline (and the showcase) still on screen.
+  // (Both watchers go in now: the fake clock also keeps flowing in real time, so the overlay's
+  // fade can land while the headline's transition is still playing.)
+  const headlineFade = watchFade(headline, "__headlineFade");
+  const overlayFade = watchFade(showcase, "__overlayFade");
+  // Advance to the fade, then stop: the finale holds 600 ms past it before the overlay fades.
+  await runClockUntil(page, "__headlineFade");
+  const text = await headlineFade;
+  expect(text.duration, "headline opacity transition (ms)").toBeGreaterThan(0);
+  expect(Number(text.from)).toBeGreaterThan(0.9);
+  expect(Number(text.to)).toBe(0);
+  expect(text.connected).toBe(true);
+  await expect(showcase).toBeVisible();
+
+  // Then the whole overlay fades (not a cut) before it unmounts.
+  await runClockUntil(page, "__overlayFade");
+  const overlay = await overlayFade;
+  expect(overlay.duration, "overlay opacity transition (ms)").toBeGreaterThan(0);
+  expect(Number(overlay.from)).toBeGreaterThan(0.9);
+  for (let i = 0; i < 20 && (await showcase.count()) > 0; i++) await page.clock.runFor(250);
+  await expect(showcase).toHaveCount(0);
+});
+
+/**
+ * Resolves once the element's next class change has played out: the opacity transition it
+ * started (duration in ms, or null when there was none, i.e. a cut), the opacity before and after,
+ * and whether the element was still mounted at the end (an element removed as its fade ends
+ * reports its last opacity and connected: false). Sets window[flag] when the class flips.
+ */
+function watchFade(locator: Locator, flag: string) {
+  return locator.evaluate(
+    (el, flag) =>
+      new Promise<{ duration: number | null; from: string; to: string; connected: boolean }>((resolve) => {
+        const observer = new MutationObserver(async () => {
+          observer.disconnect();
+          (window as unknown as Record<string, boolean>)[flag] = true;
+          const from = getComputedStyle(el).opacity; // flushes style: the transition starts here
+          const transition = el
+            .getAnimations()
+            .find((a): a is CSSTransition => a instanceof CSSTransition && a.transitionProperty === "opacity");
+          // An element that unmounts as its fade ends cancels the transition: settle either way.
+          if (transition) await transition.finished.catch(() => undefined);
+          const duration = transition ? Number(transition.effect?.getComputedTiming().duration ?? 0) : null;
+          resolve({ duration, from, to: getComputedStyle(el).opacity, connected: el.isConnected });
+        });
+        observer.observe(el, { attributes: true, attributeFilter: ["class"] });
+      }),
+    flag,
+  );
+}
+
+/** Steps the fake clock in 200 ms slices until window[flag] is set (by watchFade). */
+async function runClockUntil(page: Page, flag: string) {
+  for (let i = 0; i < 60; i++) {
+    if (await page.evaluate((flag) => (window as unknown as Record<string, boolean>)[flag] === true, flag)) return;
+    await page.clock.runFor(200);
+  }
+  throw new Error(`${flag} never flipped`);
+}

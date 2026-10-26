@@ -29,6 +29,19 @@ test("theme toggle switches data-theme and the choice survives a reload", async 
   await expect(html).toHaveAttribute("data-theme", "light");
 });
 
+test("link previews: /opengraph-image is a PNG and / carries og:image and twitter:card", async ({ page, request }, testInfo) => {
+  test.skip(testInfo.project.name === "mobile", "viewport-independent; checked once");
+  const image = await request.get("/opengraph-image");
+  expect(image.status()).toBe(200);
+  expect(image.headers()["content-type"]).toBe("image/png");
+  expect((await image.body()).subarray(0, 8)).toEqual(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+
+  await page.goto("/");
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute("content", /\/opengraph-image/);
+  await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute("content", "summary_large_image");
+  await expect(page.locator('meta[name="twitter:image"]')).toHaveAttribute("content", /\/twitter-image/);
+});
+
 for (const { path, title } of [
   { path: "/privacy", title: "Privacy Policy" },
   { path: "/terms", title: "Terms of Service" },

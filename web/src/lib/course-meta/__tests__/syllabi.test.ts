@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { syllabi } from "@/db/schema/course-meta";
 import { CourseMetaHttpError } from "../http";
-import { SYLLABI_BASE_URL, getSyllabus, ingestSyllabiForTerm, parseSyllabiFile } from "../syllabi";
+import { SYLLABI_BASE_URL, getSyllabus, ingestSyllabiForTerm, parseSyllabiFile, syllabusUrl } from "../syllabi";
 import { fakeFetch, response } from "./fake-fetch";
 import { createTestDb, type TestDb } from "./pglite";
 
@@ -35,6 +35,41 @@ describe("parseSyllabiFile", () => {
       ["83410", "syllabi/202508/83410.pdf"],
       ["83413", "syllabi/202508/83413.pdf"],
     ]);
+  });
+
+  it("accepts the current file format (generated file names, extra fields)", () => {
+    // Shape of cdn.gsu.edu/static/syllabi-public/202701.json as published in 2026-10.
+    const file = parseSyllabiFile({
+      termName: "Spring 2027",
+      datePublished: 1793030123239,
+      courses: [
+        {
+          collegeCode: "AS",
+          subjectCode: "CSC",
+          courseNumber: "7520",
+          crn: "19858",
+          syllabus: "0028109491792443249404.pdf",
+          syllabusUploadedBy: "someone@gsu.edu",
+          syllabusUploadedOn: "1792443249404",
+          syllabusIsRequired: false,
+        },
+        { subjectCode: "CHEM", courseNumber: "6610", crn: "12141", syllabus: "", syllabusUploadedOn: "" },
+        { subjectCode: "CSC", courseNumber: "1301", crn: "52475", syllabus: "0029739801772467601537.0" },
+        { subjectCode: "CSC", courseNumber: "1302", crn: "54085", syllabus: "syllabi/202605/54085.pdf" },
+      ],
+    });
+    expect(file.courseCount).toBe(4);
+    expect([...file.paths]).toEqual([
+      ["19858", "0028109491792443249404.pdf"],
+      ["52475", "0029739801772467601537.0"],
+      ["54085", "syllabi/202605/54085.pdf"],
+    ]);
+    expect(syllabusUrl(file.paths.get("19858")!)).toBe(
+      "https://cdn.gsu.edu/static/syllabi-public/files/0028109491792443249404.pdf",
+    );
+    expect(syllabusUrl(file.paths.get("54085")!)).toBe(
+      "https://cdn.gsu.edu/static/syllabi-public/files/syllabi/202605/54085.pdf",
+    );
   });
 
   it("rejects an unexpected shape", () => {

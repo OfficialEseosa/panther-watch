@@ -5,6 +5,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { BellIcon, CalendarCheckIcon, ClockIcon, MailIcon } from "@/components/ui/icons";
 import { cn } from "@/lib/ui/cn";
 import { SampleCourseCard } from "./SampleCourseCard";
+import { FINALE_MS, WhatsNewFinale } from "./WhatsNewFinale";
 import styles from "./WhatsNewShowcase.module.css";
 
 /**
@@ -16,7 +17,8 @@ import styles from "./WhatsNewShowcase.module.css";
  * - one persistent "rotor" owns the turn for the whole story: it sweeps rotateY -22deg -> 22deg
  *   linearly across every scene (held at a 6deg tilt), never settling flat;
  * - scenes auto-advance; each swaps in place with a scale crossfade riding on that rotation;
- * - a full-screen "Welcome to PantherWatch" finale, then the whole overlay fades out;
+ * - a "Welcome to PantherWatch" finale: the course card morphs into the expanded card and
+ *   cycles its four sections, the headline fades, then the whole overlay fades out;
  * - Skip, Esc or a click outside the stage closes it.
  *
  * Reduced motion: no sweep and no looping visuals (each scene shows its settled state); scenes
@@ -35,16 +37,16 @@ const SCENES: Scene[] = [
     dur: 6600,
   },
   {
+    kind: "card",
+    headline: "Grade history and ratings, on every card",
+    sub: "See how each professor grades and how students rate them, right on the course card.",
+    dur: 4600,
+  },
+  {
     kind: "alerts",
     headline: "Seat alerts you can trust",
     sub: "We check every 3 minutes, and if a class fills and reopens, you’ll hear about it again.",
     dur: 4600,
-  },
-  {
-    kind: "card",
-    headline: "Grade history and ratings, on every card",
-    sub: "See how each professor grades and how students rate them, right on the course card.",
-    dur: 4400,
   },
   {
     kind: "schedule",
@@ -52,7 +54,9 @@ const SCENES: Scene[] = [
     sub: "Build it once, see it on any device, export it to Google or Apple Calendar.",
     dur: 4400,
   },
-  { kind: "welcome", dur: 3000 },
+  // The finale's own timeline (WhatsNewFinale): morph, one cycle of the four sections, then the
+  // headline fades; the overlay fades after this.
+  { kind: "welcome", dur: FINALE_MS },
 ];
 
 /** Runtime of the story scenes: the rotor sweeps across exactly this span. */
@@ -74,7 +78,6 @@ function BlocksVisual() {
     <div className={styles.blocksStage}>
       <div className={styles.structure}>
         <div className={styles.floor}>
-          <span className={styles.floorGlow} />
           {CUBES.map((index) => (
             <span key={index} className={cn(styles.shadow, styles[`sh${index}`])} />
           ))}
@@ -284,9 +287,7 @@ export function WhatsNewShowcase({ onClose }: WhatsNewShowcaseProps) {
       onClick={close}
     >
       {current.kind === "welcome" ? (
-        <div className={styles.welcome}>
-          <p className={styles.welcomeText}>Welcome to PantherWatch</p>
-        </div>
+        <WhatsNewFinale />
       ) : null}
 
       <div className={cn(styles.story, current.kind === "welcome" && styles.storyGone)} aria-hidden={current.kind === "welcome" || undefined}>
@@ -309,7 +310,7 @@ export function WhatsNewShowcase({ onClose }: WhatsNewShowcaseProps) {
         </div>
       </div>
 
-      {current.kind !== "welcome" ? (
+      {!fading ? (
         <button
           ref={skipRef}
           type="button"

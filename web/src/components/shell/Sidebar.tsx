@@ -9,6 +9,7 @@ import { ExpandIcon, LockIcon, XIcon } from "@/components/ui/icons";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { playExit } from "@/lib/ui/motion";
 import { AccountMenu, AccountMenuFallback } from "./AccountMenu";
+import { AnimatedIcon } from "./AnimatedIcon";
 import { Brand } from "./Brand";
 import { ADMIN_NAV, isActive, PRIMARY_NAV, SETTINGS_NAV, type NavItem } from "./nav";
 import { useViewer } from "./ViewerContext";
@@ -51,10 +52,13 @@ function SideNavLink({
     <Link
       href={item.href}
       className={styles.link}
+      data-anim-host
       aria-current={active ? "page" : undefined}
       onClick={onNavigate}
     >
-      <Icon className={styles.icon} />
+      <AnimatedIcon active={active} playKey={pathname} className={styles.icon}>
+        <Icon />
+      </AnimatedIcon>
       <span className={styles.label}>{item.label}</span>
       {item.membersOnly ? (
         <Suspense fallback={null}>

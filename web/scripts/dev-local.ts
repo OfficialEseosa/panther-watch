@@ -7,6 +7,8 @@
  *      the first run and reused after that; delete web/.pglocal to start over.
  *   2. `npm run db:migrate` (idempotent), the grade backfill from data/grade-csv when
  *      `grade_terms` is empty, and scripts/seed-local.ts when the owner's user row is missing.
+ *      When `syllabi` is empty, the syllabi cron runs once (POST /api/cron/syllabi?sync=1)
+ *      as soon as next dev answers: GSU's public term files, every registrable term.
  *   3. A fake Resend on 127.0.0.1:3461 (scripts/fake-resend.ts) that logs every email the app
  *      sends. GoSolar is the REAL one.
  *   4. `next dev --port 3000` with a local env: values from web/.env.local, generated
@@ -195,7 +197,8 @@ async function queryLocal<T>(text: string, values: unknown[] = []): Promise<T[]>
 /** Env for the setup subprocesses: the shell's, plus ONLY the local database. */
 const setupEnv = (): NodeJS.ProcessEnv => ({ ...process.env, DATABASE_URL, DATABASE_CA_CERT: "" });
 
-async function prepareDatabase(): Promise<void> {
+/** Returns whether `syllabi` is empty (synced once next dev is up; see syncSyllabi). */
+async function prepareDatabase(): Promise<{ syllabiEmpty: boolean }> {
   say("applying migrations (npm run db:migrate)");
   mustRun(IS_WINDOWS ? "npm.cmd" : "npm", ["run", "--silent", "db:migrate"], {
     cwd: WEB_DIR,
@@ -224,6 +227,36 @@ async function prepareDatabase(): Promise<void> {
       say(`seeding failed (${error instanceof Error ? error.message : String(error)}); continuing without it.`);
       say("It is retried on the next start, or run `npm run seed:local` yourself.");
     }
+  }
+
+  const [syllabiRows] = await queryLocal<{ n: number }>("SELECT count(*)::int AS n FROM syllabi");
+  return { syllabiEmpty: syllabiRows.n === 0 };
+}
+
+/**
+ * Runs the syllabi cron through the app (it needs the GoSolar term list and `@/db`, which only
+ * load inside Next). Non-fatal: the Syllabus tab is just empty until it succeeds, and it is
+ * retried on the next start while the table stays empty.
+ */
+async function syncSyllabi(cronSecret: string): Promise<void> {
+  say("syncing syllabi from GSU's public term files (first run only)");
+  try {
+    const response = await fetch(`${APP_URL}/api/cron/syllabi?sync=1`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${cronSecret}` },
+      signal: AbortSignal.timeout(300_000),
+    });
+    const body = (await response.json().catch(() => ({}))) as {
+      terms?: { term: string; upserted: number }[];
+      errors?: string[];
+      error?: string;
+    };
+    if (!response.ok) throw new Error(body.error ?? `HTTP ${response.status}`);
+    for (const { term, upserted } of body.terms ?? []) say(`  ${term}: ${upserted} syllabi`);
+    for (const error of body.errors ?? []) say(`  failed ${error}`);
+  } catch (error) {
+    say(`syllabi sync failed (${error instanceof Error ? error.message : String(error)}); continuing without it.`);
+    say("It is retried on the next start.");
   }
 }
 
@@ -337,7 +370,7 @@ async function main(): Promise<void> {
     clearNextDevCache();
     pgTouched = true;
     await startPostgres();
-    await prepareDatabase();
+    const { syllabiEmpty } = await prepareDatabase();
 
     resend = await startFakeResend(RESEND_PORT, (email) =>
       say(`EMAIL to ${email.to.join(", ")}: "${email.subject}"  (http://127.0.0.1:${RESEND_PORT}/emails/${email.id})`),
@@ -354,6 +387,7 @@ async function main(): Promise<void> {
     next.once("exit", (code) => void shutdown(`next dev exited with ${code}`, code ?? 1));
 
     await waitForApp(next, 180_000);
+    if (syllabiEmpty) await syncSyllabi(appEnv.CRON_SECRET!);
     printBanner(appEnv.E2E_TEST_SECRET!);
   } catch (error) {
     console.error(error instanceof Error ? error.message : error);
