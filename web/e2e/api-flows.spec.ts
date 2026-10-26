@@ -30,7 +30,10 @@ test("watch add / list / remove round trip", async ({ request }) => {
   const body = { term, crn: csc1301.open, subject: "CSC", courseNumber: "1301", courseTitle: "Principles of Computer Science I" };
   const added = await request.post("/api/watches", { headers: SAME_ORIGIN, data: body });
   expect(added.status()).toBe(201);
-  expect((await added.json()).watch).toMatchObject({ term, crn: csc1301.open, notifiedAt: null });
+  // The section is open right now: tracked already notified, so this opening sends no alert.
+  const addedBody = await added.json();
+  expect(addedBody).toMatchObject({ created: true, openNow: true, watch: { term, crn: csc1301.open } });
+  expect(addedBody.watch.notifiedAt).not.toBeNull();
 
   // Idempotent.
   const again = await request.post("/api/watches", { headers: SAME_ORIGIN, data: body });
@@ -86,11 +89,15 @@ test("cron watcher: alert on open, mark closed, re-arm, alert again", async ({ r
   expect((await request.post("/api/cron/watch?sync=1")).status()).toBe(401);
 
   const { userId } = await login(request);
+  // Tracked while full (tracking an open section never alerts for that opening).
+  await fake.setSeats({ subject: "CSC", courseNumber: "1301", crn: csc1301.open, seatsAvailable: 0 });
   const added = await request.post("/api/watches", {
     headers: SAME_ORIGIN,
     data: { term, crn: csc1301.open, subject: "CSC", courseNumber: "1301" },
   });
   expect(added.status()).toBe(201);
+  expect(await added.json()).toMatchObject({ openNow: false, watch: { notifiedAt: null } });
+  await fake.setSeats({ subject: "CSC", courseNumber: "1301", crn: csc1301.open, seatsAvailable: 3 });
 
   // 1. Open section, armed watch -> one seat alert through the fake Resend.
   const first = await runWatcher(request);

@@ -13,6 +13,7 @@ import {
   subjectSchema,
   termCodeSchema,
 } from "@/lib/courses/validation";
+import { isOpen, UNLISTED_AFTER_RUNS } from "@/lib/watcher/state";
 
 export type WatchErrorCode = "term_closed" | "term_unknown";
 
@@ -67,14 +68,17 @@ export type AddWatchInput = z.input<typeof addWatchSchema>;
 
 export const watchKeySchema = z.object({ term: termCodeSchema, crn: crnSchema });
 
-/** The user's watches, newest first. */
-export async function listWatches(userId: string): Promise<Watch[]> {
-  const rows = await getDb()
+function listWatchRows(userId: string): Promise<WatchedSection[]> {
+  return getDb()
     .select()
     .from(watchedSections)
     .where(eq(watchedSections.userId, userId))
     .orderBy(desc(watchedSections.createdAt), desc(watchedSections.id));
-  return rows.map(toWatch);
+}
+
+/** The user's watches, newest first. */
+export async function listWatches(userId: string): Promise<Watch[]> {
+  return (await listWatchRows(userId)).map(toWatch);
 }
 
 export async function countWatches(userId: string): Promise<number> {
@@ -85,16 +89,43 @@ export async function countWatches(userId: string): Promise<number> {
   return Number(row?.n ?? 0);
 }
 
+export interface AddWatchOptions {
+  now?: Date;
+  /** For the live seat check. Defaults to the user-facing GoSolar options (tests: the fake). */
+  gosolar?: GoSolarOptions;
+}
+
+export interface AddWatchResult {
+  watch: Watch;
+  created: boolean;
+  /**
+   * True when this call created the watch while the section was OPEN (seats, no waitlist):
+   * no alert is sent for that opening; the first one comes after it fills and reopens.
+   * Always false for an existing watch (`created: false`).
+   */
+  openNow: boolean;
+}
+
+/** The live check must not hold up the Track button for long. */
+const ADD_CHECK_TIMEOUT_MS = 8_000;
+
 /**
  * Adds a seat alert. Idempotent: watching the same (term, crn) again returns the existing
- * watch with `created: false`. Throws WatchError("term_closed") for view-only or expired
- * terms, WatchError("term_unknown") for terms GoSolar does not list, ZodError for bad input.
+ * watch unchanged with `created: false`. Throws WatchError("term_closed") for view-only or
+ * expired terms, WatchError("term_unknown") for terms GoSolar does not list, ZodError for bad
+ * input.
+ *
+ * Track-while-open rule: a new watch costs one live GoSolar search for its course. If the
+ * section is OPEN right now the row is inserted already notified (`notified_at = now`), so
+ * tracking an open section never emails; the first alert comes after it fills (two closed
+ * watcher runs re-arm it) and reopens. Closed or unknown (search failed, CRN not listed) is
+ * inserted armed (`notified_at = null`), so the next open reading alerts.
  */
 export async function addWatch(
   userId: string,
   input: AddWatchInput,
-  { now }: { now?: Date } = {},
-): Promise<{ watch: Watch; created: boolean }> {
+  { now, gosolar = gosolarOptions() }: AddWatchOptions = {},
+): Promise<AddWatchResult> {
   const data = addWatchSchema.parse(input);
   const reason = await termClosedReason(data.term, { now });
   if (reason === "unknown") {
@@ -110,26 +141,66 @@ export async function addWatch(
   }
 
   const db = getDb();
+  const findExisting = async () => {
+    const [row] = await db
+      .select()
+      .from(watchedSections)
+      .where(
+        and(
+          eq(watchedSections.userId, userId),
+          eq(watchedSections.term, data.term),
+          eq(watchedSections.crn, data.crn),
+        ),
+      )
+      .limit(1);
+    return row;
+  };
+
+  // Already watching: no GoSolar call and nothing changes (a re-click must not reset alert state).
+  const existing = await findExisting();
+  if (existing) return { watch: toWatch(existing), created: false, openNow: false };
+
+  const openNow = await isSectionOpenNow(data, gosolar);
   const [created] = await db
     .insert(watchedSections)
-    .values({ userId, ...data })
+    .values({ userId, ...data, notifiedAt: openNow ? (now ?? new Date()) : null })
     .onConflictDoNothing({ target: [watchedSections.userId, watchedSections.term, watchedSections.crn] })
     .returning();
-  if (created) return { watch: toWatch(created), created: true };
+  if (created) return { watch: toWatch(created), created: true, openNow };
 
-  const [existing] = await db
-    .select()
-    .from(watchedSections)
-    .where(
-      and(
-        eq(watchedSections.userId, userId),
-        eq(watchedSections.term, data.term),
-        eq(watchedSections.crn, data.crn),
-      ),
-    )
-    .limit(1);
-  if (!existing) throw new Error("watch insert conflicted but no row was found");
-  return { watch: toWatch(existing), created: false };
+  // A concurrent add (double click) inserted it first; its row stands.
+  const raced = await findExisting();
+  if (!raced) throw new Error("watch insert conflicted but no row was found");
+  return { watch: toWatch(raced), created: false, openNow: false };
+}
+
+/** One live search for the course; true only for a definite OPEN reading. Never throws. */
+async function isSectionOpenNow(
+  data: { term: string; crn: string; subject: string; courseNumber: string },
+  gosolar: GoSolarOptions | undefined,
+): Promise<boolean> {
+  const warn = (error: unknown) =>
+    console.warn(
+      `add watch: live seat check failed for ${data.term} ${data.subject} ${data.courseNumber}; tracking armed:`,
+      error instanceof Error ? error.message : error,
+    );
+  try {
+    const sections = await findSectionsByCrn(
+      data.term,
+      [{ subject: data.subject, courseNumber: data.courseNumber, crns: [data.crn] }],
+      {
+        ...gosolar,
+        concurrency: 1,
+        timeoutMs: Math.min(gosolar?.timeoutMs ?? ADD_CHECK_TIMEOUT_MS, ADD_CHECK_TIMEOUT_MS),
+        onError: (_group, error) => warn(error),
+      },
+    );
+    const section = sections.get(data.crn);
+    return section !== undefined && isOpen(section);
+  } catch (error) {
+    warn(error);
+    return false;
+  }
 }
 
 /** Removes the user's watch on (term, crn). False when there was none. */
@@ -157,6 +228,12 @@ export interface WatchDetailsItem {
   section: CourseData | null;
   /** True when the live data could not be fetched (error or deadline); retry later. */
   partial: boolean;
+  /**
+   * The seat watcher has seen GoSolar answer for this course without listing the CRN for at
+   * least UNLISTED_AFTER_RUNS consecutive runs (`missing_runs`): show "no longer listed".
+   * False whenever the live search does list it.
+   */
+  unlisted: boolean;
 }
 
 export interface WatchDetails {
@@ -196,8 +273,10 @@ export async function listWatchesWithDetails(
   userId: string,
   { concurrency = 4, deadlineMs = DETAILS_DEADLINE_MS, gosolar = gosolarOptions() }: WatchDetailsOptions = {},
 ): Promise<WatchDetails> {
-  const watches = await listWatches(userId);
-  if (watches.length === 0) return { items: [] };
+  const rows = await listWatchRows(userId);
+  if (rows.length === 0) return { items: [] };
+  const watches = rows.map(toWatch);
+  const unlistedIds = new Set(rows.filter((row) => row.missingRuns >= UNLISTED_AFTER_RUNS).map((row) => row.id));
 
   const groups = new Map<string, Group>();
   for (const watch of watches) {
@@ -271,12 +350,15 @@ export async function listWatchesWithDetails(
   return {
     items: watches.map((watch) => {
       const group = groups.get(groupKey(watch))!;
-      if (group.state !== "ok") return { watch, section: null, partial: true };
+      const unlisted = unlistedIds.has(watch.id);
+      if (group.state !== "ok") return { watch, section: null, partial: true, unlisted };
       const section = group.sections.get(watch.crn) ?? null;
       return {
         watch,
         section: section && !section.term ? { ...section, term: watch.term } : section,
         partial: false,
+        // A live listing beats the watcher's last count (it may have reappeared since).
+        unlisted: unlisted && section === null,
       };
     }),
   };

@@ -15,6 +15,13 @@
       "when": 1792987490808,
       "tag": "0001_course_meta",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793034650104,
+      "tag": "0002_watch_unlisted",
+      "breakpoints": true
     }
   ]
 }

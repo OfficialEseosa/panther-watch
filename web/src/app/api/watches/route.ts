@@ -14,8 +14,10 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/watches  body { term, crn, subject, courseNumber, courseTitle?, instructor? }
- * -> 201 { watch, created: true } | 200 { watch, created: false } (already watching)
+ * -> 201 { watch, created: true, openNow } | 200 { watch, created: false, openNow: false } (already watching)
  *    400 invalid_request; 409 term_closed | term_unknown; 401; 403 (cross-origin).
+ * `openNow: true` means the section had open seats when tracked: no alert for that opening,
+ * the first one comes after it fills and reopens (see addWatch).
  */
 export async function POST(request: NextRequest) {
   return handleRouteErrors("POST /api/watches", async () => {

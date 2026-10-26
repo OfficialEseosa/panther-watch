@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, isNull, lte } from "drizzle-orm";
+import { and, eq, gt, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { emailLog, terms, users, watchedSections, type Term } from "@/db/schema";
 import { EMAIL_DEFAULT_RESERVE, sendClassAvailabilityEmail, type EmailSent, type EmailTransport } from "@/lib/email";
@@ -7,7 +7,7 @@ import { defaultJobsGoSolarOptions } from "@/lib/jobs/gosolar-options";
 import { errorMessage, finishJobRun, startJobRun } from "@/lib/jobs/runs";
 import { isTermExpired, termDisplayName } from "@/lib/jobs/terms";
 import { emailBudget } from "./budget";
-import { decide, observe, REARM_AFTER_MS, type WatchAction } from "./state";
+import { decide, MISSING_RUNS_CAP, observe, REARM_AFTER_MS, type WatchAction } from "./state";
 
 export const WATCHER_JOB = "watcher";
 export const DEFAULT_DEADLINE_MS = 25_000;
@@ -33,6 +33,11 @@ export interface RunWatcherOptions {
   /** Minimum gap between email sends. Default 500 ms. */
   sendSpacingMs?: number;
   rearmAfterMs?: number;
+  /**
+   * Test-only hook: awaited after a watch is chosen for an alert and immediately before its
+   * atomic claim, e.g. to untrack it or change the user's email "between load and claim".
+   */
+  beforeClaim?: (watchId: number) => Promise<void>;
 }
 
 export interface WatcherSummary extends Record<string, unknown> {
@@ -51,6 +56,12 @@ export interface WatcherSummary extends Record<string, unknown> {
   markedClosed: number;
   debounceCleared: number;
   rearmed: number;
+  /** Alerts not sent because the claim found the row gone or already notified (untracked or overlapping run). */
+  claimsLost: number;
+  /** Watches whose CRN was absent from a successful search (missing_runs incremented). */
+  sectionsMissing: number;
+  /** Watches listed again after being absent (missing_runs reset to 0). */
+  sectionsRelisted: number;
   /** Watches skipped because their term is view-only or expired. */
   skippedTerms: number;
   /** Seat alerts the budget allowed when the run started. */
@@ -64,6 +75,10 @@ export type RunWatcherResult =
   | { skipped: "locked" }
   | ({ skipped?: undefined; jobRunId: number } & WatcherSummary);
 
+/**
+ * A watch as loaded at the start of the run. Deliberately no email address: the recipient is
+ * read from `users` by the claim itself, so an alert always goes to the user's current email.
+ */
 interface WatchRow {
   id: number;
   term: string;
@@ -75,8 +90,6 @@ interface WatchRow {
   notifiedAt: Date | null;
   lastClosedAt: Date | null;
   userId: string;
-  email: string;
-  name: string | null;
 }
 
 interface Group {
@@ -124,6 +137,9 @@ export async function runWatcher(options: RunWatcherOptions = {}): Promise<RunWa
     markedClosed: 0,
     debounceCleared: 0,
     rearmed: 0,
+    claimsLost: 0,
+    sectionsMissing: 0,
+    sectionsRelisted: 0,
     skippedTerms: 0,
     budgetAtStart: 0,
     durationMs: 0,
@@ -147,12 +163,9 @@ export async function runWatcher(options: RunWatcherOptions = {}): Promise<RunWa
           instructor: watchedSections.instructor,
           notifiedAt: watchedSections.notifiedAt,
           lastClosedAt: watchedSections.lastClosedAt,
-          userId: users.id,
-          email: users.email,
-          name: users.name,
+          userId: watchedSections.userId,
         })
-        .from(watchedSections)
-        .innerJoin(users, eq(users.id, watchedSections.userId)),
+        .from(watchedSections),
       db.select().from(terms),
       emailBudget(db, now, options.reserve ?? EMAIL_DEFAULT_RESERVE),
     ]);
@@ -223,6 +236,12 @@ async function processGroup(group: Group, ctx: GroupContext): Promise<void> {
   if (searchFailed) return;
   ctx.summary.sectionsChecked += crns.filter((crn) => sections.has(crn)).length;
 
+  try {
+    await recordListing(group, sections, ctx);
+  } catch (error) {
+    ctx.addError(`listing ${label}: ${errorMessage(error)}`);
+  }
+
   for (const row of group.rows) {
     const section = sections.get(row.crn);
     const action = decide(row, observe(section), ctx.now, ctx.rearmAfterMs);
@@ -231,6 +250,36 @@ async function processGroup(group: Group, ctx: GroupContext): Promise<void> {
     } catch (error) {
       ctx.addError(`watch ${row.id} ${label} CRN ${row.crn} ${action}: ${errorMessage(error)}`);
     }
+  }
+}
+
+/**
+ * GoSolar answered for this course: count a run against each watched CRN it did not list and
+ * reset the count for the ones it did. `missing_runs >= UNLISTED_AFTER_RUNS` is what the
+ * tracked page shows as "no longer listed". Never sends anything.
+ */
+async function recordListing(group: Group, sections: Map<string, CourseData>, ctx: GroupContext): Promise<void> {
+  const db = getDb();
+  const missing = group.rows.filter((row) => !sections.has(row.crn)).map((row) => row.id);
+  const listed = group.rows.filter((row) => sections.has(row.crn)).map((row) => row.id);
+  if (missing.length > 0) {
+    const counted = await db
+      .update(watchedSections)
+      .set({
+        missingRuns: sql`least(${watchedSections.missingRuns} + 1, ${MISSING_RUNS_CAP})`,
+        updatedAt: ctx.now,
+      })
+      .where(inArray(watchedSections.id, missing))
+      .returning({ id: watchedSections.id });
+    ctx.summary.sectionsMissing += counted.length;
+  }
+  if (listed.length > 0) {
+    const reset = await db
+      .update(watchedSections)
+      .set({ missingRuns: 0, updatedAt: ctx.now })
+      .where(and(inArray(watchedSections.id, listed), gt(watchedSections.missingRuns, 0)))
+      .returning({ id: watchedSections.id });
+    ctx.summary.sectionsRelisted += reset.length;
   }
 }
 
@@ -302,7 +351,12 @@ async function apply(
   }
 }
 
-/** Claim, send, log. A failed send releases the claim so the next run retries. */
+/**
+ * Claim, send, log. The claim is one conditional UPDATE joined to `users`, so it both
+ * guarantees at most one email per open episode and reads the recipient's CURRENT address (a
+ * watch untracked or an account deleted since the run loaded its rows claims nothing). A
+ * failed send releases the claim so the next run retries.
+ */
 async function notify(row: WatchRow, section: CourseData, ctx: GroupContext): Promise<void> {
   const { now, summary } = ctx;
   if (ctx.budget.remaining <= 0) {
@@ -312,13 +366,23 @@ async function notify(row: WatchRow, section: CourseData, ctx: GroupContext): Pr
   ctx.budget.remaining--;
 
   const db = getDb();
-  const claimed = await db
+  await ctx.options.beforeClaim?.(row.id);
+  const [recipient] = await db
     .update(watchedSections)
     .set({ notifiedAt: now, lastClosedAt: null, updatedAt: now })
-    .where(and(eq(watchedSections.id, row.id), isNull(watchedSections.notifiedAt)))
-    .returning({ id: watchedSections.id });
-  if (claimed.length === 0) {
-    // An overlapping run claimed it first.
+    .from(users)
+    .where(
+      and(
+        eq(watchedSections.id, row.id),
+        isNull(watchedSections.notifiedAt),
+        eq(users.id, watchedSections.userId),
+      ),
+    )
+    .returning({ email: users.email, name: users.name });
+  if (!recipient) {
+    // Untracked (or the account was deleted) since the rows were loaded, or an overlapping
+    // run claimed it first.
+    summary.claimsLost++;
     ctx.budget.remaining++;
     return;
   }
@@ -327,8 +391,8 @@ async function notify(row: WatchRow, section: CourseData, ctx: GroupContext): Pr
   try {
     await ctx.throttle();
     sent = await sendClassAvailabilityEmail({
-      to: row.email,
-      name: row.name,
+      to: recipient.email,
+      name: recipient.name,
       transport: ctx.options.transport,
       appUrl: ctx.options.appUrl,
       // Per claim: a transport-level retry of this send is delivered once.
@@ -358,7 +422,7 @@ async function notify(row: WatchRow, section: CourseData, ctx: GroupContext): Pr
   summary.emailsSent++;
   await db.insert(emailLog).values({
     userId: row.userId,
-    recipient: row.email,
+    recipient: recipient.email,
     type: "class_availability",
     term: row.term,
     crn: row.crn,

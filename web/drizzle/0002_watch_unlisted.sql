@@ -1,0 +1,2 @@
+ALTER TABLE "watched_sections" ADD COLUMN "missing_runs" smallint DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "watched_sections" ADD CONSTRAINT "watched_sections_missing_runs_nonnegative" CHECK ("watched_sections"."missing_runs" >= 0);

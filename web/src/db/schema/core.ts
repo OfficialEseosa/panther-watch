@@ -141,6 +141,13 @@ export const watchedSections = pgTable(
      * reading in between resets this to null. Meaningless while `notified_at` is null.
      */
     lastClosedAt: timestamptz("last_closed_at"),
+    /**
+     * Consecutive watcher runs in which GoSolar answered for this course but did not list the
+     * CRN (cancelled or renumbered section). Reset to 0 when the CRN is listed again; a failed
+     * search changes nothing. At >= 3 (UNLISTED_AFTER_RUNS) the tracked page shows "no longer
+     * listed". Display only: it never sends or suppresses an email. Capped by the watcher.
+     */
+    missingRuns: smallint("missing_runs").notNull().default(0),
     createdAt: timestamptz("created_at").notNull().defaultNow(),
     updatedAt: timestamptz("updated_at")
       .notNull()
@@ -152,6 +159,7 @@ export const watchedSections = pgTable(
     index("watched_sections_course_idx").on(t.term, t.subject, t.courseNumber),
     termFormat("watched_sections_term_format", t.term),
     crnFormat("watched_sections_crn_format", t.crn),
+    check("watched_sections_missing_runs_nonnegative", sql`${t.missingRuns} >= 0`),
   ],
 );
 

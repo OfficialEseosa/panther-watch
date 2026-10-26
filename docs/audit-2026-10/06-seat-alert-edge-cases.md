@@ -12,19 +12,33 @@ Owner: "the emails are sent out correctly… think of all the edge cases a norma
 - Daily/monthly Resend budget with a reserve for welcome/goodbye. Quota/rate-limit error stops the run; retried next run.
 - A section missing from GoSolar for ≥ 3 consecutive runs is flagged `unlisted_since` (new column or derived from a counter) and the tracked page shows "no longer listed"; no email.
 
-## Scenarios to cover with flow tests (PGlite + fake GoSolar + memory transport)
-1. Track an OPEN section → no email on the next run; it closes (2 runs) and reopens → 1 email.
-2. Track CLOSED → opens → 1 email → still open → 0 → closes once → 0 → closes again → re-armed → opens → 1 email (total 2).
-3. Track → untrack → track again (open) → no email; (closed→open) → 1 email.
-4. Untrack after the watcher loaded rows but before claim → no email (simulate by deleting the row inside a transport hook / before-claim callback).
-5. Two users, same CRN → 2 emails; one user, two CRNs same course → 1 search, 2 emails.
-6. Open with waitlist > 0 → no email; waitlist drops to 0 with seats > 0 → email.
-7. User email changed between tracking and alert → alert to new address.
-8. Account deleted → watches gone, goodbye email once, watcher sends nothing for that user.
-9. Welcome: first login sends 1 welcome; second login sends 0; email-linking of an existing row sends 0.
-10. Transport failure → `notified_at` reverted → next run sends; quota error → run stops, others retried next run.
-11. Budget: 95 sent today, reserve 10 → watcher sends 0; welcome still sends.
-12. Section missing 3 runs → flagged unlisted; reappears → flag cleared; no emails either way.
-13. Term goes view-only → watch deleted by cleanup; no email.
-14. Same user tracks same CRN in two terms → independent rows, independent alerts.
-15. Rapid double-click Track → one row (unique), one email max.
+## Scenarios (flow tests: PGlite + fake GoSolar + memory transport)
+
+All in `web/tests/watcher/edge-cases.test.ts` unless noted. Every test drives the real route handlers (`POST`/`DELETE /api/watches`, `GET /api/watches/details`, `DELETE /api/account`, `GET /api/auth/google/callback`) and the real `runWatcher` / `runCleanup`, and asserts on the memory transport's `sent` list, `email_log` rows and `watched_sections` state. Status as of 2026-10-26: **all pass** (`npm test`: 35 files, 455 tests).
+
+| # | Scenario | Status (test) |
+|---|----------|---------------|
+| 1 | Track an OPEN section → no email on the next run; it closes (2 runs) and reopens → 1 email. | PASS `S1: tracking an OPEN section sends nothing; it fills (2 closed runs) and reopens -> exactly 1 email` |
+| 2 | Track CLOSED → opens → 1 email → still open → 0 → closes once → 0 → closes again → re-armed → opens → 1 email (total 2). | PASS `S2: closed -> open (1) -> still open (0) -> one closed blip (0) -> two closed runs re-arm -> open (1): total 2`; plus `S2b` (a second closed reading < 2 min after the first does not re-arm) |
+| 3 | Track → untrack → track again (open) → no email; (closed→open) → 1 email. | PASS `S3: track -> untrack -> track again while open sends nothing; tracked again while closed, then opens -> 1 email` |
+| 4 | Untrack after the watcher loaded rows but before claim → no email. | PASS `S4: untracked after the watcher loaded its rows but before the claim -> no email, nothing logged` (test-only `runWatcher({ beforeClaim })` hook calls `DELETE /api/watches`) |
+| 5 | Two users, same CRN → 2 emails; one user, two CRNs same course → 1 search, 2 emails. | PASS `S5a: two users tracking the same CRN -> one search, 2 emails (one each)`, `S5b: one user tracking two CRNs of the same course -> one search, 2 emails` |
+| 6 | Open with waitlist > 0 → no email; waitlist drops to 0 with seats > 0 → email. | PASS `S6: seats free while a waitlist exists -> no email; waitlist drops to 0 with seats -> 1 email` |
+| 7 | User email changed between tracking and alert → alert to new address. | PASS `S7: the user's email changed between tracking and the alert -> sent to the new address`; plus `S7b` (changed after the run loaded its rows, just before the claim) |
+| 8 | Account deleted → watches gone, goodbye email once, watcher sends nothing for that user. | PASS `S8: account deleted -> watches gone, goodbye exactly once, the watcher sends nothing for that user`; plus `S8b` (deleted mid-run, before the claim) |
+| 9 | Welcome: first login 1; second login 0; email-linking of an existing row 0. | PASS `S9: first login sends 1 welcome; second login sends 0; email-linking an existing row sends 0`; more in `web/tests/api/auth.test.ts` "welcome email: once per user, on first sign-in only" (returning user whose Google email changed 0, two concurrent first sign-ins 1, failed send does not block sign-in) |
+| 10 | Transport failure → `notified_at` reverted → next run sends; quota error → run stops, others retried next run. | PASS `S10a: transport failure -> claim released (notified_at null) -> the next run sends`, `S10b: quota error -> no more sends this run, every watch stays armed, all retried next run` |
+| 11 | Budget: 95 sent today, reserve 10 → watcher sends 0; welcome still sends. | PASS `S11: 95 sent today with a reserve of 10 -> the watcher sends 0 (watch stays armed); a welcome still sends` |
+| 12 | Section missing 3 runs → flagged unlisted; reappears → flag cleared; no emails either way. | PASS `S12: missing from GoSolar 3 runs -> flagged unlisted; reappears -> cleared; no emails either way` |
+| 13 | Term goes view-only → watch deleted by cleanup; no email. | PASS `S13: the term goes view-only -> the watcher skips it (no email) and cleanup deletes the watch` |
+| 14 | Same user tracks same CRN in two terms → independent rows, independent alerts. | PASS `S14: the same CRN tracked in two terms -> independent rows and independent alerts` |
+| 15 | Rapid double-click Track → one row (unique), one email max. | PASS `S15: a rapid double click on Track -> one row (201 + 200), at most one email`; plus `S15b` (overlapping watcher runs: the job lock refuses the second) |
+
+The add-while-open API is also covered in `web/tests/api/watches.test.ts`, "track-while-open: POST /api/watches checks live seats once": open → `openNow: true` and `notified_at` set; closed, waitlisted, GoSolar error or CRN not listed → armed; a re-add makes no GoSolar call and changes nothing; a double click gives 201 + 200 and one row. `unlisted` exposure is in its "GET /api/watches/details" block.
+
+## Implementation notes and rule refinements
+- **Track-while-open** (`addWatch`, `web/src/lib/watches/index.ts`): one `findSectionsByCrn` for the course through the user-facing GoSolar options (8 s cap). Only a definite OPEN reading inserts `notified_at = now()`. Closed, waitlisted, a failed search, or a CRN GoSolar does not list all insert armed (`notified_at = null`). *Refinement: unknown is armed.* If GoSolar is down at the moment of tracking and the section is in fact open, the next watcher run alerts once; that beats silently never alerting. An existing watch comes back unchanged with no GoSolar call (`created: false, openNow: false`), so a re-click never resets alert state. `POST /api/watches` returns `{ watch, created, openNow }`. When `openNow` is true, the Track toast says "This section has open seats right now; we'll alert you when it fills and reopens."
+- **Recipient** (`web/src/lib/watcher/run.ts`): the run no longer loads any email address. The claim is `UPDATE watched_sections SET notified_at = $now ... FROM users WHERE watched_sections.id = $1 AND notified_at IS NULL AND users.id = watched_sections.user_id RETURNING users.email, users.name`. The claim itself reads the current address, and a watch that was untracked (or whose account was deleted) since the load claims nothing (`claimsLost` in the run summary).
+- **Unlisted** (migration `web/drizzle/0002_watch_unlisted.sql`): a counter column `watched_sections.missing_runs smallint not null default 0` (check `>= 0`) rather than `unlisted_since`. *Refinement: "consecutive" means consecutive successful searches of the course.* A failed search (HTTP error, F5 affinity `data:null`, deadline) neither counts nor resets. A manual re-trigger counts as a run, which is harmless because the counter only affects display. The counter is capped at 1000. `listWatchesWithDetails` exposes `unlisted = missing_runs >= 3`, overridden to `false` when the live search lists the CRN again. The tracked page shows "This section is no longer listed by GoSolar. Remove it to stop tracking." next to the card's Remove button. No email in either direction; a relisted section that is open with an armed watch alerts normally.
+- **Welcome** (`sendWelcomeEmailOnce`, `web/src/lib/account/index.ts`): the OAuth callback sends it via `after()` only when `upsertGoogleUser` returned `created: true`; no transaction is open there. As extra guards, it skips when `email_log` already has a `welcome` row for that user id and uses the Resend idempotency key `welcome-<userId>`. It skips only when the daily or monthly budget is fully spent (it may use the watcher's reserve), logs `email_log` type `welcome`, and never throws. A failed welcome is not retried, because the next sign-in is not `created`.
+- **Quota error**: stops *sending* for the rest of the run (the watcher budget drops to 0). The run still searches and applies close, re-arm and listing updates. Every unsent watch stays armed and is retried by the next run.

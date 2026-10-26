@@ -43,8 +43,9 @@ export type WatchInput = {
   instructor?: string | null;
 };
 
+/** `openNow`: the section had open seats when tracked, so the first alert comes after it fills and reopens. */
 export function addWatch(input: WatchInput, signal?: AbortSignal) {
-  return postJson<{ watch: Watch; created: boolean }>("/api/watches", input, signal);
+  return postJson<{ watch: Watch; created: boolean; openNow: boolean }>("/api/watches", input, signal);
 }
 
 export function removeWatch(term: string, crn: string, signal?: AbortSignal) {

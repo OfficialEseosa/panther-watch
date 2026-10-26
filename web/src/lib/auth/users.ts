@@ -6,7 +6,10 @@ import type { GoogleUserInfo } from "./google";
 
 export interface UpsertResult {
   user: User;
-  /** True for a brand-new account. Callers send the welcome email on this (not wired yet). */
+  /**
+   * True only for a brand-new account (the insert won). The OAuth callback sends the welcome
+   * email on this; a returning sign-in or linking a legacy row is `false`.
+   */
   created: boolean;
 }
 

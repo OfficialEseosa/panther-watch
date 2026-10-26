@@ -12,6 +12,13 @@
  * | closed          | set         | set, < rearmAfterMs ago | `none`          | (same run re-triggered; wait for the next one) |
  * | closed          | set         | set, >= rearmAfterMs ago | `rearm`        | notified_at = null, last_closed_at = null    |
  * | unknown         | any         | any                    | `none`           | search failed or CRN missing: unknown is not closed |
+ *
+ * Separately, a CRN missing from a SUCCESSFUL search bumps `missing_runs` (reset when it is
+ * listed again); see `recordListing` in run.ts. That is display-only and never emails.
+ *
+ * Tracking a section that is open right now does not alert: `addWatch` checks live seats and
+ * inserts the row already notified (`notified_at = now`), so the first alert needs the
+ * section to fill (two closed runs, re-arm) and reopen.
  */
 
 /**
@@ -22,6 +29,14 @@
  * as a second run.
  */
 export const REARM_AFTER_MS = 2 * 60_000;
+
+/**
+ * Consecutive runs a watched CRN may be absent from a successful GoSolar search before the
+ * tracked page calls it "no longer listed" (`watched_sections.missing_runs`). Display only.
+ */
+export const UNLISTED_AFTER_RUNS = 3;
+/** `missing_runs` stops counting here (smallint; only ">= UNLISTED_AFTER_RUNS" matters). */
+export const MISSING_RUNS_CAP = 1000;
 
 /** The fields of a GoSolar section the watcher reads. */
 export interface SeatCounts {

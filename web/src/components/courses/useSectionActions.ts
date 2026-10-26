@@ -32,6 +32,13 @@ export function reportActionError(toast: Pick<ToastApi, "info" | "error">, error
   toast.error(fallback, { body: "Check your connection and try again." });
 }
 
+/** Toast body after tracking; `openNow` mirrors POST /api/watches (track-while-open rule). */
+export function watchAddedBody(openNow: boolean): string {
+  return openNow
+    ? "This section has open seats right now; we'll alert you when it fills and reopens."
+    : "We'll email you when a seat opens.";
+}
+
 const watchInput = (section: CourseData, term: string, crn: string) => ({
   term,
   crn,
@@ -143,7 +150,9 @@ export function useSectionActions({
                 if (watchedRef.current.has(key) || !claim(busyKey)) return;
                 setWatched(key, true);
                 addWatch(watchInput(section, term, crn))
-                  .then(() => toast.success(`Watching ${sectionLabel(section)} again`))
+                  .then(({ openNow }) =>
+                    toast.success(`Watching ${sectionLabel(section)} again`, openNow ? { body: watchAddedBody(true) } : undefined),
+                  )
                   .catch((error: unknown) => {
                     setWatched(key, false);
                     reportActionError(toast, error, "Couldn't watch this section again");
@@ -153,8 +162,8 @@ export function useSectionActions({
             },
           });
         } else {
-          await addWatch(watchInput(section, term, crn));
-          toast.success(`Watching ${sectionLabel(section)}`, { body: "We'll email you when a seat opens." });
+          const { openNow } = await addWatch(watchInput(section, term, crn));
+          toast.success(`Watching ${sectionLabel(section)}`, { body: watchAddedBody(openNow) });
         }
         return true;
       } catch (error) {

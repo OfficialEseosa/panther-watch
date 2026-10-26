@@ -1,4 +1,5 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { after, NextResponse, type NextRequest } from "next/server";
+import { sendWelcomeEmailOnce } from "@/lib/account";
 import { OAUTH_STATE_COOKIE, secureCookies } from "@/lib/auth/constants";
 import { exchangeCode, fetchUserInfo } from "@/lib/auth/google";
 import { signSession } from "@/lib/auth/jwt";
@@ -50,7 +51,10 @@ export async function GET(request: NextRequest) {
   try {
     const tokens = await exchangeCode(code);
     const info = await fetchUserInfo(tokens.access_token);
-    const { user } = await upsertGoogleUser(info);
+    const { user, created } = await upsertGoogleUser(info);
+    // Brand-new account only (not a returning sign-in, not linking a legacy row). After the
+    // response, outside any transaction; it never throws and sends at most once per user.
+    if (created) after(() => sendWelcomeEmailOnce(user.id));
     const token = await signSession({
       sub: user.id,
       email: user.email,

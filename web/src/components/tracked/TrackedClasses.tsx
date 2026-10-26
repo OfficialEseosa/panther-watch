@@ -10,7 +10,7 @@ import { RetryButton } from "@/components/courses/RetryButton";
 import { SectionDialog } from "@/components/courses/SectionDialog";
 import { CardNotice, ErrorMessage } from "@/components/courses/SectionParts";
 import { useCourseDialog } from "@/components/courses/useCourseDialog";
-import { reportActionError, useSectionActions } from "@/components/courses/useSectionActions";
+import { reportActionError, useSectionActions, watchAddedBody } from "@/components/courses/useSectionActions";
 import { useSectionMeta } from "@/components/courses/useSectionMeta";
 import { useToast } from "@/components/ui/Toast";
 import { addWatch, removeWatch, type WatchDetailsItem } from "@/lib/client/courses";
@@ -195,14 +195,14 @@ export function TrackedClasses({
             courseTitle: item.watch.courseTitle,
             instructor: item.watch.instructor,
           })
-            .then(() => {
+            .then(({ openNow }) => {
               setItems((prev) => {
                 if (prev.some((i) => itemKey(i) === key)) return prev;
                 const copy = [...prev];
                 copy.splice(Math.max(0, Math.min(index, copy.length)), 0, item);
                 return copy;
               });
-              toast.success(`Watching ${label} again`);
+              toast.success(`Watching ${label} again`, openNow ? { body: watchAddedBody(true) } : undefined);
             })
             .catch((error: unknown) => reportActionError(toast, error, "Couldn't watch this section again"));
         },
@@ -219,7 +219,9 @@ export function TrackedClasses({
           {sorted.map((item) => {
             const section = sectionOf(item);
             const key = itemKey(item);
-            const notice = item.partial ? (
+            const notice = item.unlisted ? (
+              <CardNotice tone="info">This section is no longer listed by GoSolar. Remove it to stop tracking.</CardNotice>
+            ) : item.partial ? (
               <CardNotice>Couldn&rsquo;t reach GoSolar for this course. Showing what you saved; reload in a minute.</CardNotice>
             ) : !item.section ? (
               <CardNotice tone="info">This section is no longer listed. It may have been cancelled or renumbered.</CardNotice>

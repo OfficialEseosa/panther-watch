@@ -14,7 +14,7 @@ import { DELETE as watchesDelete, GET as watchesGet, POST as watchesPost } from 
 import { setGoSolarOptionsForTests } from "@/lib/courses";
 import { listWatchesWithDetails, type Watch, type WatchDetails } from "@/lib/watches";
 import { createTestDb, seedUser, seedWatchedSection, truncateAll, type TestDatabase } from "../helpers/db";
-import { makeSection, startFakeGoSolar, type FakeGoSolar } from "../helpers/fake-gosolar";
+import { makeClosedSection, makeSection, startFakeGoSolar, type FakeGoSolar } from "../helpers/fake-gosolar";
 import { apiRequest, call } from "../helpers/session";
 
 /** Open term (Spring 2027: expires 2027-03-01, after today). */
@@ -116,12 +116,13 @@ describe("add / list / remove", () => {
     expect(first.response.status).toBe(201);
     expect(first.body).toMatchObject({
       created: true,
+      openNow: false,
       watch: { term: OPEN, crn: "80001", subject: "CSC", courseNumber: "1301", instructor: "Instructor, Test", notifiedAt: null },
     });
 
     const again = await post(alice, watchBody("80001"));
     expect(again.response.status).toBe(200);
-    expect(again.body).toMatchObject({ created: false, watch: { id: (first.body.watch as Watch).id } });
+    expect(again.body).toMatchObject({ created: false, openNow: false, watch: { id: (first.body.watch as Watch).id } });
 
     const watches = await list(alice);
     expect(watches.map((w) => w.crn)).toEqual(["80001"]);
@@ -186,6 +187,69 @@ describe("add / list / remove", () => {
   });
 });
 
+describe("track-while-open: POST /api/watches checks live seats once", () => {
+  const searches = () => gs.requests.filter((r) => r.path === "/searchResults/searchResults").length;
+
+  it("an OPEN section is tracked already notified: openNow true, notified_at set", async () => {
+    gs.setSections(OPEN, "CSC", "1301", [makeSection({ term: OPEN, courseReferenceNumber: "80001" })]);
+    const { response, body } = await post(alice, watchBody("80001"));
+    expect(response.status).toBe(201);
+    expect(body).toMatchObject({ created: true, openNow: true });
+    expect((body.watch as Watch).notifiedAt).not.toBeNull();
+    expect(searches()).toBe(1);
+    const [row] = await testDb.db.select().from(watchedSections);
+    expect(row.notifiedAt).toBeInstanceOf(Date);
+    expect(row.lastClosedAt).toBeNull();
+  });
+
+  it("a CLOSED section is tracked armed: openNow false, notified_at null", async () => {
+    gs.setSections(OPEN, "CSC", "1301", [makeClosedSection({ term: OPEN, courseReferenceNumber: "80001" })]);
+    const { response, body } = await post(alice, watchBody("80001"));
+    expect(response.status).toBe(201);
+    expect(body).toMatchObject({ created: true, openNow: false, watch: { notifiedAt: null } });
+  });
+
+  it("seats free but a waitlist exists is not open: armed", async () => {
+    gs.setSections(OPEN, "CSC", "1301", [makeSection({ term: OPEN, courseReferenceNumber: "80001", waitCount: 2 })]);
+    const { body } = await post(alice, watchBody("80001"));
+    expect(body).toMatchObject({ created: true, openNow: false, watch: { notifiedAt: null } });
+  });
+
+  it("unknown (GoSolar fails, or the CRN is not listed) is tracked armed and the add still succeeds", async () => {
+    gs.setSections(OPEN, "CSC", "1301", [makeSection({ term: OPEN, courseReferenceNumber: "80001" })]);
+    gs.failNextSearches({ kind: "http", status: 503 });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const failed = await post(alice, watchBody("80001"));
+      expect(failed.response.status).toBe(201);
+      expect(failed.body).toMatchObject({ created: true, openNow: false, watch: { notifiedAt: null } });
+
+      const missing = await post(alice, watchBody("80055"));
+      expect(missing.body).toMatchObject({ created: true, openNow: false, watch: { notifiedAt: null } });
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("re-adding an existing watch makes no GoSolar call and leaves its alert state alone", async () => {
+    gs.setSections(OPEN, "CSC", "1301", [makeClosedSection({ term: OPEN, courseReferenceNumber: "80001" })]);
+    await post(alice, watchBody("80001"));
+    expect(searches()).toBe(1);
+    gs.setSections(OPEN, "CSC", "1301", [makeSection({ term: OPEN, courseReferenceNumber: "80001" })]);
+    const again = await post(alice, watchBody("80001"));
+    expect(again.response.status).toBe(200);
+    expect(again.body).toMatchObject({ created: false, openNow: false, watch: { notifiedAt: null } });
+    expect(searches()).toBe(1);
+  });
+
+  it("a rapid double click creates one row (201 + 200)", async () => {
+    gs.setSections(OPEN, "CSC", "1301", [makeClosedSection({ term: OPEN, courseReferenceNumber: "80001" })]);
+    const results = await Promise.all([post(alice, watchBody("80001")), post(alice, watchBody("80001"))]);
+    expect(results.map((r) => r.response.status).sort()).toEqual([200, 201]);
+    expect(await testDb.db.select().from(watchedSections)).toHaveLength(1);
+  });
+});
+
 describe("GET /api/watches/details", () => {
   it("searches once per course and returns both watched sections", async () => {
     const a = makeSection({ term: OPEN, courseReferenceNumber: "80001" });
@@ -225,7 +289,12 @@ describe("GET /api/watches/details", () => {
       const retry = await details(alice);
       const again = Object.fromEntries(retry.items.map((item) => [item.watch.crn, item]));
       expect(again["80001"]).toMatchObject({ partial: false, section: csc });
-      expect(again["80009"]).toEqual({ watch: expect.objectContaining({ crn: "80009" }), section: null, partial: false });
+      expect(again["80009"]).toEqual({
+        watch: expect.objectContaining({ crn: "80009" }),
+        section: null,
+        partial: false,
+        unlisted: false,
+      });
     } finally {
       warn.mockRestore();
     }
@@ -237,10 +306,24 @@ describe("GET /api/watches/details", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       const result = await listWatchesWithDetails(alice.id, { deadlineMs: 0 });
-      expect(result.items).toEqual([{ watch: expect.objectContaining({ crn: "80001" }), section: null, partial: true }]);
+      expect(result.items).toEqual([
+        { watch: expect.objectContaining({ crn: "80001" }), section: null, partial: true, unlisted: false },
+      ]);
     } finally {
       warn.mockRestore();
     }
+  });
+
+  it("exposes unlisted once the watcher has missed the CRN for 3 runs, unless it is listed live", async () => {
+    gs.setSections(OPEN, "CSC", "1301", [makeSection({ term: OPEN, courseReferenceNumber: "80001" })]);
+    await seedWatchedSection(testDb.db, alice.id, { term: OPEN, crn: "80009", missingRuns: 3 });
+    await seedWatchedSection(testDb.db, alice.id, { term: OPEN, crn: "80008", missingRuns: 2 });
+    await seedWatchedSection(testDb.db, alice.id, { term: OPEN, crn: "80001", missingRuns: 5 });
+    const byCrn = Object.fromEntries((await details(alice)).items.map((item) => [item.watch.crn, item]));
+    expect(byCrn["80009"]).toMatchObject({ section: null, partial: false, unlisted: true });
+    expect(byCrn["80008"]).toMatchObject({ section: null, partial: false, unlisted: false });
+    // Listed again since the watcher last looked: the live listing wins.
+    expect(byCrn["80001"]).toMatchObject({ partial: false, unlisted: false, section: { courseReferenceNumber: "80001" } });
   });
 
   it("returns an empty list without calling GoSolar", async () => {
