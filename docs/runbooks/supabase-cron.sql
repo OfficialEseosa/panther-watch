@@ -52,7 +52,7 @@ grant all privileges on all tables in schema cron to postgres;
 do $$
 declare
   v_cron_secret text := '<PASTE_CRON_SECRET>';
-  v_base_url    text := 'https://pantherwatch.app';   -- no trailing slash
+  v_base_url    text := 'https://www.pantherwatch.app';   -- no trailing slash
 begin
   -- CRON_SECRET: write only if a real value was pasted.
   if v_cron_secret <> '<PASTE_CRON_SECRET>' then
@@ -75,7 +75,7 @@ begin
      from vault.secrets where name = 'pantherwatch_app_base_url';
   if not found then
     perform vault.create_secret(v_base_url, 'pantherwatch_app_base_url',
-                                'Origin the cron jobs call, e.g. https://pantherwatch.app');
+                                'Origin the cron jobs call, e.g. https://www.pantherwatch.app');
   end if;
 end
 $$;
