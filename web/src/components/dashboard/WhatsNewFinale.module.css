@@ -22,10 +22,10 @@
   color: #ffffff;
   /* backwards, not both: a forwards fill would keep this animation in effect on opacity and
      transform, and Chrome then skips the .headlineOut transition (the headline would vanish). */
-  animation: headline-in 0.8s ease-out backwards;
+  animation: headline-in 0.4s ease-out backwards;
   transition:
-    opacity 0.6s ease,
-    transform 0.6s ease;
+    opacity 0.4s ease,
+    transform 0.4s ease;
 }
 
 .headlineOut {
@@ -196,7 +196,7 @@
   border-radius: var(--radius-sm);
   background: var(--color-primary-50);
   transform: translateY(calc(var(--i, 0) * (var(--_item) + 0.25rem)));
-  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .navItem {
@@ -210,7 +210,7 @@
   font-size: 0.82rem;
   font-weight: 600;
   white-space: nowrap;
-  transition: color 0.25s ease;
+  transition: color 0.2s ease;
 }
 
 .navItemOn {
@@ -238,8 +238,8 @@
   opacity: 0;
   transform: translateY(8px);
   transition:
-    opacity 0.35s ease,
-    transform 0.35s ease;
+    opacity 0.25s ease,
+    transform 0.25s ease;
 }
 
 .paneOn {

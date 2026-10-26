@@ -145,6 +145,15 @@ describe("welcome and goodbye", () => {
     }
     expect(goodbye.html).toContain(`<a href="${appUrl}"`);
     expect(welcome.html).toContain("You're in, Ada.");
+    // The welcome copy names the current features in plain words, in both parts.
+    for (const body of [welcome.html, welcome.text]) {
+      expect(body).toContain("Seat alerts.");
+      expect(body).toMatch(/We check every few minutes and email you the moment a seat opens in a class you track\./);
+      expect(body).toContain("Grade history and professor ratings");
+      expect(body).toContain("Google or Apple Calendar");
+      expect(body).toContain("Not affiliated with Georgia State University.");
+    }
+    expect(welcome.text).toContain("You're in, Ada.");
     expect(goodbye.html).toContain("Sorry to see you go, Ada.");
     expect(welcome.tags).toEqual([{ name: "type", value: "WELCOME" }]);
   });

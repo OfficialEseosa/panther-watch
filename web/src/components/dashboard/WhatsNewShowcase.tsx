@@ -34,28 +34,30 @@ const SCENES: Scene[] = [
     kind: "blocks",
     headline: "Rebuilt from the ground up",
     sub: "Faster, steadier, and easier to use on your laptop or your phone.",
-    dur: 6600,
+    // The headline lands with the pyramid's snap at ~3.6 s; ~1.9 s to read it.
+    dur: 5500,
   },
   {
     kind: "card",
     headline: "Grade history and ratings, on every card",
     sub: "See how each professor grades and how students rate them, right on the course card.",
-    dur: 4600,
+    dur: 3700,
   },
   {
     kind: "alerts",
     headline: "Seat alerts you can trust",
     sub: "We check every 3 minutes, and if a class fills and reopens, you’ll hear about it again.",
-    dur: 4600,
+    // The alerts loop (seat-cycle / bell-ring / mail-drop, 3.6 s) matches this.
+    dur: 3700,
   },
   {
     kind: "schedule",
     headline: "Your schedule, everywhere",
     sub: "Build it once, see it on any device, export it to Google or Apple Calendar.",
-    dur: 4400,
+    dur: 3500,
   },
-  // The finale's own timeline (WhatsNewFinale): morph, one cycle of the four sections, then the
-  // headline fades; the overlay fades after this.
+  // The finale's own timeline (WhatsNewFinale, ~3.8 s): morph, one cycle of the four sections,
+  // then the headline fades; the overlay fades after this (FADE_OUT_MS).
   { kind: "welcome", dur: FINALE_MS },
 ];
 
@@ -64,7 +66,7 @@ const STORY_MS = SCENES.filter((scene) => scene.kind !== "welcome").reduce((sum,
 /** The card scene reveals the ratings chip and grade line after this long (the original's reveal beat). */
 const REVEAL_AFTER_MS = 1100;
 const EXIT_MS = 500;
-const FADE_OUT_MS = 900;
+const FADE_OUT_MS = 500;
 
 const CUBES = [0, 1, 2, 3, 4, 5];
 const FACES = ["fFront", "fBack", "fTop", "fBottom", "fLeft", "fRight"] as const;

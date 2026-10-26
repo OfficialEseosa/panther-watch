@@ -9,13 +9,19 @@ import { SampleCourseCard } from "./SampleCourseCard";
 import card from "./SampleCourseCard.module.css";
 import styles from "./WhatsNewFinale.module.css";
 
-/** Finale timeline (ms from mount). The showcase holds the finale for FINALE_MS, then fades. */
-const MORPH_DELAY = 650;
-const MORPH_MS = 750;
-const SECTION_MS = 1600;
-const CYCLE_START = MORPH_DELAY + MORPH_MS - 100;
+/**
+ * Finale timeline (ms from mount), ~3.8 s: the morph starts as the headline lands (0.4 s
+ * entrance), Overview shows as it settles, each section holds 0.7 s for one cycle, then the
+ * headline fades (0.4 s). The showcase holds the finale for FINALE_MS, then fades the overlay.
+ * The CSS durations in WhatsNewFinale.module.css (headline-in, headlineOut, pane/indicator
+ * transitions) are sized to these steps.
+ */
+const MORPH_DELAY = 200;
+const MORPH_MS = 450;
+const SECTION_MS = 700;
+const CYCLE_START = MORPH_DELAY + MORPH_MS - 50;
 const HEADLINE_FADE_AT = CYCLE_START + SECTION_MS * 4;
-const HEADLINE_FADE_MS = 600;
+const HEADLINE_FADE_MS = 400;
 export const FINALE_MS = HEADLINE_FADE_AT + HEADLINE_FADE_MS;
 
 const SECTIONS: { id: string; label: string; short: string; icon: ReactNode }[] = [

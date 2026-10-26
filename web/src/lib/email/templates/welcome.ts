@@ -1,12 +1,22 @@
 import { escapeHtml } from "../escape";
 import { renderLayout, textFooter, type RenderedEmail } from "./layout";
 import { greetingName } from "@/lib/format";
+import {
+  WELCOME_FEATURES,
+  WELCOME_INTRO,
+  WELCOME_PREHEADER,
+  WELCOME_SIGNATURE,
+  WELCOME_SIGNOFF,
+  WELCOME_SUBJECT,
+} from "./welcomeCopy";
+
+export { WELCOME_SUBJECT };
 
 const CSS = `.content { padding: 38px 36px 8px; }
 
 .eyebrow { margin: 0 0 10px; font-size: 12px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #0039a6; }
 .h1 { margin: 0 0 18px; font-size: 26px; line-height: 1.25; font-weight: 800; letter-spacing: -0.01em; color: #15223b; }
-.p { margin: 0 0 22px; font-size: 16px; line-height: 1.7; font-weight: 500; color: #3a4a66; }
+.p { margin: 0 0 10px; font-size: 16px; line-height: 1.7; font-weight: 500; color: #3a4a66; }
 
 .steps { width: 100%; margin: 8px 0 4px; }
 .step-row td { padding: 9px 0; vertical-align: top; }
@@ -26,20 +36,8 @@ const CSS = `.content { padding: 38px 36px 8px; }
 .step-t { padding-left: 14px; font-size: 15px; line-height: 1.6; font-weight: 500; color: #3a4a66; }
 .step-t strong { color: #15223b; font-weight: 700; }
 
-.callout {
-    background-color: #eaf0fb;
-    border-left: 4px solid #0039a6;
-    border-radius: 0 8px 8px 0;
-    padding: 16px 20px;
-    margin: 26px 0 8px;
-    font-size: 15px;
-    line-height: 1.6;
-    font-weight: 500;
-    color: #3a4a66;
-}
-.callout strong { color: #15223b; font-weight: 700; }
-
-.btn-wrap { padding: 30px 0 8px; text-align: center; }
+.btn-wrap { padding: 26px 0 8px; text-align: center; }
+.signoff { margin: 26px 0 8px; font-size: 15px; line-height: 1.6; font-weight: 500; color: #3a4a66; }
 .btn {
     display: inline-block;
     background-color: #0039a6;
@@ -59,8 +57,6 @@ const CSS = `.content { padding: 38px 36px 8px; }
     .h1 { font-size: 23px !important; }
 }`;
 
-export const WELCOME_SUBJECT = "🎉 Welcome to PantherWatch!";
-const PREHEADER = "You're all set. Here's how to grab the classes you actually need.";
 const FOOTER_REASON = "You're receiving this because you created a PantherWatch account.";
 
 export interface WelcomeTemplateInput {
@@ -70,48 +66,36 @@ export interface WelcomeTemplateInput {
 
 export function renderWelcomeEmail({ appUrl, name }: WelcomeTemplateInput): RenderedEmail {
   const who = greetingName(name);
+  const rows = WELCOME_FEATURES.map(
+    (f, i) => `                                <tr class="step-row">
+                                    <td class="step-n"><span class="step-badge">${i + 1}</span></td>
+                                    <td class="step-t"><strong>${escapeHtml(f.lead)}</strong>${escapeHtml(f.rest)}</td>
+                                </tr>`,
+  ).join("\n");
   const content = `                            <p class="eyebrow">Welcome aboard</p>
                             <h1 class="h1">You're in, ${escapeHtml(who)}.</h1>
-                            <p class="p">
-                                PantherWatch watches Georgia State's course catalog and emails you the
-                                moment a seat opens in a class you're tracking. No more refreshing GoSolar.
-                            </p>
+                            <p class="p">${escapeHtml(WELCOME_INTRO)}</p>
 
                             <table role="presentation" class="steps" cellpadding="0" cellspacing="0" border="0">
-                                <tr class="step-row">
-                                    <td class="step-n"><span class="step-badge">1</span></td>
-                                    <td class="step-t"><strong>Search any course</strong> by subject, course number, or CRN.</td>
-                                </tr>
-                                <tr class="step-row">
-                                    <td class="step-n"><span class="step-badge">2</span></td>
-                                    <td class="step-t"><strong>Tap Watch</strong> on the exact sections you want to track.</td>
-                                </tr>
-                                <tr class="step-row">
-                                    <td class="step-n"><span class="step-badge">3</span></td>
-                                    <td class="step-t"><strong>Get the alert</strong> the instant a seat or waitlist spot opens.</td>
-                                </tr>
+${rows}
                             </table>
-
-                            <div class="callout">
-                                <strong>Tip:</strong> Watch full classes too. Students drop during the first
-                                week, and you'll be first in line when they do.
-                            </div>
 
                             <div class="btn-wrap">
                                 <a href="${escapeHtml(appUrl)}" class="btn">Open PantherWatch</a>
-                            </div>`;
+                            </div>
+
+                            <p class="signoff">${escapeHtml(WELCOME_SIGNOFF)}<br>${escapeHtml(WELCOME_SIGNATURE)}</p>`;
 
   const text = `You're in, ${who}.
 
-PantherWatch watches Georgia State's course catalog and emails you the moment a seat opens in a class you're tracking. No more refreshing GoSolar.
+${WELCOME_INTRO}
 
-1. Search any course by subject, course number, or CRN.
-2. Tap Watch on the exact sections you want to track.
-3. Get the alert the instant a seat or waitlist spot opens.
-
-Tip: Watch full classes too. Students drop during the first week, and you'll be first in line when they do.
+${WELCOME_FEATURES.map((f, i) => `${i + 1}. ${f.lead}${f.rest}`).join("\n")}
 
 Open PantherWatch: ${appUrl}
+
+${WELCOME_SIGNOFF}
+${WELCOME_SIGNATURE}
 
 ${textFooter(appUrl, FOOTER_REASON)}
 `;
@@ -121,7 +105,7 @@ ${textFooter(appUrl, FOOTER_REASON)}
     html: renderLayout({
       appUrl,
       title: "Welcome to PantherWatch",
-      preheader: PREHEADER,
+      preheader: WELCOME_PREHEADER,
       css: CSS,
       content,
       footerReason: FOOTER_REASON,

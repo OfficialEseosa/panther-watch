@@ -1,5 +1,12 @@
 import type { AdminEmailPayload } from "@/lib/client/admin";
 import { escapeHtml } from "@/lib/email/escape";
+import {
+  WELCOME_FEATURES,
+  WELCOME_INTRO,
+  WELCOME_SIGNATURE,
+  WELCOME_SIGNOFF,
+  WELCOME_SUBJECT,
+} from "@/lib/email/templates/welcomeCopy";
 
 /**
  * Email composer helpers (pure, unit-tested): the quick-template snippets ported from the old
@@ -31,12 +38,17 @@ export const EMAIL_TEMPLATES: readonly EmailTemplate[] = [
   {
     id: "welcome",
     name: "Welcome message",
-    subject: "Welcome to PantherWatch!",
+    // Same words as the automatic welcome email (welcomeCopy.ts), so the two can't drift.
+    subject: WELCOME_SUBJECT,
     body: (name) =>
       [
         `<p>Hi ${escapeHtml(name)},</p>`,
-        "<p>Welcome to PantherWatch! We're excited to help you track your GSU classes and get notified when spots open up.</p>",
-        "<p>If you have any questions or need assistance, visit <a href=\"https://www.pantherwatch.app\">pantherwatch.app</a>.</p>",
+        `<p>${escapeHtml(WELCOME_INTRO)}</p>`,
+        "<ul>",
+        ...WELCOME_FEATURES.map((f) => `  <li><strong>${escapeHtml(f.lead)}</strong>${escapeHtml(f.rest)}</li>`),
+        "</ul>",
+        '<p><a href="https://www.pantherwatch.app">Open PantherWatch</a></p>',
+        `<p>${escapeHtml(WELCOME_SIGNOFF)}<br>${escapeHtml(WELCOME_SIGNATURE)}</p>`,
       ].join("\n"),
   },
   {

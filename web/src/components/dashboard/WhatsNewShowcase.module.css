@@ -18,7 +18,7 @@
 
 .fading {
   opacity: 0;
-  transition: opacity 0.9s ease-in-out;
+  transition: opacity 0.5s ease-in-out;
 }
 
 @keyframes overlay-in {
@@ -2121,18 +2121,18 @@
   color: var(--color-success);
 }
 
-/* Loop (matches the scene length): open, ring, mail; fills; opens again, ring, mail. */
+/* Loop (matches the 3.7 s scene): open, ring, mail; fills; opens again, ring, mail. */
 @media (prefers-reduced-motion: no-preference) {
   .seatHot {
-    animation: seat-cycle 4.4s ease-in-out infinite;
+    animation: seat-cycle 3.6s ease-in-out infinite;
   }
 
   .bell {
-    animation: bell-ring 4.4s ease-in-out infinite;
+    animation: bell-ring 3.6s ease-in-out infinite;
   }
 
   .mail {
-    animation: mail-drop 4.4s ease-out infinite;
+    animation: mail-drop 3.6s ease-out infinite;
   }
 }
 

@@ -170,7 +170,7 @@ test("the active nav item's icon plays its animation after Dashboard → Course 
 });
 
 test("the showcase finale fades out (headline, then overlay) instead of vanishing", async ({ page }) => {
-  // The story runs ~20 s before the finale: drive its timers with the fake clock. CSS transitions
+  // The story runs ~16.4 s before the finale: drive its timers with the fake clock. CSS transitions
   // and Web Animations still run in real time, which is what this test watches.
   await page.clock.install();
   await login(page.request, freshUser("whatsnew-finale"));
@@ -179,7 +179,7 @@ test("the showcase finale fades out (headline, then overlay) instead of vanishin
   await expect(showcase.getByRole("heading", { name: "Rebuilt from the ground up" })).toBeVisible();
   const headline = showcase.getByText("Welcome to PantherWatch", { exact: true });
   // Each scene's timer is armed once the previous scene has rendered, so step in small slices.
-  for (let i = 0; i < 120 && !(await headline.isVisible()); i++) await page.clock.runFor(250);
+  for (let i = 0; i < 90 && !(await headline.isVisible()); i++) await page.clock.runFor(250);
   await expect(headline).toBeVisible();
   // Let its entrance animation settle (real time) before the fade is due.
   await expect
@@ -192,7 +192,8 @@ test("the showcase finale fades out (headline, then overlay) instead of vanishin
   // fade can land while the headline's transition is still playing.)
   const headlineFade = watchFade(headline, "__headlineFade");
   const overlayFade = watchFade(showcase, "__overlayFade");
-  // Advance to the fade, then stop: the finale holds 600 ms past it before the overlay fades.
+  // Advance to the fade (~3.4 s into the finale), then stop: the finale holds 400 ms past it
+  // before the overlay fades (0.5 s).
   await runClockUntil(page, "__headlineFade");
   const text = await headlineFade;
   expect(text.duration, "headline opacity transition (ms)").toBeGreaterThan(0);
@@ -206,7 +207,7 @@ test("the showcase finale fades out (headline, then overlay) instead of vanishin
   const overlay = await overlayFade;
   expect(overlay.duration, "overlay opacity transition (ms)").toBeGreaterThan(0);
   expect(Number(overlay.from)).toBeGreaterThan(0.9);
-  for (let i = 0; i < 20 && (await showcase.count()) > 0; i++) await page.clock.runFor(250);
+  for (let i = 0; i < 12 && (await showcase.count()) > 0; i++) await page.clock.runFor(250);
   await expect(showcase).toHaveCount(0);
 });
 
@@ -240,7 +241,7 @@ function watchFade(locator: Locator, flag: string) {
 
 /** Steps the fake clock in 200 ms slices until window[flag] is set (by watchFade). */
 async function runClockUntil(page: Page, flag: string) {
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 30; i++) {
     if (await page.evaluate((flag) => (window as unknown as Record<string, boolean>)[flag] === true, flag)) return;
     await page.clock.runFor(200);
   }

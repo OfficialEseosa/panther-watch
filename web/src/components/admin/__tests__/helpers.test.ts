@@ -24,6 +24,8 @@ import { blocksUpload, checkGradeFiles, firstLine, sniffGradeHeader, uploadResul
 import { prettySummary, runHeadline, runState, summaryErrors, watcherFacts } from "../jobs";
 import { createSequence } from "../sequence";
 import { greetingName, shouldCountUp, termLabel } from "@/lib/format";
+import { escapeHtml } from "@/lib/email/escape";
+import { WELCOME_FEATURES, WELCOME_SUBJECT } from "@/lib/email/templates/welcomeCopy";
 
 const SUMMARY_HEADER =
   "CRN,Course,Professor,A  (90-100),B  (80-89),C  (70-79),D  (60-69),F <60,WF,A- WF,DWF,W,CRS AVG,Other ,Total,Instruction Method";
@@ -220,6 +222,10 @@ describe("email form", () => {
     const applied = applyTemplate(blank, welcome, "<Jane>");
     expect(applied.subject).toBe(welcome.subject);
     expect(applied.htmlBody).toContain("Hi &lt;Jane&gt;,");
+    // The welcome preset uses the automatic welcome email's words (welcomeCopy.ts).
+    expect(welcome.subject).toBe(WELCOME_SUBJECT);
+    for (const feature of WELCOME_FEATURES) expect(applied.htmlBody).toContain(escapeHtml(feature.lead));
+    expect(applied.htmlBody).toContain("Google or Apple Calendar");
     const custom = applyTemplate({ ...blank, subject: "My subject" }, welcome, "Jane");
     expect(custom.subject).toBe("My subject");
     const swapped = applyTemplate(applied, EMAIL_TEMPLATES[1]!, "Jane");
