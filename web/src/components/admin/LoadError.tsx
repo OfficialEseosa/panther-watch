@@ -1,15 +1,17 @@
 import { unstable_rethrow } from "next/navigation";
-import { EmptyState } from "@/components/ui/EmptyState";
+import styles from "./admin.module.css";
 
 /**
- * Inline error for a failed admin loader (pages.md §8.1: EmptyState `error`). Call
- * `rethrowControlFlow(error)` first in the catch so notFound()/redirect() still work.
+ * Inline error for a failed admin loader, in the tab's card. Call `rethrowControlFlow(error)`
+ * first in the catch so notFound()/redirect() still work.
  */
 export function LoadError({ what }: { what: string }) {
   return (
-    <EmptyState variant="error" title={`Couldn't load ${what}`} headingAs="h2">
-      Reload the page to try again. If it keeps failing, check the server logs.
-    </EmptyState>
+    <section className={styles.section}>
+      <p className={styles.notice} data-tone="danger" role="alert">
+        Couldn&rsquo;t load {what}. Reload the page to try again; if it keeps failing, check the server logs.
+      </p>
+    </section>
   );
 }
 

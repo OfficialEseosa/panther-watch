@@ -1,64 +1,128 @@
 /*
- * PantherWatch design tokens
- * Source of truth for values: docs/design/spec.md. Motion: docs/design/motion.md.
+ * PantherWatch design tokens: the ORIGINAL design (restored 2026-10-26).
  *
- * Import once, first, from app/globals.css:   @import "./tokens.css";
+ * The owner rejected the 2026 redesign; the original React/Vite app's App.css
+ * is the visual baseline again. Section 0 is that file's :root block, verbatim
+ * in name and value, plus definitions for names the old CSS used without ever
+ * defining them. Section 2 holds the old .theme-dark overrides. New CSS should
+ * use the --color-* names.
  *
- * Theme: the pre-paint script in app/layout.tsx sets data-theme="light" | "dark"
- * on <html>. :root carries the light theme; :root[data-theme="dark"] overrides
- * the semantic aliases. There is no other theming mechanism (no .theme-dark, no
- * per-component theme variables, no [data-theme] selectors outside this file).
+ * The newer semantic names (--bg, --surface, --text, --accent, ...) are kept
+ * as ALIASES of the original values, so components that still use them render
+ * in the original palette. Spacing, type scale, z-index, layout and motion
+ * tokens are unchanged (they carry no visual identity of their own).
  *
- * Rules
- *  - Components reference SEMANTIC tokens (--bg, --text, --accent, ...).
- *    Palette tokens (--blue-600, --neutral-200, ...) are referenced only here
- *    and in data-viz code. No hex or rgb() literals in CSS Modules.
- *  - Breakpoints cannot be used inside @media. Use the literal values
- *    640px / 900px / 1200px with min-width (mobile-first). The --bp-* tokens
- *    exist for JS (matchMedia) and documentation only.
- *  - Every var() in this file resolves to a property defined in this file,
- *    except --font-inter, which next/font sets on <html>; it always has a
- *    fallback here.
+ * Theme: the pre-paint script in app/layout.tsx sets data-theme="light" |
+ * "dark" on <html>. Dark overrides live under :root[data-theme="dark"] (also
+ * matched by .theme-dark, for selectors ported from the old app).
+ *
+ * Breakpoints: the original CSS used max-width 1024 / 768 / 600 / 480; those
+ * are fine. --bp-* below exist for JS (matchMedia) only.
+ *
+ * --font-inter is set on <html> by next/font; it always has a fallback here.
  */
 
 /* ------------------------------------------------------------------ */
-/* 1. Palette, scales, and the LIGHT theme                             */
+/* 0. ORIGINAL tokens (old App.css :root), LIGHT                       */
+/* ------------------------------------------------------------------ */
+:root {
+  --color-primary-900: #0b1c3d;
+  --color-primary-700: #0f2f61;
+  --color-primary-600: #0039a6;
+  --color-primary-500: #1f5fc3;
+  --color-primary-300: #7fa9e6;
+  --color-primary-100: #e4eef9;
+  --color-accent: #1f5fc3;
+  --color-page-background: #f5f6fb;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f1f4f9;
+  --color-border: #d6deeb;
+  --color-border-strong: #b5bfd3;
+  --color-text: #1f2937;
+  --color-text-muted: #4b5563;
+  --color-heading: #152044;
+  --color-success: #17703f; /* original #1d814c: 4.4:1 on its tint */
+  /* Original was #b36b09 (4.0:1 on white); darkened to pass 4.5:1 on white and on its tint. */
+  --color-warning: #94570a;
+  --color-danger: #b42318;
+  --shadow-xs: 0 1px 0 rgba(15, 23, 42, 0.06);
+  --shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 12px 30px rgba(15, 23, 42, 0.12);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --transition-base: 150ms ease;
+  --announcement-banner-height: 0px;
+
+  /* Names the old CSS referenced but never defined (now defined). */
+  --color-primary-50: #f0f5fc;
+  --color-primary-400: #4a80e3;
+  --color-primary: var(--color-primary-600);
+  --color-primary-dark: var(--color-primary-700);
+  --color-bg: var(--color-page-background);
+  --color-card-bg: var(--color-surface);
+  --card-bg: var(--color-surface);
+  --hover-bg: var(--color-surface-muted);
+  --border-color: var(--color-border);
+  --text-primary: var(--color-heading);
+  --text-secondary: var(--color-text-muted);
+  --color-gray-100: var(--color-surface-muted);
+  --color-gray-400: #9ca3af;
+
+  /* Small additions so dark mode stays token-driven (no per-component rgba). */
+  --color-focus-ring: rgba(31, 95, 195, 0.18);
+  --color-success-bg: rgba(29, 129, 76, 0.1);
+  --color-warning-bg: rgba(179, 107, 9, 0.1);
+  --color-danger-bg: rgba(180, 35, 24, 0.08);
+  --color-overlay: rgba(11, 28, 61, 0.55);
+  /* Announcement bar gradients (white text >= 4.5:1). */
+  --color-banner-warning-from: #94570a;
+  --color-banner-warning-to: #7a4708;
+  --color-banner-error-from: #b42318;
+  --color-banner-error-to: #8f1c13;
+  --color-on-primary: #ffffff;
+  /* Faint panel behind text that sits over the statue / page wash. */
+  --color-surface-translucent: rgba(255, 255, 255, 0.6);
+  /* Background statue (public/brand/statue.*), drawn by body::before in globals.css. */
+  --statue-opacity: 0.04;
+}
+
+/* ------------------------------------------------------------------ */
+/* 1. Palette, scales, and the LIGHT semantic aliases                  */
 /* ------------------------------------------------------------------ */
 :root {
   color-scheme: light;
 
-  /* Primary: GSU blue. 600 is the brand blue (#0039A6, PMS 293). */
-  --blue-50: #eef3fc;
-  --blue-100: #dce6f9;
-  --blue-200: #bcd0f4;
-  --blue-300: #8ab0f0;
+  /* Palette scales (data-viz and a few legacy references). */
+  --blue-50: #f0f5fc;
+  --blue-100: #e4eef9;
+  --blue-200: #c4d7f2;
+  --blue-300: #7fa9e6;
   --blue-400: #4a80e3;
   --blue-500: #1f5fc3;
   --blue-600: #0039a6;
-  --blue-700: #002f8a;
-  --blue-800: #062670;
+  --blue-700: #0f2f61;
+  --blue-800: #0d2650;
   --blue-900: #0b1c3d;
 
-  /* Neutral: cool slate with a slight blue cast. */
   --neutral-0: #ffffff;
-  --neutral-50: #f5f7fb;
-  --neutral-100: #ecf0f6;
-  --neutral-200: #dde3ed;
+  --neutral-50: #f5f6fb;
+  --neutral-100: #f1f4f9;
+  --neutral-200: #d6deeb;
   --neutral-300: #c0c9d7;
-  --neutral-400: #98a4b8;
-  --neutral-500: #7d889c;
-  --neutral-600: #5e6a82;
-  --neutral-700: #4f5b72;
-  --neutral-800: #2a3650;
-  --neutral-900: #172036;
-  --neutral-950: #0b1222;
+  --neutral-400: #9db2d2;
+  --neutral-500: #b5bfd3;
+  --neutral-600: #4b5563;
+  --neutral-700: #4b5563;
+  --neutral-800: #1e3352;
+  --neutral-900: #1f2937;
+  --neutral-950: #0b1625;
 
-  /* Status scales */
   --green-50: #ecf8f1;
   --green-100: #d3f0df;
   --green-300: #5cc98a;
-  --green-500: #1f9d5a;
-  --green-700: #13703a;
+  --green-500: #1d814c;
+  --green-700: #1d814c;
   --green-800: #1f5137;
   --green-900: #0f2a1d;
 
@@ -66,7 +130,7 @@
   --amber-100: #fce7bf;
   --amber-300: #f2b84b;
   --amber-500: #d9900f;
-  --amber-700: #96550a;
+  --amber-700: #b36b09;
   --amber-800: #5c3a0a;
   --amber-900: #2b1f0a;
 
@@ -78,17 +142,16 @@
   --red-800: #6b1d16;
   --red-900: #3a1512;
 
-  /* Dark-theme surfaces (between neutral-950 and neutral-800). */
-  --night-0: #0b1222;
-  --night-1: #121b2f;
-  --night-2: #1a2439;
-  --night-3: #1e2942;
-  --night-accent: #16264a;
-  --night-accent-hover: #1c2f59;
-  --night-accent-border: #27427a;
+  /* Dark-theme surfaces = the original .theme-dark values. */
+  --night-0: #11234e;
+  --night-1: #0b1625;
+  --night-2: #152a45;
+  --night-3: #152a45;
+  --night-accent: #1c2f52;
+  --night-accent-hover: #233a63;
+  --night-accent-border: #2f4a6d;
 
-  /* Schedule block colors. All are >= 5:1 against white text. Existing stored
-     hex values are migrated by lib/scheduleColors.ts (see spec.md 2.9). */
+  /* Schedule block colors (>= 5:1 against white text). */
   --sched-blue: #1d4ed8;
   --sched-teal: #0f766e;
   --sched-violet: #6d28d9;
@@ -100,82 +163,77 @@
   --sched-text: #ffffff;
 
   /* Grade distribution fills (data marks, always paired with a text label). */
-  --grade-a: #1f9d5a;
-  --grade-b: #4a80e3;
+  --grade-a: #1d814c;
+  --grade-b: #4f9bd9;
   --grade-c: #e0a52b;
-  --grade-d: #e07a2b;
-  --grade-f: #d93a2b;
+  --grade-d: #d97a2b;
+  --grade-f: #b42318;
 
   /* Rate My Professors badge (their mark: black chip, white text). */
   --rmp-bg: #000000;
   --rmp-text: #ffffff;
 
-  /* ---------------- Semantic aliases: LIGHT ---------------- */
-  --bg: var(--neutral-50);
-  --surface: var(--neutral-0);
-  --surface-2: var(--neutral-100);
-  --surface-elevated: var(--neutral-0);
-  --overlay: rgb(11 18 34 / 0.48);
+  /* ---------------- Semantic aliases: LIGHT (onto the original values) ---------------- */
+  --bg: var(--color-page-background);
+  --surface: var(--color-surface);
+  --surface-2: var(--color-surface-muted);
+  --surface-elevated: var(--color-surface);
+  --overlay: var(--color-overlay);
 
-  --text: var(--neutral-900);
-  --text-muted: var(--neutral-700);
-  --text-subtle: var(--neutral-600);
-  --text-inverse: var(--neutral-0);
+  --text: var(--color-text);
+  --text-heading: var(--color-heading);
+  --text-muted: var(--color-text-muted);
+  --text-subtle: var(--color-text-muted);
+  --text-inverse: #ffffff;
 
-  --border: var(--neutral-200);
-  --border-strong: var(--neutral-500);
+  --border: var(--color-border);
+  --border-strong: var(--color-border-strong);
 
-  --accent: var(--blue-600);
-  --accent-hover: var(--blue-700);
-  --accent-active: var(--blue-800);
-  --accent-contrast: var(--neutral-0);
-  --accent-text: var(--blue-600);
-  --accent-subtle: var(--blue-50);
-  --accent-subtle-hover: var(--blue-100);
-  --accent-subtle-text: var(--blue-600);
-  --accent-subtle-border: var(--blue-200);
+  --accent: var(--color-primary-600);
+  --accent-hover: var(--color-primary-700);
+  --accent-active: var(--color-primary-900);
+  --accent-contrast: var(--color-on-primary);
+  --accent-text: var(--color-primary-600);
+  --accent-subtle: var(--color-primary-100);
+  --accent-subtle-hover: #d3e3f6;
+  --accent-subtle-text: var(--color-primary-600);
+  --accent-subtle-border: var(--color-primary-300);
 
-  /* Selected-state marks that must reach 3:1 against surfaces: active nav bar,
-     selected tab underline, checked checkbox/switch fill, selected chip border.
-     (--accent itself is only 2.85:1 on dark surfaces; it is for button fills.) */
-  --indicator: var(--blue-600);
-  --indicator-contrast: var(--neutral-0);
+  --indicator: var(--color-primary-600);
+  --indicator-contrast: #ffffff;
 
-  --focus-ring: var(--blue-500);
+  --focus-ring: var(--color-primary-500);
 
-  --success: var(--green-700);
-  --success-subtle: var(--green-50);
-  --success-border: var(--green-100);
-  --warning: var(--amber-700);
-  --warning-subtle: var(--amber-50);
-  --warning-border: var(--amber-100);
-  --danger: var(--red-700);
-  --danger-fill: var(--red-700);
+  --success: var(--color-success);
+  --success-subtle: var(--color-success-bg);
+  --success-border: rgba(23, 112, 63, 0.3);
+  --warning: var(--color-warning);
+  --warning-subtle: var(--color-warning-bg);
+  --warning-border: rgba(179, 107, 9, 0.3);
+  --danger: var(--color-danger);
+  --danger-fill: #b42318;
   --danger-fill-hover: #9a1c12;
-  --danger-contrast: var(--neutral-0);
-  --danger-subtle: var(--red-50);
-  --danger-border: var(--red-100);
+  --danger-contrast: #ffffff;
+  --danger-subtle: var(--color-danger-bg);
+  --danger-border: rgba(180, 35, 24, 0.3);
 
-  /* Enrollment meter */
-  --meter-track: var(--neutral-200);
-  --meter-open: var(--green-500);
-  --meter-low: var(--amber-500);
-  --meter-full: var(--red-500);
+  /* Enrollment meter (old CourseResults.css .enrollment-bar) */
+  --meter-track: var(--color-surface-muted);
+  --meter-open: var(--color-success);
+  --meter-low: var(--color-warning);
+  --meter-full: var(--color-danger);
 
-  --skeleton: var(--neutral-100);
-  --skeleton-shine: rgb(255 255 255 / 0.6);
-  --selection: var(--blue-100);
+  --skeleton: var(--color-surface-muted);
+  --skeleton-shine: rgba(255, 255, 255, 0.6);
+  --selection: var(--color-primary-100);
 
-  /* Shadows: LIGHT */
-  --shadow-xs: 0 1px 2px rgb(16 24 40 / 0.06);
-  --shadow-sm: 0 1px 3px rgb(16 24 40 / 0.08), 0 1px 2px rgb(16 24 40 / 0.04);
-  --shadow-md: 0 6px 16px -4px rgb(16 24 40 / 0.1), 0 2px 4px -2px rgb(16 24 40 / 0.06);
-  --shadow-lg: 0 16px 32px -8px rgb(16 24 40 / 0.16), 0 4px 8px -4px rgb(16 24 40 / 0.06);
-  --shadow-xl: 0 28px 64px -12px rgb(16 24 40 / 0.28);
+  /* Original xs/sm/md shadows are in section 0; lg/xl extend them. */
+  --shadow-lg: 0 16px 36px rgba(15, 23, 42, 0.16);
+  --shadow-xl: 0 24px 60px rgba(15, 23, 42, 0.22);
 
   /* ---------------- Typography ---------------- */
-  --font-sans: var(--font-inter, "Inter"), ui-sans-serif, system-ui, -apple-system,
-    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: var(--font-inter, "Inter"), "Segoe UI", -apple-system, BlinkMacSystemFont,
+    "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
 
   --text-xs: 0.75rem;     /* 12px */
@@ -186,24 +244,24 @@
   --text-xl: 1.5rem;      /* 24px */
   --text-2xl: 1.875rem;   /* 30px */
   --text-3xl: 2.25rem;    /* 36px */
-  --text-display: clamp(2.25rem, 1.6rem + 2.6vw, 3.5rem); /* 36 -> 56px */
+  --text-display: clamp(2.25rem, 1.6rem + 2.6vw, 3.5rem);
 
-  --leading-xs: 1rem;     /* 16px */
-  --leading-sm: 1.25rem;  /* 20px */
-  --leading-base: 1.5rem; /* 24px */
-  --leading-md: 1.625rem; /* 26px */
-  --leading-lg: 1.75rem;  /* 28px */
-  --leading-xl: 2rem;     /* 32px */
-  --leading-2xl: 2.25rem; /* 36px */
-  --leading-3xl: 2.5rem;  /* 40px */
-  --leading-display: 1.08;
+  --leading-xs: 1rem;
+  --leading-sm: 1.25rem;
+  --leading-base: 1.5rem;
+  --leading-md: 1.625rem;
+  --leading-lg: 1.75rem;
+  --leading-xl: 2rem;
+  --leading-2xl: 2.25rem;
+  --leading-3xl: 2.5rem;
+  --leading-display: 1.1;
 
   --weight-regular: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
   --weight-bold: 700;
 
-  --tracking-tight: -0.02em;
+  --tracking-tight: -0.01em;
   --tracking-normal: 0;
   --tracking-caps: 0.06em;
 
@@ -224,12 +282,9 @@
   --space-20: 80px;
   --space-24: 96px;
 
-  /* ---------------- Radius ---------------- */
+  /* ---------------- Radius (sm/md/lg are the originals, section 0) ---------------- */
   --radius-xs: 4px;
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
+  --radius-xl: 20px;
   --radius-full: 9999px;
 
   /* ---------------- Z-index ---------------- */
@@ -254,7 +309,7 @@
   /* ---------------- Layout ---------------- */
   --sidebar-w: 248px;
   --rail-w: 72px;
-  --topbar-h: 56px;
+  --topbar-h: 64px;
   --bottomnav-h: 64px;
   --content-max: 1200px;
   --content-wide: 1440px;
@@ -270,100 +325,90 @@
   --ring-width: 2px;
   --ring-offset: 2px;
 
-  /* ---------------- Motion (see motion.md) ---------------- */
+  /* ---------------- Motion ---------------- */
   --dur-instant: 80ms;
-  --dur-fast: 120ms;
+  --dur-fast: 150ms;
   --dur: 200ms;
-  --dur-slow: 320ms;
-  --dur-slower: 480ms;
-  --stagger: 30ms;
+  --dur-slow: 300ms;
+  --dur-slower: 400ms;
+  --stagger: 0ms;
 
-  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-standard: ease;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --ease-emphasized: cubic-bezier(0.32, 0.72, 0, 1);
-  /* ~3% overshoot spring. Browsers without linear() treat a property using it
-     as invalid at computed-value time and fall back to `ease`; acceptable. */
-  --ease-spring: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.281 6.7%, 0.723 12.9%,
-    0.938 16.7%, 1.017 20.6%, 1.033 24.4%, 1.026 28.1%, 1.003 37.9%, 0.996 46.1%, 1);
+  --ease-spring: cubic-bezier(0.2, 0, 0, 1);
 
-  /* Movement amounts. Zeroed under reduced motion so every enter/exit built on
-     them degrades to a pure opacity fade without per-component code. */
+  /* Movement amounts. Zeroed under reduced motion. */
   --move-xs: 2px;
   --move-sm: 4px;
   --move-md: 8px;
   --move-lg: 16px;
   --scale-enter: 0.98;
-  --scale-press: 0.98;
+  --scale-press: 1;
   --hover-lift: -2px;
 }
 
 /* ------------------------------------------------------------------ */
-/* 2. Semantic aliases: DARK                                           */
+/* 2. DARK: the original .theme-dark overrides + dark-mode fixes       */
 /*    (0,2,0) specificity so it wins over :root regardless of order.  */
 /* ------------------------------------------------------------------ */
-:root[data-theme="dark"] {
+:root[data-theme="dark"],
+:root.theme-dark {
   color-scheme: dark;
 
-  --bg: var(--night-0);
-  --surface: var(--night-1);
-  --surface-2: var(--night-2);
-  --surface-elevated: var(--night-3);
-  --overlay: rgb(3 6 14 / 0.66);
+  /* Original .theme-dark (old App.css), verbatim. */
+  --color-page-background: #11234e;
+  --color-surface: #0b1625;
+  --color-surface-muted: #152a45;
+  --color-border: #1e3352;
+  --color-border-strong: #2f4a6d;
+  --color-text: #e4ecf8;
+  --color-text-muted: #9db2d2;
+  --color-heading: #f7fbff;
+  --color-primary-100: #1c2f52;
+  --color-primary-300: #4668a8;
+  --shadow-xs: 0 1px 0 rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 6px 16px rgba(3, 10, 22, 0.45);
+  --shadow-md: 0 20px 40px rgba(3, 10, 22, 0.6);
 
-  --text: var(--neutral-100);
-  --text-muted: var(--neutral-400);
-  --text-subtle: #8a96ab;
-  --text-inverse: var(--neutral-950);
+  /* Fixes: the old app kept light-theme values for these in dark mode. */
+  --color-primary-50: #152a45;
+  --color-primary-400: #7fa9e6;
+  --color-success: #5cc98a;
+  --color-warning: #f2b84b;
+  --color-danger: #ff8a7f;
+  --color-gray-400: #6b7f9e;
+  --color-focus-ring: rgba(127, 169, 230, 0.3);
+  --color-success-bg: rgba(92, 201, 138, 0.12);
+  --color-warning-bg: rgba(242, 184, 75, 0.12);
+  --color-danger-bg: rgba(255, 138, 127, 0.12);
+  --color-overlay: rgba(3, 10, 22, 0.7);
+  --statue-opacity: 0.06;
+  --color-surface-translucent: rgba(11, 22, 37, 0.45);
 
-  --border: var(--neutral-800);
-  --border-strong: var(--neutral-500);
-
-  --accent: var(--blue-500);
-  --accent-hover: #2a68cc;
-  --accent-active: var(--blue-600);
-  --accent-contrast: var(--neutral-0);
-  --accent-text: var(--blue-300);
-  --accent-subtle: var(--night-accent);
-  --accent-subtle-hover: var(--night-accent-hover);
+  /* Semantic aliases that differ in dark */
+  --text-inverse: #0b1625;
+  --accent-hover: var(--color-primary-500);
+  --accent-active: var(--color-primary-700);
+  /* Accent as TEXT on dark surfaces: the old #4668a8 is ~3:1 on #0b1625, so
+     links and active nav text use the light theme's primary-300 instead. */
+  --accent-text: #7fa9e6;
+  --accent-subtle-hover: #233a63;
   --accent-subtle-text: #a9c4f5;
-  --accent-subtle-border: var(--night-accent-border);
-
-  --indicator: var(--blue-300);
-  --indicator-contrast: var(--neutral-950);
-
-  --focus-ring: var(--blue-300);
-
-  --success: var(--green-300);
-  --success-subtle: var(--green-900);
-  --success-border: var(--green-800);
-  --warning: var(--amber-300);
-  --warning-subtle: var(--amber-900);
-  --warning-border: var(--amber-800);
-  --danger: var(--red-300);
-  --danger-fill: var(--red-700);
+  --accent-subtle-border: #2f4a6d;
+  --indicator: #7fa9e6;
+  --indicator-contrast: #0b1625;
+  --focus-ring: #7fa9e6;
+  --danger-fill: #b42318;
   --danger-fill-hover: #c4301f;
-  --danger-contrast: var(--neutral-0);
-  --danger-subtle: var(--red-900);
-  --danger-border: var(--red-800);
-
-  --meter-track: var(--neutral-800);
-  --meter-open: var(--green-300);
-  --meter-low: var(--amber-300);
-  --meter-full: var(--red-300);
-
-  --skeleton: var(--night-2);
-  --skeleton-shine: rgb(255 255 255 / 0.06);
-  --selection: var(--night-accent-border);
-
-  /* Shadows: DARK. Shadows read poorly on dark backgrounds, so each level adds
-     a faint 1px top highlight; elevation is carried mainly by --surface-* steps. */
-  --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.4);
-  --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.5), inset 0 1px 0 rgb(255 255 255 / 0.03);
-  --shadow-md: 0 8px 20px -6px rgb(0 0 0 / 0.6), inset 0 1px 0 rgb(255 255 255 / 0.04);
-  --shadow-lg: 0 18px 40px -10px rgb(0 0 0 / 0.7), inset 0 1px 0 rgb(255 255 255 / 0.05);
-  --shadow-xl: 0 32px 72px -12px rgb(0 0 0 / 0.8), inset 0 1px 0 rgb(255 255 255 / 0.06);
+  --success-border: rgba(92, 201, 138, 0.3);
+  --warning-border: rgba(242, 184, 75, 0.3);
+  --danger-border: rgba(255, 138, 127, 0.3);
+  --skeleton-shine: rgba(255, 255, 255, 0.06);
+  --shadow-lg: 0 24px 48px rgba(3, 10, 22, 0.65);
+  --shadow-xl: 0 32px 72px rgba(3, 10, 22, 0.75);
 }
 
 /* ------------------------------------------------------------------ */
@@ -381,6 +426,6 @@
     --stagger: 0ms;
     --dur-slow: 200ms;
     --dur-slower: 200ms;
-    --ease-spring: cubic-bezier(0.2, 0, 0, 1);
+    --transition-base: 0.01ms;
   }
 }

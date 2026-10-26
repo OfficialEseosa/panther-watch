@@ -1,20 +1,21 @@
-/* Mobile-first: the base is the bottom sheet; >= 640 px turns it into the centered modal. */
+/* Original modal (old Settings.css .modal-overlay / .modal): a centered surface card with a
+   10px radius, 1px border and soft shadow over a dimmed page, at every width. The bottom-sheet
+   handle of the redesign is hidden (no sheet), so drag-to-dismiss is off. */
 .dialog {
   --_w: 640px;
   position: fixed;
-  inset: auto 0 0;
-  width: 100%;
-  max-width: 100%;
-  max-height: 92dvh;
-  margin: 0;
-  padding: 0 0 env(safe-area-inset-bottom);
+  inset: 0;
+  width: min(var(--_w), 100vw - 32px);
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 0;
   overflow: hidden;
-  border: 1px solid var(--border);
-  border-bottom: 0;
-  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-  background: var(--surface-elevated);
-  color: var(--text);
-  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
 }
 
 .dialog[open] {
@@ -23,11 +24,11 @@
 }
 
 .dialog::backdrop {
-  background: var(--overlay);
+  background: rgba(0, 0, 0, 0.5);
 }
 
 .sm {
-  --_w: 440px;
+  --_w: 450px;
 }
 
 .md {
@@ -39,34 +40,17 @@
 }
 
 .handle {
-  flex: none;
-  position: relative;
-  height: 20px;
-  touch-action: none;
-  cursor: grab;
-}
-
-.handle::before {
-  content: "";
-  position: absolute;
-  top: var(--space-2);
-  left: 50%;
-  width: 36px;
-  height: 4px;
-  border-radius: var(--radius-full);
-  background: var(--border-strong);
-  transform: translateX(-50%);
+  display: none;
 }
 
 .header {
   display: flex;
   flex: none;
   align-items: center;
-  gap: var(--space-3);
+  gap: 12px;
   min-height: 56px;
-  padding: 0 var(--space-3) var(--space-3) var(--space-5);
-  border-bottom: 1px solid var(--border);
-  touch-action: none;
+  padding: 16px 12px 16px 20px;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .titles {
@@ -75,10 +59,11 @@
 }
 
 .title {
-  font-size: var(--text-lg);
-  line-height: var(--leading-lg);
-  font-weight: var(--weight-semibold);
-  color: var(--text);
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.3;
+  font-weight: 700;
+  color: var(--color-heading);
 }
 
 .title:focus {
@@ -86,15 +71,16 @@
 }
 
 .subtitle {
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
-  color: var(--text-muted);
+  margin-top: 2px;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--color-text-muted);
 }
 
 .actions {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 8px;
 }
 
 .body {
@@ -102,7 +88,9 @@
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
-  padding: var(--space-5);
+  padding: 20px;
+  font-size: 0.95rem;
+  line-height: 1.5;
 }
 
 .footer {
@@ -110,94 +98,68 @@
   flex: none;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-5);
-  border-top: 1px solid var(--border);
+  gap: 10px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--color-border);
 }
 
-@media (min-width: 640px) {
-  .dialog {
-    inset: 0;
-    width: min(var(--_w), 100vw - 48px);
-    max-height: min(860px, 100dvh - 48px);
-    margin: auto;
-    padding: 0;
-    border-bottom: 1px solid var(--border);
-    border-radius: var(--radius-xl);
+@media (max-width: 768px) {
+  .footer {
+    flex-direction: column-reverse;
   }
 
+  .footer > * {
+    width: 100%;
+  }
+}
+
+@media (min-width: 769px) {
   .fixedHeight {
     height: min(860px, 100dvh - 48px);
   }
 
-  .handle {
-    display: none;
-  }
-
   .header {
     min-height: 64px;
-    padding: var(--space-3) var(--space-4) var(--space-3) var(--space-6);
-    touch-action: auto;
+    padding: 16px 16px 16px 24px;
   }
 
   .body {
-    padding: var(--space-6);
+    padding: 24px;
   }
 
   .footer {
-    padding: var(--space-4) var(--space-6);
+    padding: 16px 24px;
   }
 }
 
-/* ---- Motion (motion.md §4.8) ---- */
+/* ---- Motion: the original fadeIn overlay + slideUp modal (0.2s ease) ---- */
 .dialog[open] {
-  animation: var(--kf-sheet-in) var(--dur-slow) var(--ease-emphasized) both;
+  animation: var(--kf-pop-in) 0.2s ease both;
 }
 
 .dialog[open]::backdrop {
-  animation: var(--kf-fade-in) var(--dur) var(--ease-out) both;
+  animation: var(--kf-fade-in) 0.2s ease both;
+}
+
+:global(html[data-vt]) .dialog[open],
+:global(html[data-vt]) .dialog[open]::backdrop {
+  animation: none;
 }
 
 .dialog[data-closing] {
-  animation: var(--kf-sheet-out) var(--dur) var(--ease-in) both;
-}
-
-.dialog[data-closing][data-drag-dismiss] {
-  animation-name: var(--kf-sheet-out-from);
+  animation: var(--kf-pop-out) var(--dur-fast) var(--ease-in) both;
 }
 
 .dialog[data-closing]::backdrop {
-  animation: var(--kf-fade-out) var(--dur) var(--ease-in) both;
-}
-
-@media (min-width: 640px) {
-  :global(html:not([data-vt])) .dialog[open] {
-    animation: var(--kf-pop-in) var(--dur) var(--ease-out) both;
-  }
-
-  :global(html[data-vt]) .dialog[open],
-  :global(html[data-vt]) .dialog[open]::backdrop {
-    animation: none;
-  }
-
-  .dialog[data-closing],
-  :global(html:not([data-vt])) .dialog[data-closing] {
-    animation: var(--kf-pop-out) var(--dur-fast) var(--ease-in) both;
-  }
-
-  .dialog[data-closing]::backdrop {
-    animation: var(--kf-fade-out) var(--dur-fast) var(--ease-in) both;
-  }
+  animation: var(--kf-fade-out) var(--dur-fast) var(--ease-in) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dialog[open],
-  :global(html:not([data-vt])) .dialog[open] {
+  .dialog[open] {
     animation-name: var(--kf-fade-in);
   }
 
-  .dialog[data-closing],
-  :global(html:not([data-vt])) .dialog[data-closing] {
+  .dialog[data-closing] {
     animation-name: var(--kf-fade-out);
   }
 }

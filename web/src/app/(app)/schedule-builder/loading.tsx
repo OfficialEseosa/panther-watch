@@ -1,5 +1,5 @@
-import { SchedulePageSkeleton } from "@/components/schedule/ScheduleSkeleton";
+import { ScheduleLoading } from "@/components/schedule/ScheduleLoading";
 
-export default function ScheduleBuilderLoading() {
-  return <SchedulePageSkeleton />;
+export default function Loading() {
+  return <ScheduleLoading />;
 }

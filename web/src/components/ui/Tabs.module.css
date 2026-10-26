@@ -45,7 +45,7 @@
 }
 
 .tab[aria-selected="true"] {
-  color: var(--text);
+  color: var(--accent-text);
 }
 
 .icon {
@@ -68,8 +68,8 @@
   bottom: 0;
   left: 0;
   width: 1px;
-  height: 2px;
-  border-radius: var(--radius-full);
+  height: 3px;
+  border-radius: 3px 3px 0 0;
   background: var(--indicator);
   transform-origin: left;
   transform: translateX(calc(var(--x) * 1px)) scaleX(var(--w));
@@ -82,7 +82,7 @@
 .panel {
   --move-sm: var(--move-xs);
   padding-top: var(--space-5);
-  animation: var(--kf-rise-in) var(--dur-fast) var(--ease-out);
+  animation: var(--kf-fade-in) var(--dur-fast) ease;
 }
 
 .panel:focus-visible {
@@ -112,7 +112,7 @@
 }
 
 .navLink[aria-current="page"] {
-  color: var(--text);
+  color: var(--accent-text);
 }
 
 .navLink[aria-current="page"]::after {

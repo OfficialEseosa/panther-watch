@@ -1,0 +1,319 @@
+/* Shared pieces of the original card and detail view (old CourseResults.css). */
+
+/* ---- enrollment ---- */
+.enrollment {
+  /* AA text tones (the original's light-mode green/amber on tinted panels were ~4:1). */
+  --_success-text: light-dark(color-mix(in srgb, var(--color-success) 85%, black), var(--color-success));
+  --_warning-text: light-dark(color-mix(in srgb, var(--color-warning) 78%, black), var(--color-warning));
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+  gap: 16px;
+  padding: 18px;
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.enrollmentItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.enrollmentNumber {
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-heading);
+  font-variant-numeric: tabular-nums;
+}
+
+.enrollmentLabel {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.seatsAvailable {
+  color: var(--_success-text);
+}
+
+.seatsLow {
+  color: var(--_warning-text);
+}
+
+.seatsFull {
+  color: var(--color-danger);
+}
+
+.seatsUnknown {
+  color: var(--color-text-muted);
+}
+
+/* ---- meetings ---- */
+.meetings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.meeting {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  background: var(--color-surface);
+}
+
+.timeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+}
+
+.time {
+  font-weight: 600;
+  color: var(--color-heading);
+  font-variant-numeric: tabular-nums;
+}
+
+.days {
+  display: flex;
+  gap: 6px;
+}
+
+.day {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 4px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+}
+
+.day[data-active] {
+  background: var(--accent-subtle);
+  color: var(--accent-subtle-text);
+}
+
+.location {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.building {
+  font-weight: 600;
+  color: var(--color-heading);
+}
+
+/* ---- notices ---- */
+.notice {
+  /* AA text tones (the original's light-mode green/amber on tinted panels were ~4:1). */
+  --_success-text: light-dark(color-mix(in srgb, var(--color-success) 85%, black), var(--color-success));
+  --_warning-text: light-dark(color-mix(in srgb, var(--color-warning) 78%, black), var(--color-warning));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 14px;
+  background: var(--warning-subtle);
+  border: 1px solid var(--warning-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  color: var(--_warning-text);
+}
+
+.noticeInfo {
+  background: var(--color-primary-50);
+  border-color: var(--color-primary-100);
+  color: var(--color-text);
+}
+
+.noticeIcon {
+  font-size: 1rem;
+  line-height: 1;
+  opacity: 0.9;
+}
+
+.noticeText {
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.expiry {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 4px;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.expiry svg {
+  flex-shrink: 0;
+}
+
+/* ---- error message ---- */
+.error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  background: var(--danger-subtle);
+  color: var(--color-danger);
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--danger-border);
+}
+
+.errorAction {
+  flex: none;
+}
+
+/* ---- phones (old compact card rules) ---- */
+@media (max-width: 600px) {
+  .enrollment {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px 10px;
+    padding: 10px 12px;
+  }
+
+  .enrollmentItem {
+    gap: 2px;
+  }
+
+  .enrollmentNumber {
+    font-size: 1.05rem;
+  }
+
+  .enrollmentLabel {
+    font-size: 0.58rem;
+    letter-spacing: 0.03em;
+  }
+
+  .meeting {
+    padding: 10px 12px;
+  }
+
+  .time {
+    font-size: 0.85rem;
+  }
+
+  .location {
+    font-size: 0.78rem;
+  }
+
+  .day {
+    min-width: 22px;
+    height: 22px;
+    font-size: 0.68rem;
+  }
+}
+
+/* ---- compact variants (the course card): same content, tighter spacing ---- */
+.enrollment.compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 14px;
+  padding: 16px 18px;
+}
+
+.compact .enrollmentItem {
+  gap: 6px;
+}
+
+.compact .enrollmentNumber {
+  font-size: 1.2rem;
+}
+
+.compact .enrollmentLabel {
+  font-size: 0.69rem;
+  line-height: 1.3;
+  letter-spacing: 0.06em;
+}
+
+/* All five numbers on one row when the card is wide enough (two rows on phones). */
+@container card (min-width: 400px) {
+  .enrollment.compact[data-count="5"] {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.meetings.compact {
+  gap: 10px;
+}
+
+.compact .meeting {
+  padding: 14px;
+}
+
+.compact .timeRow {
+  margin-bottom: 6px;
+}
+
+.compact .time {
+  font-size: 0.92rem;
+}
+
+.compact .days {
+  gap: 4px;
+}
+
+.compact .day {
+  min-width: 23px;
+  height: 23px;
+  padding: 0 3px;
+  font-size: 0.66rem;
+}
+
+.compact .location {
+  font-size: 0.85rem;
+}
+
+@media (max-width: 600px) {
+  .enrollment.compact {
+    gap: 6px 8px;
+    padding: 8px 10px;
+  }
+
+  .compact .enrollmentItem {
+    gap: 1px;
+  }
+
+  .compact .enrollmentNumber {
+    font-size: 0.95rem;
+  }
+
+  .compact .enrollmentLabel {
+    font-size: 0.625rem;
+    letter-spacing: 0.03em;
+  }
+
+  .compact .meeting {
+    padding: 7px 10px;
+  }
+
+  .compact .timeRow {
+    gap: 4px 8px;
+    margin-bottom: 4px;
+  }
+
+  .compact .day {
+    min-width: 19px;
+    height: 19px;
+    font-size: 0.6rem;
+  }
+}

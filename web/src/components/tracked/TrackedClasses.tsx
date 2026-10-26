@@ -1,32 +1,25 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { RemoveWatchButton, ScheduleToggle } from "@/components/courses/CourseActions";
 import { CourseCard } from "@/components/courses/CourseCard";
 import { sectionLabel, type Section } from "@/components/courses/format";
 import type { DialogTab } from "@/components/courses/params";
-import { SectionDialog } from "@/components/courses/SectionDialog";
-import { urlWith, useCourseDialog } from "@/components/courses/useCourseDialog";
 import { RetryButton } from "@/components/courses/RetryButton";
+import { SectionDialog } from "@/components/courses/SectionDialog";
+import { CardNotice, ErrorMessage } from "@/components/courses/SectionParts";
+import { useCourseDialog } from "@/components/courses/useCourseDialog";
 import { reportActionError, useSectionActions } from "@/components/courses/useSectionActions";
 import { useSectionMeta } from "@/components/courses/useSectionMeta";
-import { PageHeader } from "@/components/shell/PageHeader";
-import { Badge } from "@/components/ui/Badge";
-import { Banner } from "@/components/ui/Banner";
-import { Button, ButtonLink } from "@/components/ui/Button";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { BellIcon, ClockIcon, RefreshIcon, SearchIcon } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/Toast";
 import { addWatch, removeWatch, type WatchDetailsItem } from "@/lib/client/courses";
 import { playExit } from "@/lib/ui/motion";
-import { useNavEntrance } from "@/lib/ui/navEntrance";
+import { cn } from "@/lib/ui/cn";
+import buttons from "@/components/courses/buttons.module.css";
 import gridStyles from "@/components/courses/CourseResults.module.css";
 import styles from "./TrackedClasses.module.css";
-import { compareText, courseCode, keyOf, plural, sectionKey, termLabel } from "@/lib/format";
-
-export type TrackedFilter = "all" | "open" | "full";
+import { compareText, courseCode, keyOf, sectionKey, termLabel } from "@/lib/format";
 
 export type TrackedClassesProps = {
   items: WatchDetailsItem[];
@@ -36,7 +29,6 @@ export type TrackedClassesProps = {
   scheduled: string[];
   /** Terms whose registration is closed. */
   viewOnlyTerms: string[];
-  initialFilter: TrackedFilter;
   initialDialog: { crn: string | null; term: string | null; tab: DialogTab };
   /** term code -> "Tracking ends Oct 1" when its watches expire soon (computed on the server). */
   expiryNotices: Record<string, string>;
@@ -87,28 +79,23 @@ function statusOf(item: WatchDetailsItem): Status {
 
 const itemKey = (item: WatchDetailsItem) => sectionKey(item.watch.term, item.watch.crn);
 
-
 /**
- * Tracked classes (pages.md §5): watched sections grouped by term (newest first), open ones
- * first. Remove stops watching right away (the card leaves with an exit animation) and offers
- * Undo. Items GoSolar couldn't confirm show the stored watch with a notice.
+ * The original tracked classes page: the header card (count pill, "Find more classes"), then
+ * the same course cards in tracked mode (Remove instead of Watch, the term in the info grid).
+ * Remove stops watching right away (the card leaves with a short exit) and offers Undo. Items
+ * GoSolar couldn't confirm show the stored watch with a notice.
  */
 export function TrackedClasses({
   items: initialItems,
   termNames,
   scheduled,
   viewOnlyTerms,
-  initialFilter,
   initialDialog,
   expiryNotices,
 }: TrackedClassesProps) {
-  const router = useRouter();
   const toast = useToast();
-  const navEntrance = useNavEntrance();
-  const [refreshing, startRefresh] = useTransition();
   const [items, setItems] = useState(initialItems);
   const [sourceItems, setSourceItems] = useState(initialItems);
-  const [filter, setFilter] = useState<TrackedFilter>(initialFilter);
   const [removing, setRemoving] = useState<ReadonlySet<string>>(() => new Set());
 
   // A refresh brings new server data: adopt it (adjusting state during render).
@@ -123,54 +110,23 @@ export function TrackedClasses({
   const actions = useSectionActions({ initialWatched, initialScheduled: scheduled, isSignedIn: true });
   const viewOnly = useMemo(() => new Set(viewOnlyTerms), [viewOnlyTerms]);
 
-  const counts = useMemo(() => {
-    let open = 0;
-    let full = 0;
-    for (const item of items) {
-      const status = statusOf(item);
-      if (status === "open") open += 1;
-      else if (status === "full") full += 1;
-    }
-    return { all: items.length, open, full };
+  // Newest term first; within a term, open sections first, then by course.
+  const sorted = useMemo(() => {
+    const rank: Record<Status, number> = { open: 0, full: 1, unknown: 2 };
+    return [...items].sort(
+      (a, b) =>
+        b.watch.term.localeCompare(a.watch.term) ||
+        rank[statusOf(a)] - rank[statusOf(b)] ||
+        compareText(courseCode(a.watch), courseCode(b.watch)) ||
+        compareText(a.section?.sequenceNumber ?? "", b.section?.sequenceNumber ?? ""),
+    );
   }, [items]);
 
-  const groups = useMemo(() => {
-    const visible = items.filter((item) => filter === "all" || statusOf(item) === filter);
-    const byTerm = new Map<string, WatchDetailsItem[]>();
-    for (const item of visible) {
-      const list = byTerm.get(item.watch.term) ?? [];
-      list.push(item);
-      byTerm.set(item.watch.term, list);
-    }
-    const rank: Record<Status, number> = { open: 0, full: 1, unknown: 2 };
-    return [...byTerm.entries()]
-      .sort(([a], [b]) => b.localeCompare(a))
-      .map(([term, list]) => ({
-        term,
-        items: [...list].sort(
-          (a, b) =>
-            rank[statusOf(a)] - rank[statusOf(b)] ||
-            compareText(courseCode(a.watch), courseCode(b.watch)) ||
-            compareText(a.section?.sequenceNumber ?? "", b.section?.sequenceNumber ?? ""),
-        ),
-      }));
-  }, [items, filter]);
-
-  // Badges for live sections, one batch per never-requested key.
-  const liveSections = useMemo(
-    () => items.flatMap((item) => (item.section ? [item.section as Section] : [])),
-    [items],
-  );
+  // Grades and ratings for live sections, one batch per never-requested key.
+  const liveSections = useMemo(() => items.flatMap((item) => (item.section ? [item.section as Section] : [])), [items]);
   useEffect(() => {
     ensure(liveSections.slice(0, 50));
   }, [liveSections, ensure]);
-
-  useEffect(() => {
-    const next = urlWith({ filter: filter === "all" ? null : filter });
-    if (next !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
-      window.history.replaceState(null, "", next);
-    }
-  }, [filter]);
 
   // CRNs repeat across terms: the dialog URL carries the term too (`?term=&crn=`). Links
   // without a term fall back to the newest term that has the CRN.
@@ -254,144 +210,48 @@ export function TrackedClasses({
     });
   };
 
-  const refresh = (
-    <Button
-      variant="secondary"
-      leadingIcon={<RefreshIcon />}
-      loading={refreshing}
-      onClick={() => startRefresh(() => router.refresh())}
-    >
-      Refresh
-    </Button>
-  );
-
-  const header = (
-    <PageHeader
-      title="Tracked classes"
-      description={
-        items.length
-          ? `${plural(items.length, "section")} · We email you when a seat opens.`
-          : "We email you when a seat opens in a section you watch."
-      }
-      actions={
-        <>
-          {items.length ? refresh : null}
-          <ButtonLink id="tracked-search" href="/course-search" leadingIcon={<SearchIcon />}>
-            Search classes
-          </ButtonLink>
-        </>
-      }
-    >
-      {items.length ? (
-        <SegmentedControl<TrackedFilter>
-          label="Show"
-          value={filter}
-          onChange={setFilter}
-          options={[
-            { value: "all", label: `All ${counts.all}` },
-            { value: "open", label: `Open ${counts.open}` },
-            { value: "full", label: `Full ${counts.full}` },
-          ]}
-        />
-      ) : null}
-    </PageHeader>
-  );
-
-  if (items.length === 0) {
-    return (
-      <>
-        {header}
-        <EmptyState
-          variant="first-use"
-          icon={<BellIcon size={24} />}
-          title="You're not watching any sections."
-          actions={
-            <ButtonLink href="/course-search" leadingIcon={<SearchIcon />}>
-              Search classes
-            </ButtonLink>
-          }
-        >
-          Watch a full section and we&rsquo;ll email you when a seat opens.
-        </EmptyState>
-      </>
-    );
-  }
-
-  let index = 0;
   return (
-    <>
-      {header}
-      {groups.length === 0 ? (
-        <EmptyState variant="no-results" icon={<BellIcon size={24} />} title={filter === "open" ? "No open sections right now." : "No full sections."}>
-          {filter === "open" ? "We'll email you when one opens." : "Every section you watch has seats or couldn't be checked."}
-        </EmptyState>
-      ) : (
-        groups.map((group) => (
-          <section key={group.term} className={styles.group} aria-labelledby={`term-${group.term}`}>
-            <h2 id={`term-${group.term}`} className={styles.groupTitle}>
-              {termName(group.term)}
-              <span className={styles.groupCount}>{plural(group.items.length, "section")}</span>
-            </h2>
-            <ul className={gridStyles.grid}>
-              {group.items.map((item) => {
-                const section = sectionOf(item);
-                const key = itemKey(item);
-                const expiry = expiryNotices[item.watch.term];
-                const notice = (
-                  <>
-                    {item.partial ? (
-                      <Banner tone="warning" className={styles.cardBanner}>
-                        Couldn&rsquo;t reach GoSolar for this course. Showing what you saved; try Refresh in a minute.
-                      </Banner>
-                    ) : null}
-                    {!item.section && !item.partial ? (
-                      <Banner tone="info" className={styles.cardBanner}>
-                        This section is no longer listed. It may have been cancelled or renumbered.
-                      </Banner>
-                    ) : null}
-                    {expiry ? (
-                      <span className={styles.expiry}>
-                        <ClockIcon size={14} />
-                        {expiry}
-                      </span>
-                    ) : null}
-                    {item.section && statusOf(item) === "open" ? <Badge tone="success">Seats open now</Badge> : null}
-                  </>
-                );
-                const position = index++;
-                return (
-                  <li key={key} className={gridStyles.item}>
-                    <CourseCard
-                      section={section}
-                      meta={meta[keyOf(section)]}
-                      watched
-                      scheduled={actions.isScheduled(section)}
-                      schedulePending={actions.isSchedulePending(section)}
-                      isSignedIn
-                      mode="tracked"
-                      limited={!item.section}
-                      viewOnly={viewOnly.has(item.watch.term)}
-                      termName={termName(item.watch.term)}
-                      notice={item.partial || !item.section || expiry || statusOf(item) === "open" ? notice : undefined}
-                      onToggleSchedule={item.section ? actions.toggleSchedule : undefined}
-                      onOpen={
-                        item.section
-                          ? (s, card) => dialog.open(key, s.courseReferenceNumber ?? "", card, item.watch.term)
-                          : undefined
-                      }
-                      href={`/tracked-classes?term=${item.watch.term}&crn=${item.watch.crn}`}
-                      onRemove={() => void remove(item)}
-                      removePending={removing.has(key)}
-                      index={position}
-                      stagger={navEntrance}
-                    />
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        ))
-      )}
+    <div className={styles.page}>
+      <TrackedHeader count={items.length} />
+
+      {sorted.length ? (
+        <ul className={gridStyles.grid} aria-label="Tracked sections">
+          {sorted.map((item) => {
+            const section = sectionOf(item);
+            const key = itemKey(item);
+            const notice = item.partial ? (
+              <CardNotice>Couldn&rsquo;t reach GoSolar for this course. Showing what you saved; reload in a minute.</CardNotice>
+            ) : !item.section ? (
+              <CardNotice tone="info">This section is no longer listed. It may have been cancelled or renumbered.</CardNotice>
+            ) : null;
+            return (
+              <li key={key} className={gridStyles.item}>
+                <CourseCard
+                  section={section}
+                  meta={meta[keyOf(section)]}
+                  watched
+                  scheduled={actions.isScheduled(section)}
+                  schedulePending={actions.isSchedulePending(section)}
+                  isSignedIn
+                  mode="tracked"
+                  limited={!item.section}
+                  viewOnly={viewOnly.has(item.watch.term)}
+                  termName={termName(item.watch.term)}
+                  expiry={expiryNotices[item.watch.term]}
+                  notice={notice}
+                  onToggleSchedule={item.section ? actions.toggleSchedule : undefined}
+                  onOpen={
+                    item.section ? (s, card) => dialog.open(key, s.courseReferenceNumber ?? "", card, item.watch.term) : undefined
+                  }
+                  href={`/tracked-classes?term=${item.watch.term}&crn=${item.watch.crn}`}
+                  onRemove={() => void remove(item)}
+                  removePending={removing.has(key)}
+                />
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
 
       <SectionDialog
         section={openSection}
@@ -407,14 +267,13 @@ export function TrackedClasses({
         actions={
           openSection && openItem ? (
             <>
-              {!viewOnly.has(openItem.watch.term) ? (
-                <ScheduleToggle
-                  scheduled={actions.isScheduled(openSection)}
-                  pending={actions.isSchedulePending(openSection)}
-                  code={sectionLabel(openSection)}
-                  onToggle={() => actions.toggleSchedule(openSection)}
-                />
-              ) : null}
+              <ScheduleToggle
+                scheduled={actions.isScheduled(openSection)}
+                pending={actions.isSchedulePending(openSection)}
+                code={sectionLabel(openSection)}
+                disabled={viewOnly.has(openItem.watch.term)}
+                onToggle={() => actions.toggleSchedule(openSection)}
+              />
               <RemoveWatchButton
                 code={sectionLabel(openSection)}
                 pending={removing.has(itemKey(openItem))}
@@ -424,22 +283,54 @@ export function TrackedClasses({
           ) : null
         }
       />
-    </>
+    </div>
+  );
+}
+
+/**
+ * The original header card: "Your Tracked Classes", the count pill and description (or the
+ * empty-state line), and the solid "Find more classes" / "Start searching" button.
+ */
+export function TrackedHeader({ count, loading = false }: { count: number; loading?: boolean }) {
+  return (
+    <header className={styles.header}>
+      <h1 className={styles.title}>Your Tracked Classes</h1>
+      {loading ? (
+        <p className={styles.description}>Loading your tracked classes…</p>
+      ) : count === 0 ? (
+        <p className={styles.description}>
+          You have not added any classes yet. Search for courses and add the sections you care about.
+        </p>
+      ) : (
+        <>
+          <p className={styles.stats}>
+            {/* The spaces keep "Tracking 1 class" apart when read as text (no effect in the flex row). */}
+            <span className={styles.statsLabel}>Tracking</span>{" "}
+            <span className={styles.statsCount}>{count}</span>{" "}
+            <span className={styles.statsLabel}>{count === 1 ? "class" : "classes"}</span>
+          </p>
+          <p className={styles.description}>
+            Stay up to date with enrollment changes and move quickly when seats become available.
+          </p>
+        </>
+      )}
+      <div>
+        <Link id="tracked-search" href="/course-search" className={cn(buttons.primary, buttons.large, styles.searchMore)}>
+          {count > 0 || loading ? "Find more classes" : "Start searching"}
+        </Link>
+      </div>
+    </header>
   );
 }
 
 /** The watch list couldn't be loaded (database or session lookup failed). Never shows the error. */
 export function TrackedUnavailable() {
   return (
-    <>
-      <PageHeader title="Tracked classes" />
-      <EmptyState
-        variant="error"
-        title="Couldn&rsquo;t load your tracked classes."
-        actions={<RetryButton />}
-      >
-        Your watches are safe. This usually clears up in a moment.
-      </EmptyState>
-    </>
+    <div className={styles.page}>
+      <TrackedHeader count={0} loading />
+      <ErrorMessage action={<RetryButton variant="secondary" />}>
+        Failed to load tracked classes. Your watches are safe; please try again.
+      </ErrorMessage>
+    </div>
   );
 }

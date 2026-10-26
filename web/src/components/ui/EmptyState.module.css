@@ -16,8 +16,8 @@
   width: 56px;
   height: 56px;
   margin-bottom: var(--space-2);
-  border-radius: var(--radius-full);
-  background: var(--accent-subtle);
+  border-radius: 14px;
+  background: var(--color-primary-100);
   color: var(--accent-subtle-text);
 }
 
@@ -32,15 +32,15 @@
 }
 
 .title {
-  font-size: var(--text-lg);
-  line-height: var(--leading-lg);
-  font-weight: var(--weight-semibold);
-  color: var(--text);
+  font-size: 1.15rem;
+  line-height: 1.4;
+  font-weight: 700;
+  color: var(--color-heading);
 }
 
 .body {
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
+  font-size: 0.95rem;
+  line-height: 1.6;
   color: var(--text-muted);
 }
 

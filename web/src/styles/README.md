@@ -1,5 +1,7 @@
 # Styles
 
+> **2026-10-26:** the original design is the baseline again (docs/design/spec.md, top section). `tokens.css` now defines the original `--color-*` tokens (plus the redesign's semantic names as aliases of them). Rules below about "semantic tokens only", "no hex outside tokens.css", the three `min-width` breakpoints and "never `[data-theme]` outside tokens.css" are relaxed: original `max-width` breakpoints (1024/768/600/480) and `:root[data-theme="dark"] .x` overrides for dark variants are fine. The `--kf-*` keyframe rule and `npm run check:css` still apply.
+
 How the design system is wired. The rules themselves live in `docs/design/` (spec.md, motion.md,
 pages.md, tokens.css); this file is the map.
 

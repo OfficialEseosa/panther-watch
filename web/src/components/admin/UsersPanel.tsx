@@ -1,23 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Avatar } from "@/components/ui/Avatar";
-import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { ChevronLeftIcon, ChevronRightIcon, CopyIcon, MailIcon, MoreIcon, SearchIcon } from "@/components/ui/icons";
-import { Input } from "@/components/ui/Input";
-import { Menu, MenuItem } from "@/components/ui/Menu";
-import { Skeleton, SkeletonGroup } from "@/components/ui/Skeleton";
+import { BookmarkIcon, CalendarCheckIcon, CalendarIcon, ChevronLeftIcon, ChevronRightIcon, MailIcon, SearchIcon, UsersIcon } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/Toast";
 import { adminApi, type AdminUser, type UserPage } from "@/lib/client/admin";
 import { ApiError, errorMessage, onUnauthorized } from "@/lib/client/http";
+import { cn } from "@/lib/ui/cn";
 import { EmailComposer } from "./EmailComposer";
 import { formatDate, pageRange } from "./format";
 import { createSequence } from "./sequence";
 import styles from "./admin.module.css";
-import menuStyles from "./UsersPanel.module.css";
 import { formatNumber, plural } from "@/lib/format";
 
 const DEBOUNCE_MS = 300;
@@ -26,16 +19,15 @@ export type UsersPanelProps = {
   initialQuery: string;
   initialPage: UserPage;
   pageSize: number;
-  appUrl: string;
   dailyRemaining: number | null;
 };
 
 /**
- * Users tab (pages.md §8.2): debounced (300 ms), sequence-guarded search mirrored to ?q=,
- * offset pagination, and a per-user menu to email (composer Dialog) or copy the address.
- * The old dead "select all" is gone.
+ * Users tab: the old "User management" section (UserSearchSection.jsx) with its search box and
+ * user cards, minus the dead select-all. The search is debounced (300 ms), sequence-guarded and
+ * mirrored to ?q=; long lists page by offset. "Send email" opens the composer.
  */
-export function UsersPanel({ initialQuery, initialPage, pageSize, appUrl, dailyRemaining }: UsersPanelProps) {
+export function UsersPanel({ initialQuery, initialPage, pageSize, dailyRemaining }: UsersPanelProps) {
   const toast = useToast();
   const [query, setQuery] = useState(initialQuery);
   const [page, setPage] = useState(initialPage);
@@ -101,129 +93,93 @@ export function UsersPanel({ initialQuery, initialPage, pageSize, appUrl, dailyR
     void load(shownQuery, offset).then(() => listRef.current?.scrollIntoView({ block: "nearest" }));
   };
 
-  const copy = async (email: string) => {
-    try {
-      await navigator.clipboard.writeText(email);
-      toast.success("Email copied");
-    } catch {
-      toast.error("Couldn't copy", { body: "Your browser blocked clipboard access." });
-    }
-  };
-
   const q = query.trim();
   const hasPrev = page.offset > 0;
   const hasNext = page.offset + page.users.length < page.total;
 
   return (
-    <div className={styles.stack}>
-      <div className={styles.section}>
-        <div className={styles.toolbar}>
-          <div className={styles.search}>
-            <Input
-              type="search"
-              leadingIcon={<SearchIcon size={16} />}
-              placeholder="Search by name or email"
-              aria-label="Search users by name or email"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              autoComplete="off"
-              spellCheck={false}
-            />
-          </div>
-          <p className={styles.muted} aria-live="polite">
-            {loading ? "Searching…" : q ? plural(page.total, "match", "matches") : plural(page.total, "user")}
-          </p>
+    <section className={styles.section} aria-labelledby="admin-user-management">
+      <h2 id="admin-user-management" className={styles.sectionHeading}>
+        <UsersIcon size={20} />
+        User management
+      </h2>
+
+      <label className={styles.searchBox}>
+        <span className="sr-only">Search users by name or email</span>
+        <input
+          type="search"
+          className={styles.searchInput}
+          placeholder="Search by name or email"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          autoComplete="off"
+          spellCheck={false}
+        />
+        <SearchIcon size={16} className={styles.searchIcon} />
+      </label>
+      <p className={styles.muted} aria-live="polite">
+        {loading ? "Searching…" : q ? plural(page.total, "match", "matches") : plural(page.total, "user")}
+      </p>
+
+      {error ? (
+        <div className={styles.notice} data-tone="danger" role="alert">
+          {error}{" "}
+          <button type="button" className={cn(styles.btn, styles.btnSecondary, styles.btnSmall)} onClick={() => void load(query, page.offset)}>
+            Try again
+          </button>
         </div>
+      ) : page.users.length === 0 ? (
+        <div className={styles.noUsers} role="status">
+          <SearchIcon size={32} />
+          <p>{q ? `No users match “${q}”.` : "No users found"}</p>
+          {q ? <p>Try a different search term.</p> : null}
+        </div>
+      ) : (
+        <ul ref={listRef} className={styles.usersGrid} aria-label="Users" aria-busy={loading || undefined}>
+          {page.users.map((user) => (
+            <UserCard
+              key={user.id}
+              user={user}
+              onSendEmail={() => {
+                setEmailing(user);
+                setEmailOpen(true);
+              }}
+            />
+          ))}
+        </ul>
+      )}
 
-        {error ? (
-          <EmptyState
-            variant="error"
-            title="Couldn't load users"
-            actions={
-              <Button variant="secondary" onClick={() => void load(query, page.offset)}>
-                Try again
-              </Button>
-            }
-          >
-            {error}
-          </EmptyState>
-        ) : page.users.length === 0 ? (
-          <EmptyState variant="no-results" icon={<SearchIcon size={24} />} title={q ? `No users match “${q}”.` : "No users yet."} />
-        ) : (
-          <ul ref={listRef} className={styles.list} aria-label="Users" aria-busy={loading || undefined} data-loading={loading || undefined}>
-            {page.users.map((user) => (
-              <li key={user.id} className={styles.row}>
-                <div className={styles.rowMain}>
-                  <Avatar src={user.pictureUrl} name={user.name ?? user.email} size={32} />
-                  <div className={styles.rowText}>
-                    <span className={styles.rowTitle}>{user.name || user.email.split("@")[0]}</span>
-                    <span className={styles.rowSub}>{user.email}</span>
-                  </div>
-                </div>
-                <div className={styles.rowMeta}>
-                  <Badge tone={user.watchCount > 0 ? "accent" : "neutral"}>{formatNumber(user.watchCount)} tracked</Badge>
-                  <Badge>{formatNumber(user.scheduleCount)} scheduled</Badge>
-                  <span>
-                    Joined <time dateTime={user.createdAt}>{formatDate(user.createdAt)}</time>
-                  </span>
-                </div>
-                <div className={styles.rowActions}>
-                  <Menu
-                    trigger={<MoreIcon />}
-                    triggerLabel={`Actions for ${user.name || user.email}`}
-                    triggerClassName={menuStyles.trigger}
-                    label={`Actions for ${user.name || user.email}`}
-                  >
-                    <MenuItem icon={<MailIcon size={16} />} onSelect={() => {
-                        setEmailing(user);
-                        setEmailOpen(true);
-                      }}
-                    >
-                      Email user…
-                    </MenuItem>
-                    <MenuItem icon={<CopyIcon size={16} />} onSelect={() => void copy(user.email)}>
-                      Copy email
-                    </MenuItem>
-                  </Menu>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+      {page.total > pageSize ? (
+        <nav className={styles.pager} aria-label="Users pages">
+          <span className={styles.muted}>{pageRange(page.offset, page.users.length, page.total)}</span>
+          <div className={styles.pagerButtons}>
+            <button
+              type="button"
+              className={cn(styles.btn, styles.btnSecondary, styles.btnSmall)}
+              disabled={!hasPrev || loading}
+              onClick={() => goTo(Math.max(0, page.offset - pageSize))}
+            >
+              <ChevronLeftIcon />
+              Previous
+            </button>
+            <button
+              type="button"
+              className={cn(styles.btn, styles.btnSecondary, styles.btnSmall)}
+              disabled={!hasNext || loading}
+              onClick={() => goTo(page.offset + pageSize)}
+            >
+              Next
+              <ChevronRightIcon />
+            </button>
+          </div>
+        </nav>
+      ) : null}
 
-        {page.total > pageSize ? (
-          <nav className={styles.pager} aria-label="Users pages">
-            <span className={styles.muted}>{pageRange(page.offset, page.users.length, page.total)}</span>
-            <div className={styles.pagerButtons}>
-              <Button
-                variant="secondary"
-                size="sm"
-                leadingIcon={<ChevronLeftIcon />}
-                disabled={!hasPrev || loading}
-                onClick={() => goTo(Math.max(0, page.offset - pageSize))}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                trailingIcon={<ChevronRightIcon />}
-                disabled={!hasNext || loading}
-                onClick={() => goTo(page.offset + pageSize)}
-              >
-                Next
-              </Button>
-            </div>
-          </nav>
-        ) : null}
-      </div>
-
-      <Dialog open={emailOpen} onClose={() => setEmailOpen(false)} title="Email user" size="md">
+      <Dialog open={emailOpen} onClose={() => setEmailOpen(false)} title="Compose email" size="md">
         {emailing ? (
           <EmailComposer
             key={emailing.id}
             layout="dialog"
-            appUrl={appUrl}
             dailyRemaining={remaining}
             recipient={{ email: emailing.email, name: emailing.name, pictureUrl: emailing.pictureUrl }}
             onCancel={() => setEmailOpen(false)}
@@ -234,29 +190,73 @@ export function UsersPanel({ initialQuery, initialPage, pageSize, appUrl, dailyR
           />
         ) : null}
       </Dialog>
+    </section>
+  );
+}
+
+/** One user card (old UserCard.jsx, without the selection checkbox). */
+function UserCard({ user, onSendEmail }: { user: AdminUser; onSendEmail: () => void }) {
+  const name = user.name || user.email.split("@")[0];
+  return (
+    <li className={styles.userCard}>
+      <div className={styles.userCardHeader}>
+        <UserAvatar src={user.pictureUrl} name={user.name || user.email} />
+        <div className={styles.userInfo}>
+          <h3 className={styles.userName}>{name}</h3>
+          <p className={styles.userEmail}>{user.email}</p>
+        </div>
+      </div>
+      <dl className={styles.userStats}>
+        <div className={styles.statItem}>
+          <dt className="sr-only">Tracked classes</dt>
+          <BookmarkIcon size={14} />
+          <dd>{plural(user.watchCount, "tracked class", "tracked classes")}</dd>
+        </div>
+        <div className={styles.statItem}>
+          <dt className="sr-only">Scheduled classes</dt>
+          <CalendarCheckIcon size={14} />
+          <dd>{formatNumber(user.scheduleCount)} on schedule</dd>
+        </div>
+        <div className={styles.statItem}>
+          <dt className="sr-only">Joined</dt>
+          <CalendarIcon size={14} />
+          <dd>
+            Joined <time dateTime={user.createdAt}>{formatDate(user.createdAt)}</time>
+          </dd>
+        </div>
+      </dl>
+      <div className={styles.userActions}>
+        <button type="button" className={cn(styles.btn, styles.btnSend)} onClick={onSendEmail}>
+          <MailIcon />
+          Send email
+          <span className="sr-only"> to {name}</span>
+        </button>
+      </div>
+    </li>
+  );
+}
+
+function UserAvatar({ src, name }: { src: string | null; name: string }) {
+  const [broken, setBroken] = useState(false);
+  return (
+    <div className={styles.avatar} aria-hidden="true">
+      {src && !broken ? (
+        // eslint-disable-next-line @next/next/no-img-element -- remote Google avatars, tiny and decorative
+        <img src={src} alt="" referrerPolicy="no-referrer" onError={() => setBroken(true)} />
+      ) : (
+        name.charAt(0).toUpperCase()
+      )}
     </div>
   );
 }
 
+/** Users tab loading state. */
 export function UsersSkeleton() {
   return (
-    <div className={styles.stack}>
-      <div className={styles.section}>
-        <Skeleton width="min(480px, 100%)" height={40} radius="md" />
-        <SkeletonGroup label="Loading users" className={styles.list}>
-          {Array.from({ length: 6 }, (_, i) => (
-            <div key={i} className={styles.row}>
-              <div className={styles.rowMain}>
-                <Skeleton width={32} height={32} radius="full" />
-                <div className={`${styles.rowText} ${styles.skeletonText}`}>
-                  <Skeleton width="30%" height={14} />
-                  <Skeleton width="45%" height={12} />
-                </div>
-              </div>
-            </div>
-          ))}
-        </SkeletonGroup>
-      </div>
-    </div>
+    <section className={styles.section}>
+      <p className={styles.loading} role="status">
+        Loading users…
+      </p>
+    </section>
   );
 }

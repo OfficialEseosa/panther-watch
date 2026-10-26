@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
-import { SEED, addToSchedule, addWatch, expect, freshUser, login, resetAll, test } from "./support";
+import { SEED, addToSchedule, addWatch, expect, freshUser, login, resetAll, skipWhatsNew, test } from "./support";
 
 /**
  * axe-core on every page, signed out (public pages and the guest dashboard) and signed in (the
@@ -16,7 +16,16 @@ const { term, csc1301, math2211 } = SEED;
 const MEMBER_PAGES: { path: string; ready: (page: Page) => Promise<void> }[] = [
   {
     path: "/dashboard",
-    ready: (page) => expect(page.getByRole("region", { name: "At a glance" })).toBeVisible(),
+    // The greeting card's tracked count has streamed in (it shows "…" until then).
+    ready: (page) => expect(page.getByRole("region", { name: /^Welcome back/ })).toContainText("Tracked classes 1"),
+  },
+  {
+    // The "What's new" showcase overlay (reduced motion: each scene in its settled state).
+    path: "/dashboard?whatsnew=1",
+    ready: (page) =>
+      expect(
+        page.getByRole("dialog", { name: "What's new in PantherWatch" }).getByRole("heading", { name: "Rebuilt from the ground up" }),
+      ).toBeVisible(),
   },
   {
     path: "/course-search",
@@ -76,6 +85,8 @@ for (const colorScheme of ["light", "dark"] as const) {
       await addWatch(page.request, { crn: csc1301.open, ...csc1301 });
       await addToSchedule(page.request, { crn: csc1301.open, ...csc1301 });
       await addToSchedule(page.request, { crn: math2211.open, ...math2211 });
+      // A member's first dashboard visit opens the showcase; it gets its own scan (?whatsnew=1).
+      await skipWhatsNew(page);
       await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
       await page.goto(path);
       await ready(page);

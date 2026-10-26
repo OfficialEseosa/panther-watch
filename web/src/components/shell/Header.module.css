@@ -1,3 +1,5 @@
+/* Phone/tablet top bar (< 900 px), in the original header's look (old Header.css .app-header):
+   white bar, bottom border + hairline shadow, panther + wordmark, account pill at the right. */
 .bar {
   position: sticky;
   top: 0;
@@ -5,11 +7,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
-  height: var(--topbar-h);
-  padding: 0 var(--gutter);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  gap: 12px;
+  height: 60px;
+  padding: 0 16px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: var(--shadow-xs);
 }
 
 @media (min-width: 900px) {
@@ -21,15 +24,15 @@
 .left {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 12px;
   min-width: 0;
 }
 
 .title {
   overflow: hidden;
-  font-size: var(--text-md);
-  line-height: var(--leading-md);
-  font-weight: var(--weight-semibold);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-heading);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -38,5 +41,5 @@
   display: flex;
   flex: none;
   align-items: center;
-  gap: var(--space-2);
+  gap: 10px;
 }

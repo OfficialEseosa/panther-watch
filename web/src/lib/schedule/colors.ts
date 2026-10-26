@@ -1,8 +1,9 @@
 /**
  * Schedule color palette, ported from frontend-web/src/utils/scheduleColors.js. The DB stores
  * `schedule_entries.color` as an index into SCHEDULE_PALETTE (null = derive from the CRN),
- * so never reorder or remove entries; only append. Every color is dark enough for white
- * text. Pure: safe to import from client components.
+ * so never reorder or remove entries; only append. The fills are the original flat palette;
+ * `scheduleTextColor` picks a readable text color for each. Pure: safe to import from client
+ * components.
  */
 
 export interface ScheduleColor {
@@ -70,6 +71,37 @@ export function pickDefaultColorIndex(usedIndexes: readonly (number | null | und
     if (!used.has(i)) return i;
   }
   return usedIndexes.length % PALETTE_SIZE;
+}
+
+/** Block text colors: white, or the old heading navy where white falls short of 4.5:1. */
+export const SCHEDULE_TEXT_LIGHT = "#ffffff";
+export const SCHEDULE_TEXT_DARK = "#0b1222";
+
+function luminance(hex: string): number {
+  const value = hex.replace(/^#/, "");
+  const channel = (i: number) => {
+    const c = parseInt(value.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
+}
+
+/** WCAG 2 contrast ratio between two #rrggbb colors (1 to 21). */
+export function contrastRatio(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/**
+ * Text color for a block filled with palette color `index`: white when it reaches 4.5:1 (WCAG
+ * AA), else whichever of white / dark navy contrasts more. Several of the original fills (teal,
+ * orange, green, cyan, pink) are too light for white text.
+ */
+export function scheduleTextColor(index: number): string {
+  const fill = SCHEDULE_PALETTE[isColorIndex(index) ? index : 0];
+  const light = contrastRatio(fill, SCHEDULE_TEXT_LIGHT);
+  if (light >= 4.5) return SCHEDULE_TEXT_LIGHT;
+  return contrastRatio(fill, SCHEDULE_TEXT_DARK) > light ? SCHEDULE_TEXT_DARK : SCHEDULE_TEXT_LIGHT;
 }
 
 /** CSS3 color name for the ICS COLOR property, or null. Accepts an index or a hex string. */

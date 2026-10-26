@@ -1,5 +1,5 @@
-import { ListSkeleton } from "@/components/admin/ListSkeleton";
+import { AdminLoading } from "@/components/admin/AdminFrame";
 
 export default function Loading() {
-  return <ListSkeleton label="Loading job runs" rows={6} />;
+  return <AdminLoading label="Loading job runs…" />;
 }

@@ -1,8 +1,10 @@
+/* Original page heading (old .settings-header / .settings-title): 1.75rem bold heading, muted
+   one-line description, 32px to the content. Used by every app page for consistent headings. */
 .header {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  margin-bottom: var(--space-6);
+  gap: 16px;
+  margin-bottom: 32px;
 }
 
 .top {
@@ -10,7 +12,7 @@
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: var(--space-4);
+  gap: 16px;
 }
 
 .text {
@@ -19,36 +21,38 @@
 }
 
 .title {
-  font-size: var(--text-xl);
-  line-height: var(--leading-xl);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-tight);
-  color: var(--text);
-}
-
-@media (min-width: 900px) {
-  .title {
-    font-size: var(--text-2xl);
-    line-height: var(--leading-2xl);
-  }
+  margin: 0 0 6px;
+  font-size: 1.75rem;
+  line-height: 1.25;
+  font-weight: 700;
+  color: var(--color-heading);
 }
 
 .description {
   max-width: 60ch;
-  margin-top: var(--space-1);
-  font-size: var(--text-base);
-  line-height: var(--leading-base);
-  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  gap: 8px;
 }
 
 .extra {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .header {
+    margin-bottom: 24px;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
 }

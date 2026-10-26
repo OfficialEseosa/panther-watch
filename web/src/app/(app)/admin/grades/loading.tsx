@@ -1,5 +1,5 @@
-import { ListSkeleton } from "@/components/admin/ListSkeleton";
+import { AdminLoading } from "@/components/admin/AdminFrame";
 
 export default function Loading() {
-  return <ListSkeleton label="Loading grade data" rows={4} />;
+  return <AdminLoading label="Loading grade data…" />;
 }

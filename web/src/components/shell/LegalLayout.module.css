@@ -1,177 +1,155 @@
+/* The original legal pages (old Legal.css): an opaque surface page (no statue behind the
+   reading column), slim header, one 820 px column, 1rem/1.7 body copy. */
 .page {
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 
 .header {
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
 }
 
 .headerInner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
-  max-width: var(--content-max);
-  height: var(--topbar-h);
-  margin-inline: auto;
-  padding: 0 var(--gutter);
-}
-
-.layout {
-  flex: 1;
-  width: 100%;
-  max-width: var(--content-max);
-  margin-inline: auto;
-  padding: var(--space-8) var(--gutter) var(--space-16);
-}
-
-.tocColumn {
-  display: none;
-}
-
-@media (min-width: 1200px) {
-  .layout {
-    display: grid;
-    grid-template-columns: 220px minmax(0, 72ch);
-    gap: var(--space-12);
-    justify-content: center;
-  }
-
-  .tocColumn {
-    display: block;
-  }
-}
-
-.toc {
-  position: sticky;
-  top: var(--space-8);
-}
-
-.tocLabel {
-  margin-bottom: var(--space-2);
-  font-size: var(--text-xs);
-  line-height: var(--leading-xs);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.tocList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.tocLink {
-  display: block;
-  padding: var(--space-1) 0;
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
-  color: var(--text-muted);
-  text-decoration: none;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .tocLink:hover {
-    color: var(--text);
-  }
-}
-
-.tocActive {
-  color: var(--text);
-  font-weight: var(--weight-semibold);
+  gap: 12px;
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 12px 24px;
 }
 
 .main {
-  min-width: 0;
-  max-width: 72ch;
-  margin-inline: auto;
+  flex: 1;
+  width: 100%;
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 32px 24px 56px;
 }
 
 .main:focus {
   outline: none;
 }
 
-@media (min-width: 1200px) {
-  .main {
-    margin-inline: 0;
-  }
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 24px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  transition:
+    color var(--transition-base),
+    border-color var(--transition-base),
+    background var(--transition-base);
+}
+
+.back:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
 }
 
 .article {
-  font-size: var(--text-base);
-  line-height: var(--leading-base);
-  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--color-text);
 }
 
 .title {
-  font-size: var(--text-2xl);
-  line-height: var(--leading-2xl);
-  font-weight: var(--weight-bold);
-  letter-spacing: var(--tracking-tight);
+  margin: 0 0 4px;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-heading);
 }
 
 .updated {
-  margin-top: var(--space-1);
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
-  color: var(--text-muted);
-}
-
-.intro {
-  margin-top: var(--space-6);
+  margin: 0 0 32px;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
 }
 
 .section {
-  margin-top: var(--space-8);
-  scroll-margin-top: var(--space-6);
+  margin-top: 28px;
+  scroll-margin-top: 24px;
 }
 
 .h2 {
-  margin-bottom: var(--space-3);
-  font-size: var(--text-lg);
-  line-height: var(--leading-lg);
-  font-weight: var(--weight-semibold);
-  scroll-margin-top: var(--space-6);
+  margin: 0 0 10px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-heading);
 }
 
-.article p + p,
-.article p + ul,
-.article ul + p {
-  margin-top: var(--space-3);
+.article p {
+  margin: 0 0 12px;
 }
 
 .article ul {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin: 0;
-  padding-left: var(--space-5);
+  margin: 0 0 12px;
+  padding-left: 22px;
+}
+
+.article li {
+  margin-bottom: 8px;
 }
 
 .article a {
   color: var(--accent-text);
   text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .article strong {
-  font-weight: var(--weight-semibold);
+  font-weight: 600;
+  color: var(--color-heading);
 }
 
 .cross {
   display: flex;
-  gap: var(--space-2);
-  margin-top: var(--space-12);
-  padding-top: var(--space-6);
-  border-top: 1px solid var(--border);
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
-  color: var(--text-subtle);
+  align-items: center;
+  gap: 10px;
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.cross a {
+  color: var(--accent-text);
+}
+
+.cross a:hover {
+  text-decoration: underline;
+}
+
+/* The old .legal-footer: a plain top rule, centered small text. */
+.footer.footer {
+  margin-top: 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.footer.footer::before {
+  display: none;
+}
+
+.footer.footer > div {
+  padding: 20px 24px calc(20px + env(safe-area-inset-bottom));
+  font-size: 0.85rem;
+}
+
+@media (max-width: 600px) {
+  .title {
+    font-size: 1.6rem;
+  }
 }

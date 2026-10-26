@@ -9,7 +9,7 @@
   height: var(--_size);
   padding: 0;
   border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-muted);
   text-decoration: none;
@@ -54,12 +54,12 @@
 @media (hover: hover) and (pointer: fine) {
   .ghost:hover:not(:disabled),
   .outline:hover:not(:disabled) {
-    background: var(--surface-2);
-    color: var(--text);
+    background: var(--color-surface-muted);
+    color: var(--accent-text);
   }
 
   .outline:hover:not(:disabled) {
-    border-color: var(--border-strong);
+    border-color: var(--color-primary-300);
   }
 
   .danger-ghost:hover:not(:disabled) {
@@ -87,5 +87,22 @@
     content: "";
     position: absolute;
     inset: -6px;
+  }
+}
+
+/* Toggle confirmation: brief ring pulse right after a click turns it on (see Button). */
+.button[aria-pressed="true"]:focus {
+  animation: pressed-pulse 0.2s ease-out;
+}
+
+@keyframes pressed-pulse {
+  from {
+    box-shadow: 0 0 0 0 var(--color-focus-ring);
+  }
+  50% {
+    box-shadow: 0 0 0 5px var(--color-focus-ring);
+  }
+  to {
+    box-shadow: 0 0 0 0 transparent;
   }
 }

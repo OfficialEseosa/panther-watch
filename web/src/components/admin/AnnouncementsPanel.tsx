@@ -2,33 +2,37 @@
 
 import { useRouter } from "next/navigation";
 import { startTransition, useState } from "react";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { BellIcon, MoreIcon, PauseIcon, PlayIcon, PlusIcon, TrashIcon } from "@/components/ui/icons";
-import { Menu, MenuItem } from "@/components/ui/Menu";
+import { AlertIcon, BellIcon, CalendarIcon, ClockIcon, PauseIcon, PlayIcon, PlusIcon, TrashIcon, UserIcon, XIcon } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/Toast";
 import { adminApi, type AdminAnnouncement } from "@/lib/client/admin";
 import { reportApiError } from "@/lib/client/http";
+import { cn } from "@/lib/ui/cn";
 import { AnnouncementEditor } from "./AnnouncementEditor";
-import { GROUP_LABEL, GROUP_ORDER, groupAnnouncements, LEVEL_LABEL, LEVEL_TONE } from "./announcementForm";
+import { announcementGroup, GROUP_ORDER, LEVEL_LABEL, type AnnouncementGroup } from "./announcementForm";
 import { formatDateTimeFull, formatDateTimeZoned } from "./format";
 import styles from "./Announcements.module.css";
 import adminStyles from "./admin.module.css";
-import menuStyles from "./UsersPanel.module.css";
 
 export type AnnouncementsPanelProps = {
   initial: AdminAnnouncement[];
-  /** Server render time, so grouping matches between server and client markup. */
+  /** Server render time, so statuses match between server and client markup. */
   renderedAt: number;
 };
 
+const STATUS_LABEL: Record<AnnouncementGroup, string> = {
+  live: "Active",
+  scheduled: "Scheduled",
+  paused: "Inactive",
+  expired: "Expired",
+};
 
 /**
- * Announcements tab (pages.md §8.3): grouped list (Live / Scheduled / Paused / Expired),
- * pause/resume, edit and delete. Mutations go through the admin API; the list updates from
- * the response, and router.refresh() re-renders the shell so the global banner follows.
+ * Announcements tab: the old Announcement Manager (AnnouncementManager.jsx). A header with
+ * New Announcement, the inline form, and one card per announcement with its type, status,
+ * dates and Edit / Deactivate / Delete. Mutations go through the admin API; router.refresh()
+ * re-renders the shell so the global banner follows.
  */
 export function AnnouncementsPanel({ initial, renderedAt }: AnnouncementsPanelProps) {
   const router = useRouter();
@@ -36,8 +40,8 @@ export function AnnouncementsPanel({ initial, renderedAt }: AnnouncementsPanelPr
   const [items, setItems] = useState(initial);
   const [source, setSource] = useState(initial);
   const [now, setNow] = useState(renderedAt);
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [editorKey, setEditorKey] = useState(0);
+  const [formOpen, setFormOpen] = useState(false);
+  const [formKey, setFormKey] = useState(0);
   const [editing, setEditing] = useState<AdminAnnouncement | null>(null);
   const [deleting, setDeleting] = useState<AdminAnnouncement | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -60,10 +64,10 @@ export function AnnouncementsPanel({ initial, renderedAt }: AnnouncementsPanelPr
 
   const refreshShell = () => startTransition(() => router.refresh());
 
-  const openEditor = (announcement: AdminAnnouncement | null) => {
+  const openForm = (announcement: AdminAnnouncement | null) => {
     setEditing(announcement);
-    setEditorKey((k) => k + 1);
-    setEditorOpen(true);
+    setFormKey((k) => k + 1);
+    setFormOpen(true);
   };
 
   const upsert = (announcement: AdminAnnouncement) => {
@@ -79,14 +83,12 @@ export function AnnouncementsPanel({ initial, renderedAt }: AnnouncementsPanelPr
     if (busyIds.has(announcement.id)) return;
     setBusy(announcement.id, true);
     try {
-      const { announcement: updated } = await adminApi.announcements.update(announcement.id, {
-        active: !announcement.active,
-      });
+      const { announcement: updated } = await adminApi.announcements.update(announcement.id, { active: !announcement.active });
       upsert(updated);
-      toast.success(updated.active ? "Announcement resumed" : "Announcement paused");
+      toast.success(updated.active ? "Announcement activated" : "Announcement deactivated");
       refreshShell();
-    } catch (error) {
-      reportApiError(toast, error, "Couldn't update the announcement");
+    } catch (caught) {
+      reportApiError(toast, caught, "Couldn't update the announcement");
     } finally {
       setBusy(announcement.id, false);
     }
@@ -102,108 +104,120 @@ export function AnnouncementsPanel({ initial, renderedAt }: AnnouncementsPanelPr
       setDeleteOpen(false);
       toast.success("Announcement deleted");
       refreshShell();
-    } catch (error) {
-      reportApiError(toast, error, "Couldn't delete the announcement");
+    } catch (caught) {
+      reportApiError(toast, caught, "Couldn't delete the announcement");
     } finally {
       setBusy(target.id, false);
     }
   };
 
-  const groups = groupAnnouncements(items, now);
+  // Live first, then scheduled, inactive and expired (newest first inside each).
+  const sorted = [...items].sort(
+    (a, b) => GROUP_ORDER.indexOf(announcementGroup(a, now)) - GROUP_ORDER.indexOf(announcementGroup(b, now)),
+  );
 
   return (
-    <div className={adminStyles.stack}>
-      <div className={adminStyles.toolbar}>
-        <p className={adminStyles.muted}>
-          Live announcements show as a banner above every page. Visitors can dismiss them.
-        </p>
-        <Button leadingIcon={<PlusIcon />} onClick={() => openEditor(null)}>
-          New announcement
-        </Button>
+    <section className={adminStyles.section} aria-labelledby="admin-announcements">
+      <div className={adminStyles.sectionHead}>
+        <h2 id="admin-announcements" className={adminStyles.sectionHeading}>
+          <BellIcon size={22} />
+          Announcement Manager
+        </h2>
+        <button
+          type="button"
+          className={cn(adminStyles.btn, formOpen ? adminStyles.btnSecondary : adminStyles.btnPrimary)}
+          onClick={() => (formOpen ? setFormOpen(false) : openForm(null))}
+        >
+          {formOpen ? <XIcon /> : <PlusIcon />}
+          {formOpen ? "Cancel" : "New Announcement"}
+        </button>
       </div>
+      <p className={adminStyles.muted}>Active announcements show as a banner above every page. Visitors can dismiss them.</p>
+
+      {formOpen ? (
+        <AnnouncementEditor
+          key={formKey}
+          editing={editing}
+          onCancel={() => setFormOpen(false)}
+          onSaved={(announcement, created) => {
+            upsert(announcement);
+            setFormOpen(false);
+            toast.success(created ? "Announcement published" : "Announcement saved");
+            refreshShell();
+          }}
+        />
+      ) : null}
 
       {items.length === 0 ? (
-        <EmptyState
-          icon={<BellIcon size={24} />}
-          title="No announcements."
-          actions={
-            <Button leadingIcon={<PlusIcon />} onClick={() => openEditor(null)}>
-              New announcement
-            </Button>
-          }
-        >
-          Post a banner for registration dates, maintenance windows or outages.
-        </EmptyState>
+        <div className={styles.empty}>
+          <BellIcon size={40} />
+          <p>No announcements yet. Create one to get started!</p>
+        </div>
       ) : (
-        GROUP_ORDER.filter((group) => groups[group].length > 0).map((group) => (
-          <section key={group} className={adminStyles.section} aria-labelledby={`ann-${group}`}>
-            <h2 id={`ann-${group}`} className={adminStyles.sectionTitle}>
-              {GROUP_LABEL[group]} <span className={adminStyles.muted}>({groups[group].length})</span>
-            </h2>
-            <ul className={adminStyles.list}>
-              {groups[group].map((item) => (
-                <li key={item.id} className={adminStyles.row}>
-                  <div className={styles.rowBody}>
-                    <div className={styles.badges}>
-                      <Badge tone={LEVEL_TONE[item.level]}>{LEVEL_LABEL[item.level]}</Badge>
-                      {group === "live" ? <Badge tone="success">Live</Badge> : null}
+        <ul className={styles.list} aria-label="Announcements">
+          {sorted.map((item) => {
+            const group = announcementGroup(item, now);
+            const busy = busyIds.has(item.id);
+            return (
+              <li key={item.id} className={styles.card} data-level={item.level} data-status={group}>
+                <div className={styles.cardHeader}>
+                  <span className={styles.cardType}>
+                    {item.level === "info" ? <BellIcon size={18} /> : <AlertIcon size={18} />}
+                    {LEVEL_LABEL[item.level]}
+                  </span>
+                  <span className={styles.badge} data-status={group}>
+                    {STATUS_LABEL[group]}
+                  </span>
+                </div>
+                <p className={styles.message}>{item.message}</p>
+                <div className={styles.dates}>
+                  <div>
+                    <CalendarIcon size={16} />
+                    <span>
+                      Starts: <DateText value={item.startsAt} />
+                    </span>
+                  </div>
+                  <div>
+                    <ClockIcon size={16} />
+                    <span>Expires: {item.expiresAt ? <DateText value={item.expiresAt} /> : "No expiration"}</span>
+                  </div>
+                  {item.createdBy ? (
+                    <div>
+                      <UserIcon size={16} />
+                      <span>By: {item.createdBy.name || item.createdBy.email}</span>
                     </div>
-                    <p className={styles.message}>{item.message}</p>
-                    <p className={styles.window}>
-                      <WindowText item={item} />
-                      {item.createdBy ? <> · by {item.createdBy.name || item.createdBy.email}</> : null}
-                    </p>
-                  </div>
-                  <div className={adminStyles.rowActions}>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      leadingIcon={item.active ? <PauseIcon /> : <PlayIcon />}
-                      loading={busyIds.has(item.id)}
-                      onClick={() => void toggle(item)}
-                    >
-                      {item.active ? "Pause" : "Resume"}
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => openEditor(item)}>
-                      Edit
-                    </Button>
-                    <Menu
-                      trigger={<MoreIcon />}
-                      triggerLabel="More actions"
-                      triggerClassName={menuStyles.trigger}
-                      label="Announcement actions"
-                    >
-                      <MenuItem
-                        tone="danger"
-                        icon={<TrashIcon size={16} />}
-                        onSelect={() => {
-                          setDeleting(item);
-                          setDeleteOpen(true);
-                        }}
-                      >
-                        Delete…
-                      </MenuItem>
-                    </Menu>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))
+                  ) : null}
+                </div>
+                <div className={styles.actions}>
+                  <button type="button" className={cn(adminStyles.btn, adminStyles.btnSmall, adminStyles.btnSecondary)} onClick={() => openForm(item)}>
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className={cn(adminStyles.btn, adminStyles.btnSmall, item.active ? adminStyles.btnWarning : adminStyles.btnSuccess)}
+                    disabled={busy}
+                    onClick={() => void toggle(item)}
+                  >
+                    {item.active ? <PauseIcon /> : <PlayIcon />}
+                    {busy ? "Saving…" : item.active ? "Deactivate" : "Activate"}
+                  </button>
+                  <button
+                    type="button"
+                    className={cn(adminStyles.btn, adminStyles.btnSmall, adminStyles.btnDanger)}
+                    onClick={() => {
+                      setDeleting(item);
+                      setDeleteOpen(true);
+                    }}
+                  >
+                    <TrashIcon />
+                    Delete
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       )}
-
-      <AnnouncementEditor
-        key={editorKey}
-        open={editorOpen}
-        editing={editing}
-        onClose={() => setEditorOpen(false)}
-        onSaved={(announcement, created) => {
-          upsert(announcement);
-          setEditorOpen(false);
-          toast.success(created ? "Announcement published" : "Announcement saved");
-          refreshShell();
-        }}
-      />
 
       <Dialog
         open={deleteOpen}
@@ -211,38 +225,32 @@ export function AnnouncementsPanel({ initial, renderedAt }: AnnouncementsPanelPr
           if (!deleteBusy) setDeleteOpen(false);
         }}
         size="sm"
-        title="Delete this announcement?"
+        title="Delete Announcement"
         footer={
           <>
             <Button variant="secondary" onClick={() => setDeleteOpen(false)} disabled={deleteBusy}>
               Cancel
             </Button>
-            <Button
-              variant="danger"
-              data-autofocus=""
-              loading={deleteBusy}
-              onClick={() => void confirmDelete()}
-            >
+            <Button variant="danger" leadingIcon={<TrashIcon />} data-autofocus="" loading={deleteBusy} onClick={() => void confirmDelete()}>
               Delete
             </Button>
           </>
         }
       >
         <p className={styles.confirmText}>
-          &ldquo;{deleting?.message}&rdquo; is removed for good. To hide it temporarily, pause it instead.
+          Are you sure you want to delete &ldquo;{deleting?.message}&rdquo;? This action cannot be undone. To hide it for
+          now, deactivate it instead.
         </p>
       </Dialog>
-    </div>
+    </section>
   );
 }
 
-/** The window in GSU's zone, labeled ("Oct 25, 2:05 PM EDT"), so it reads the same for every admin. */
-function WindowText({ item }: { item: AdminAnnouncement }) {
-  const start = <time dateTime={item.startsAt} title={formatDateTimeFull(item.startsAt)}>{formatDateTimeZoned(item.startsAt)}</time>;
-  if (!item.expiresAt) return <>From {start}, no end date</>;
+/** A date in GSU's zone ("Oct 25, 2:05 PM EDT"), so it reads the same for every admin. */
+function DateText({ value }: { value: string }) {
   return (
-    <>
-      {start} – <time dateTime={item.expiresAt} title={formatDateTimeFull(item.expiresAt)}>{formatDateTimeZoned(item.expiresAt)}</time>
-    </>
+    <time dateTime={value} title={formatDateTimeFull(value)}>
+      {formatDateTimeZoned(value)}
+    </time>
   );
 }

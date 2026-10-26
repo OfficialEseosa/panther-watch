@@ -1,27 +1,18 @@
 "use client";
 
-import { useDeferredValue, useId, useMemo, useState } from "react";
+import { useId, useState } from "react";
 import type { FormEvent } from "react";
-import { Avatar } from "@/components/ui/Avatar";
-import { Badge } from "@/components/ui/Badge";
-import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Chip } from "@/components/ui/Chip";
 import { Dialog } from "@/components/ui/Dialog";
-import { Field } from "@/components/ui/Field";
 import { MailIcon } from "@/components/ui/icons";
-import { Input } from "@/components/ui/Input";
-import { Textarea } from "@/components/ui/Textarea";
 import { useToast } from "@/components/ui/Toast";
 import { adminApi, type AdminEmailResult } from "@/lib/client/admin";
 import { ApiError, errorMessage, onUnauthorized } from "@/lib/client/http";
-import { renderCustomEmail } from "@/lib/email/templates/custom";
 import { cn } from "@/lib/ui/cn";
 import {
   applyTemplate,
   EMAIL_TEMPLATES,
   fieldFromServerMessage,
-  PREVIEW_TEXT_MAX,
   SUBJECT_MAX,
   toEmailPayload,
   validateEmailForm,
@@ -30,18 +21,17 @@ import {
   type EmailTemplate,
 } from "./emailForm";
 import styles from "./EmailComposer.module.css";
+import adminStyles from "./admin.module.css";
 import { formatNumber, greetingName } from "@/lib/format";
 
 export type EmailRecipient = { email: string; name: string | null; pictureUrl?: string | null };
 
 export type EmailComposerProps = {
-  /** Fixed recipient (launched from a user row): shown as a read-only chip. */
+  /** Fixed recipient (launched from a user card): shown in the recipient strip. */
   recipient?: EmailRecipient;
   /** Sends left today (Resend's daily window), when known. */
   dailyRemaining?: number | null;
-  /** Origin for the preview's logo and links (APP_URL). */
-  appUrl: string;
-  /** "page": two columns at >= 900 with the preview beside the form. "dialog": stacked. */
+  /** "page": inside the Email tab card. "dialog": inside the Compose email dialog. */
   layout?: "page" | "dialog";
   onSent?: (result: AdminEmailResult) => void;
   onCancel?: () => void;
@@ -52,36 +42,18 @@ type Confirm = { kind: "send" } | { kind: "template"; template: EmailTemplate } 
 const blank = (to = ""): EmailFormValues => ({ to, subject: "", previewText: "", htmlBody: "" });
 
 /**
- * Custom email composer (pages.md §8.2): recipient, quick templates (the old presets as HTML
- * snippets), subject, inbox preview text, raw HTML body with a live sandboxed preview of the
- * real email layout, and a confirm step before sending.
+ * The old email composer (EmailComposer.jsx): recipient strip, quick templates, subject and
+ * message, status line, Cancel / Send email. The message is HTML inserted into the PantherWatch
+ * email layout; sending asks for confirmation first.
  */
-export function EmailComposer({
-  recipient,
-  dailyRemaining,
-  appUrl,
-  layout = "page",
-  onSent,
-  onCancel,
-}: EmailComposerProps) {
+export function EmailComposer({ recipient, dailyRemaining, layout = "page", onSent, onCancel }: EmailComposerProps) {
   const toast = useToast();
-  const formId = useId();
+  const id = useId();
   const [values, setValues] = useState<EmailFormValues>(() => blank(recipient?.email));
   const [errors, setErrors] = useState<EmailFormErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [sending, setSending] = useState(false);
-
-  const deferred = useDeferredValue(values);
-  const previewHtml = useMemo(() => {
-    if (!deferred.htmlBody.trim()) return null;
-    return renderCustomEmail({
-      appUrl,
-      subject: deferred.subject,
-      htmlBody: deferred.htmlBody,
-      previewText: deferred.previewText,
-    }).html;
-  }, [appUrl, deferred.htmlBody, deferred.subject, deferred.previewText]);
 
   const set = <K extends keyof EmailFormValues>(key: K, value: EmailFormValues[K]) => {
     setValues((current) => ({ ...current, [key]: value }));
@@ -131,126 +103,136 @@ export function EmailComposer({
   };
 
   const recipientLabel = recipient ? recipient.name || recipient.email : values.to.trim();
+  const fieldError = (key: keyof EmailFormValues) =>
+    errors[key] ? (
+      <p id={`${id}-${key}-error`} className={adminStyles.fieldError}>
+        {errors[key]}
+      </p>
+    ) : null;
 
   return (
-    <div className={cn(styles.composer, layout === "page" && styles.page)}>
-      <form id={formId} className={styles.form} onSubmit={onSubmit} noValidate>
-        {recipient ? (
-          <div className={styles.recipient}>
-            <span className={styles.recipientLabel}>To</span>
-            <span className={styles.recipientChip}>
-              <Avatar src={recipient.pictureUrl} name={recipient.name ?? recipient.email} size={24} />
-              <span className={styles.recipientText}>
-                {recipient.name ? <span className={styles.recipientName}>{recipient.name}</span> : null}
-                <span className={styles.recipientEmail}>{recipient.email}</span>
-              </span>
-            </span>
+    <div className={cn(styles.composer, layout === "dialog" && styles.inDialog)}>
+      {recipient ? (
+        <div className={styles.recipient}>
+          <div className={adminStyles.avatar} aria-hidden="true">
+            {recipient.pictureUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- remote Google avatar, decorative
+              <img src={recipient.pictureUrl} alt="" referrerPolicy="no-referrer" />
+            ) : (
+              (recipient.name || recipient.email).charAt(0).toUpperCase()
+            )}
           </div>
-        ) : (
-          <Field label="To" error={errors.to} required>
-            <Input
+          <div className={styles.recipientDetails}>
+            <p className={styles.recipientName}>
+              <span className="sr-only">To: </span>
+              {recipient.name || recipient.email.split("@")[0]}
+            </p>
+            <p className={styles.recipientEmail}>{recipient.email}</p>
+          </div>
+        </div>
+      ) : null}
+
+      <div className={styles.templates}>
+        <h4 id={`${id}-templates`}>Quick templates</h4>
+        <div className={styles.templateButtons} role="group" aria-labelledby={`${id}-templates`}>
+          {EMAIL_TEMPLATES.map((template) => (
+            <button key={template.id} type="button" className={styles.templateBtn} onClick={() => onTemplate(template)} disabled={sending}>
+              {template.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <form className={styles.form} onSubmit={onSubmit} noValidate>
+        {recipient ? null : (
+          <div className={adminStyles.formGroup}>
+            <label className={adminStyles.formLabel} htmlFor={`${id}-to`}>
+              To
+            </label>
+            <input
+              id={`${id}-to`}
               type="email"
+              className={adminStyles.control}
               autoComplete="off"
               spellCheck={false}
               value={values.to}
               onChange={(event) => set("to", event.target.value)}
               placeholder="name@student.gsu.edu"
-              data-autofocus=""
+              aria-invalid={errors.to ? true : undefined}
+              aria-describedby={errors.to ? `${id}-to-error` : undefined}
             />
-          </Field>
+            {fieldError("to")}
+          </div>
         )}
 
-        <div className={styles.templates}>
-          <span className={styles.recipientLabel} id={`${formId}-templates`}>
-            Quick templates
-          </span>
-          <div className={styles.chips} role="group" aria-labelledby={`${formId}-templates`}>
-            {EMAIL_TEMPLATES.map((template) => (
-              <Chip key={template.id} onClick={() => onTemplate(template)} disabled={sending}>
-                {template.name}
-              </Chip>
-            ))}
-          </div>
-        </div>
-
-        <Field label="Subject" error={errors.subject} required>
-          <Input
+        <div className={adminStyles.formGroup}>
+          <label className={adminStyles.formLabel} htmlFor={`${id}-subject`}>
+            Subject
+          </label>
+          <input
+            id={`${id}-subject`}
+            className={adminStyles.control}
             value={values.subject}
             maxLength={SUBJECT_MAX}
             onChange={(event) => set("subject", event.target.value)}
-            data-autofocus={recipient ? "" : undefined}
+            placeholder="Enter email subject"
+            aria-invalid={errors.subject ? true : undefined}
+            aria-describedby={errors.subject ? `${id}-subject-error` : undefined}
+            disabled={sending}
           />
-        </Field>
+          {fieldError("subject")}
+        </div>
 
-        <Field
-          label="Preview text"
-          hint="Optional. Shown after the subject in most inboxes."
-          error={errors.previewText}
-        >
-          <Input
-            value={values.previewText}
-            maxLength={PREVIEW_TEXT_MAX}
-            onChange={(event) => set("previewText", event.target.value)}
-          />
-        </Field>
-
-        <Field
-          label="Message (HTML)"
-          hint="Raw HTML, inserted into the PantherWatch email layout as written. Use <p>, <a>, <strong>, <ul>."
-          error={errors.htmlBody}
-          required
-        >
-          <Textarea
-            className={styles.body}
+        <div className={adminStyles.formGroup}>
+          <label className={adminStyles.formLabel} htmlFor={`${id}-body`}>
+            Message (HTML)
+          </label>
+          <textarea
+            id={`${id}-body`}
+            className={cn(adminStyles.control, styles.body)}
             rows={10}
-            spellCheck
             value={values.htmlBody}
             onChange={(event) => set("htmlBody", event.target.value)}
+            placeholder="<p>Write your message</p>"
+            aria-invalid={errors.htmlBody ? true : undefined}
+            aria-describedby={`${id}-body-hint`}
+            disabled={sending}
           />
-        </Field>
+          {errors.htmlBody ? (
+            fieldError("htmlBody")
+          ) : (
+            <p id={`${id}-body-hint`} className={adminStyles.hint}>
+              Inserted into the PantherWatch email layout as written. Use &lt;p&gt;, &lt;a&gt;, &lt;strong&gt;, &lt;ul&gt;.
+            </p>
+          )}
+        </div>
 
         {formError ? (
-          <Banner tone="danger" role="alert">
+          <p className={adminStyles.notice} data-tone="danger" role="alert">
             {formError}
-          </Banner>
+          </p>
         ) : null}
         {limitReached ? (
-          <Banner tone="warning">The daily email limit is used up. Sends will fail until 00:00 UTC.</Banner>
+          <p className={adminStyles.notice} data-tone="warning">
+            The daily email limit is used up. Sends will fail until 00:00 UTC.
+          </p>
         ) : null}
 
         <div className={styles.actions}>
-          {dailyRemaining != null ? (
-            <Badge tone={dailyRemaining <= 10 ? "warning" : "neutral"} className={styles.budget}>
-              {formatNumber(dailyRemaining)} left today
-            </Badge>
-          ) : null}
+          {dailyRemaining != null ? <span className={adminStyles.muted}>{formatNumber(dailyRemaining)} left today</span> : <span />}
           <div className={styles.buttons}>
             {onCancel ? (
-              <Button variant="secondary" onClick={onCancel} disabled={sending}>
+              <button type="button" className={cn(adminStyles.btn, adminStyles.btnSecondary)} onClick={onCancel} disabled={sending}>
                 Cancel
-              </Button>
+              </button>
             ) : null}
-            <Button type="submit" leadingIcon={<MailIcon />} loading={sending}>
-              Send email
-            </Button>
+            <button type="submit" className={cn(adminStyles.btn, adminStyles.btnPrimary)} disabled={sending}>
+              <MailIcon />
+              {sending ? "Sending…" : "Send email"}
+            </button>
           </div>
         </div>
       </form>
-
-      <section className={styles.preview} aria-label="Email preview">
-        <span className={styles.recipientLabel}>Preview</span>
-        {previewHtml ? (
-          <iframe
-            className={styles.frame}
-            title="Email preview"
-            sandbox=""
-            srcDoc={previewHtml}
-            referrerPolicy="no-referrer"
-          />
-        ) : (
-          <div className={styles.previewEmpty}>The preview appears here as you write the message.</div>
-        )}
-      </section>
 
       <Dialog
         open={confirm !== null}

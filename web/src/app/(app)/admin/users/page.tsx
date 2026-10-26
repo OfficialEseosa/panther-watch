@@ -3,7 +3,6 @@ import { Suspense } from "react";
 import { LoadError, settle } from "@/components/admin/LoadError";
 import { loadStats, loadUsers, USERS_PAGE_SIZE } from "@/components/admin/server";
 import { UsersPanel, UsersSkeleton } from "@/components/admin/UsersPanel";
-import { env } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Users · Admin" };
 
@@ -31,7 +30,6 @@ async function Users({ searchParams }: { searchParams: SearchParams }) {
       initialQuery={q}
       initialPage={users.data}
       pageSize={USERS_PAGE_SIZE}
-      appUrl={env.APP_URL}
       dailyRemaining={stats.ok ? stats.data.emailBudget.dailyRemaining : null}
     />
   );

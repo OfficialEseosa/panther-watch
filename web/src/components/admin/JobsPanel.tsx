@@ -1,16 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { ChartIcon, ChevronDownIcon, RefreshIcon } from "@/components/ui/icons";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { useEffect, useId, useRef, useState } from "react";
+import { ChevronDownIcon, ClockIcon, RefreshIcon } from "@/components/ui/icons";
 import { adminApi, JOB_NAMES, type JobName, type JobRunDto } from "@/lib/client/admin";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError, errorMessage, onUnauthorized } from "@/lib/client/http";
+import { cn } from "@/lib/ui/cn";
 import { formatDuration } from "./format";
-import { prettySummary, RUN_STATE_LABEL, RUN_STATE_TONE, runDuration, runHeadline, runState } from "./jobs";
+import { prettySummary, RUN_STATE_LABEL, runDuration, runHeadline, runState } from "./jobs";
 import { RelativeTime } from "./RelativeTime";
 import { createSequence } from "./sequence";
 import styles from "./Jobs.module.css";
@@ -29,9 +26,13 @@ export type JobsPanelProps = {
   n: number;
 };
 
-/** Jobs tab: recent `job_runs` per job with state, timing, a digest and the raw summary. */
+/**
+ * Jobs tab (not in the old app): recent `job_runs` per job, styled like the other tabs' cards.
+ * Each run expands to its raw summary.
+ */
 export function JobsPanel({ initialJob, initialRuns, n }: JobsPanelProps) {
   const toast = useToast();
+  const id = useId();
   const [job, setJob] = useState<JobName>(initialJob);
   const [runs, setRuns] = useState(initialRuns);
   const [loading, setLoading] = useState(false);
@@ -68,47 +69,50 @@ export function JobsPanel({ initialJob, initialRuns, n }: JobsPanelProps) {
   }, []);
 
   return (
-    <div className={adminStyles.stack}>
-      <div className={adminStyles.toolbar}>
-        <SegmentedControl
-          label="Job"
-          options={JOB_NAMES.map((name) => ({ value: name, label: JOB_LABEL[name] }))}
-          value={job}
-          onChange={(name) => {
-            setJob(name);
-            void load(name);
-          }}
-        />
-        <Button variant="secondary" size="sm" leadingIcon={<RefreshIcon />} loading={loading} onClick={() => void load(job)}>
-          Reload
-        </Button>
+    <section className={adminStyles.section} aria-labelledby={`${id}-title`}>
+      <div className={adminStyles.sectionHead}>
+        <h2 id={`${id}-title`} className={adminStyles.sectionHeading}>
+          <ClockIcon size={22} />
+          Background jobs
+        </h2>
+        <div className={styles.controls}>
+          <label className="sr-only" htmlFor={`${id}-job`}>
+            Job
+          </label>
+          <select
+            id={`${id}-job`}
+            className={cn(adminStyles.control, styles.select)}
+            value={job}
+            onChange={(event) => {
+              const name = event.target.value as JobName;
+              setJob(name);
+              void load(name);
+            }}
+          >
+            {JOB_NAMES.map((name) => (
+              <option key={name} value={name}>
+                {JOB_LABEL[name]}
+              </option>
+            ))}
+          </select>
+          <button type="button" className={cn(adminStyles.btn, adminStyles.btnSecondary)} disabled={loading} onClick={() => void load(job)}>
+            <RefreshIcon />
+            {loading ? "Loading…" : "Reload"}
+          </button>
+        </div>
       </div>
 
       {error ? (
-        <EmptyState
-          variant="error"
-          title="Couldn't load job runs"
-          actions={
-            <Button variant="secondary" onClick={() => void load(job)}>
-              Try again
-            </Button>
-          }
-        >
-          {error}
-        </EmptyState>
+        <p className={adminStyles.notice} data-tone="danger" role="alert">
+          Couldn&rsquo;t load job runs: {error}
+        </p>
       ) : runs.length === 0 ? (
-        <EmptyState icon={<ChartIcon size={24} />} title={`No ${JOB_LABEL[job].toLowerCase()} runs yet`}>
-          Runs appear here once the cron (or an admin action) starts this job.
-        </EmptyState>
+        <p className={styles.empty}>
+          No {JOB_LABEL[job].toLowerCase()} runs yet. Runs appear here once the cron (or an admin action) starts this job.
+        </p>
       ) : (
         <section aria-label={`${JOB_LABEL[job]} runs`} aria-busy={loading || undefined}>
-          <div className={styles.head} aria-hidden="true">
-            <span>Status</span>
-            <span>Started</span>
-            <span>Duration</span>
-            <span>Summary</span>
-          </div>
-          <ul className={styles.runs} data-loading={loading || undefined}>
+          <ul className={styles.runs}>
             {runs.map((run) => {
               const state = runState(run);
               return (
@@ -116,21 +120,20 @@ export function JobsPanel({ initialJob, initialRuns, n }: JobsPanelProps) {
                   <details>
                     <summary className={styles.summary}>
                       <span className={styles.status}>
-                        <Badge tone={RUN_STATE_TONE[state]}>{RUN_STATE_LABEL[state]}</Badge>
+                        <span className={styles.pill} data-state={state}>
+                          {RUN_STATE_LABEL[state]}
+                        </span>
                         <span className={styles.id}>#{run.id}</span>
                       </span>
                       <span className={styles.cell}>
-                        <span className={styles.cellLabel}>Started </span>
                         <RelativeTime value={run.startedAt} />
-                      </span>
-                      <span className={styles.cell}>
-                        <span className={styles.cellLabel}>Duration </span>
+                        {" · "}
                         {formatDuration(runDuration(run))}
                       </span>
                       <span className={styles.headline}>{runHeadline(run)}</span>
                       <ChevronDownIcon size={16} className={styles.chevron} />
                     </summary>
-                    <pre className={adminStyles.code}>{prettySummary(run.summary)}</pre>
+                    <pre className={cn(adminStyles.code, styles.code)}>{prettySummary(run.summary)}</pre>
                   </details>
                 </li>
               );
@@ -138,6 +141,6 @@ export function JobsPanel({ initialJob, initialRuns, n }: JobsPanelProps) {
           </ul>
         </section>
       )}
-    </div>
+    </section>
   );
 }

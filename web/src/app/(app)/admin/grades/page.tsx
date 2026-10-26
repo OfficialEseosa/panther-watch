@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { GradesPanel } from "@/components/admin/GradesPanel";
-import { ListSkeleton } from "@/components/admin/ListSkeleton";
+import { AdminLoading } from "@/components/admin/AdminFrame";
 import { LoadError, settle } from "@/components/admin/LoadError";
 import { loadGradeStatus } from "@/components/admin/server";
 
@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Grade data · Admin" };
 
 export default function AdminGradesPage() {
   return (
-    <Suspense fallback={<ListSkeleton label="Loading grade data" rows={4} />}>
+    <Suspense fallback={<AdminLoading label="Loading grade data…" />}>
       <Grades />
     </Suspense>
   );

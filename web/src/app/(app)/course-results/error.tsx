@@ -1,36 +1,30 @@
 "use client";
 
 import { useEffect } from "react";
+import buttons from "@/components/courses/buttons.module.css";
 import pageStyles from "@/components/courses/page.module.css";
-import { Button, ButtonLink } from "@/components/ui/Button";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { RefreshIcon } from "@/components/ui/icons";
+import { ResultsToolbar } from "@/components/courses/ResultsToolbar";
+import { ErrorMessage } from "@/components/courses/SectionParts";
+import { cn } from "@/lib/ui/cn";
 
-/** pages.md §4 error state: GoSolar (or our server) failed for the whole page. */
+/** GoSolar (or our server) failed for the whole page: the original error box. Never shows the error. */
 export default function CourseResultsError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
     console.error(error);
   }, [error]);
   return (
-    <div className={pageStyles.default}>
-      <EmptyState
-        variant="error"
-        headingAs="h1"
-        title="Couldn&rsquo;t reach Georgia State&rsquo;s course system."
-        details={error.digest ? `Error ID: ${error.digest}` : undefined}
-        actions={
-          <>
-            <Button leadingIcon={<RefreshIcon />} onClick={reset}>
-              Try again
-            </Button>
-            <ButtonLink href="/course-search" variant="secondary">
-              Edit search
-            </ButtonLink>
-          </>
+    <div className={cn(pageStyles.default, pageStyles.stack)}>
+      <ResultsToolbar title="Course results" />
+      <ErrorMessage
+        action={
+          <button type="button" className={buttons.secondary} onClick={reset}>
+            Try again
+          </button>
         }
       >
-        This usually clears in a minute.
-      </EmptyState>
+        Failed to load courses. Georgia State&rsquo;s course system didn&rsquo;t answer; this usually clears in a minute.
+        {error.digest ? ` (Error ID: ${error.digest})` : null}
+      </ErrorMessage>
     </div>
   );
 }

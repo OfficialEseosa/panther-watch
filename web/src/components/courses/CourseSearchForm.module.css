@@ -1,83 +1,103 @@
+/* The original course search page and form (old CourseSearch.css). */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.header,
+.container {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.header {
+  padding: 28px 32px;
+}
+
+.title {
+  margin: 0 0 8px;
+  font-size: clamp(1.5rem, 2.2vw, 2rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-heading);
+}
+
+.description {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--color-text-muted);
+}
+
+.container {
+  padding: 32px;
+}
+
 .form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-}
-
-.row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-5);
-  align-items: start;
+  gap: 20px;
 }
 
-@media (min-width: 640px) {
-  .row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.group {
+.field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
 }
 
 .label {
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
-  font-weight: var(--weight-semibold);
-  color: var(--text);
+  font-weight: 600;
+  color: var(--color-heading);
 }
 
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: var(--space-2);
+.control {
+  width: 100%;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  transition:
+    border-color var(--dur) ease,
+    box-shadow var(--dur) ease;
+}
+
+.control::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
+}
+
+.control:focus {
+  outline: none;
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.control[aria-invalid="true"] {
+  border-color: var(--color-danger);
+}
+
+.error {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-danger);
 }
 
 .submit {
-  flex: 1 1 auto;
+  justify-self: start;
 }
 
-@media (min-width: 640px) {
-  /* Align the button with the input, not the label above it. */
-  .actions {
-    align-self: start;
-    padding-top: calc(var(--leading-sm) + 6px);
+.notice {
+  margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+  .header,
+  .container {
+    padding: 24px;
   }
-
-  .submit {
-    flex: 0 0 auto;
-  }
-}
-
-.recent {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  margin-top: var(--space-8);
-  animation: var(--kf-fade-in) var(--dur-fast) var(--ease-out) both;
-}
-
-.recentTitle {
-  font-size: var(--text-md);
-  line-height: var(--leading-md);
-  font-weight: var(--weight-semibold);
-  color: var(--text);
-}
-
-.recentList {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.inline {
-  gap: var(--space-4);
 }

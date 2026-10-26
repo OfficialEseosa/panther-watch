@@ -1,3 +1,6 @@
+/* App frame: the redesign's sidebar/rail grid (kept), with the original content padding
+   (old DashboardLayout.css .main-content: 32px 40px; 28px <= 1024; 20px <= 768). The column is
+   transparent so the statue on body::before shows through around the cards. */
 .shell {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -25,15 +28,27 @@
 .main {
   flex: 1;
   min-width: 0;
-  padding: var(--space-5) var(--gutter) calc(var(--bottomnav-h) + env(safe-area-inset-bottom) + var(--space-8));
+  padding: 20px 20px calc(var(--bottomnav-h) + env(safe-area-inset-bottom) + 32px);
 }
 
 .main:focus {
   outline: none;
 }
 
+@media (min-width: 769px) {
+  .main {
+    padding: 28px 28px calc(var(--bottomnav-h) + env(safe-area-inset-bottom) + 32px);
+  }
+}
+
 @media (min-width: 900px) {
   .main {
-    padding: var(--space-8) var(--gutter) var(--space-16);
+    padding: 28px 28px 56px;
+  }
+}
+
+@media (min-width: 1025px) {
+  .main {
+    padding: 32px 40px 56px;
   }
 }

@@ -1,86 +1,148 @@
-/* Layout of /dashboard (pages.md §2). The page wrapper is in app/(app)/dashboard. */
-.stack {
+/* The original dashboard (old Dashboard.css): a column of the greeting card and the card grid,
+   with the guest notice on top for guests. */
+.dashboard {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: 28px;
 }
 
-@media (min-width: 900px) {
-  .stack {
-    gap: var(--space-8);
-  }
+/* ---- Greeting card ---- */
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 32px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
-/* PageHeader brings its own bottom margin; the stack gap replaces it. */
-.stack > header:first-child {
-  margin-bottom: 0;
+.headerCopy {
+  max-width: 540px;
 }
 
+.eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.title {
+  margin: 8px 0;
+  font-size: clamp(1.75rem, 2.6vw, 2.2rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-heading);
+}
+
+.subtitle {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--color-text-muted);
+}
+
+/* ---- Tracked count ---- */
+.summary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 220px;
+  padding: 16px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-muted);
+}
+
+.summaryIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--color-primary-100);
+  color: var(--color-primary-600);
+}
+
+:root[data-theme="dark"] .summaryIcon {
+  color: var(--accent-text);
+}
+
+.summaryContent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summaryLabel {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.summaryValue {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--color-heading);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Guest notice ---- */
+.guestBanner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border: 1px solid var(--color-primary-100);
+  border-radius: var(--radius-lg);
+  background: var(--color-primary-50);
+}
+
+:root[data-theme="dark"] .guestBanner {
+  border-color: var(--color-border-strong);
+}
+
+.guestCopy {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--color-text);
+}
+
+.guestCopy strong {
+  color: var(--color-heading);
+}
+
+.guestIcon {
+  flex: none;
+  color: var(--accent-text);
+}
+
+/* ---- Loading ---- */
 .headerSkeleton {
   display: flex;
   flex-direction: column;
-  min-height: 68px;
+  gap: 12px;
+  flex: 1;
+  max-width: 540px;
 }
 
-/* Stats: a horizontally scrolling row of 140 px+ tiles on phones, three columns from 640. */
-.stats {
-  /* Contains the tiles' sr-only (position: absolute) text, which otherwise escapes the scroller
-     and widens the page on phones. */
-  position: relative;
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(160px, 1fr);
-  gap: var(--space-3);
-  margin-inline: calc(-1 * var(--gutter));
-  padding-inline: var(--gutter);
-  padding-block: var(--space-1);
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scroll-padding-inline: var(--gutter);
-  scrollbar-width: none;
-}
-
-.stats > * {
-  scroll-snap-align: start;
-}
-
-@media (min-width: 640px) {
-  .stats {
-    grid-auto-flow: row;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--space-4);
-    margin-inline: 0;
-    padding: 0;
-    overflow: visible;
+@media (max-width: 768px) {
+  .header {
+    padding: 24px;
   }
-}
 
-@media (min-width: 900px) {
-  .stats {
-    gap: var(--space-6);
+  .summary {
+    width: 100%;
+    justify-content: flex-start;
   }
-}
-
-.section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.sectionTitle {
-  font-size: var(--text-lg);
-  line-height: var(--leading-lg);
-  font-weight: var(--weight-semibold);
-  color: var(--text);
-}
-
-/* Getting started + What's new: client islands that appear after hydration. */
-.extras {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-}
-
-.extras:empty {
-  display: none;
 }

@@ -13,6 +13,8 @@ import { DELETE as scheduleDelete, GET as scheduleGet, POST as schedulePost } fr
 import type { CourseData, MeetingTime } from "@/lib/gosolar";
 import {
   SCHEDULE_PALETTE,
+  contrastRatio,
+  scheduleTextColor,
   colorIndexForCrn,
   colorIndexToHex,
   findConflicts,
@@ -157,6 +159,18 @@ describe("colors", () => {
     expect(pickDefaultColorIndex([0, 1, 3])).toBe(2);
     expect(pickDefaultColorIndex([0, 1, 2, 3, 4, 5, 6, 7, 0])).toBe(1);
     expect(colorIndexForCrn("80003")).toBe(80003 % 8);
+  });
+
+  it("keeps the original flat palette in index order", () => {
+    expect(SCHEDULE_PALETTE).toEqual(["#2563eb", "#0d9488", "#7c3aed", "#db2777", "#ea580c", "#16a34a", "#0891b2", "#475569"]);
+  });
+
+  it("gives every block color a text color with at least 4.5:1 contrast", () => {
+    SCHEDULE_PALETTE.forEach((fill, index) => {
+      expect(contrastRatio(fill, scheduleTextColor(index))).toBeGreaterThanOrEqual(4.5);
+    });
+    expect(scheduleTextColor(0)).toBe("#ffffff");
+    expect(scheduleTextColor(7)).toBe("#ffffff");
   });
 });
 

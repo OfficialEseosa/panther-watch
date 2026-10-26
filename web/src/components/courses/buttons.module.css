@@ -1,0 +1,98 @@
+/*
+ * The original page buttons: the solid blue one (old .new-search-button, .search-more-btn and the
+ * search form's submit) and the bordered one (old .pagination-btn). Polished with press and
+ * focus feedback (<= 200 ms) and a disabled state that stays readable in dark mode.
+ */
+.primary,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.25;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background var(--dur) ease,
+    border-color var(--dur) ease,
+    color var(--dur) ease,
+    box-shadow var(--dur) ease,
+    transform var(--dur-instant) ease;
+}
+
+.primary {
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  background: var(--color-primary-600);
+  color: var(--color-on-primary);
+}
+
+.secondary {
+  min-width: 100px;
+  padding: 10px 16px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.large {
+  padding: 12px 20px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .primary:hover:not(:disabled) {
+    background: var(--color-primary-500);
+    color: var(--color-on-primary);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .secondary:hover:not(:disabled) {
+    background: var(--color-primary-50);
+    border-color: var(--accent-subtle-border);
+    color: var(--accent-text);
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+.primary:focus-visible,
+.secondary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.primary:active:not(:disabled),
+.secondary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.primary:disabled,
+.secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.primary[aria-busy="true"],
+.secondary[aria-busy="true"] {
+  opacity: 0.75;
+  cursor: progress;
+}
+
+@media (max-width: 768px) {
+  .secondary {
+    min-width: 80px;
+    padding: 8px 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary:active:not(:disabled),
+  .secondary:active:not(:disabled) {
+    transform: none;
+  }
+}

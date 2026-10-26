@@ -1,0 +1,192 @@
+/* 3D flip card for the landing hero. Layers, outside in:
+   .scene (perspective + idle float) > .tilt (pointer tilt, the button) > .lift (mid-flip scale)
+   > .flipper (the 180deg turn) > .front (in flow, sets the size) / .back (absolute, same box).
+   No opacity/filter/overflow on the 3D chain: those would flatten it. */
+.scene {
+  perspective: 1200px;
+}
+
+.tilt {
+  --tilt-x: 0deg;
+  --tilt-y: 0deg;
+  position: relative;
+  display: block;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
+  transition: transform 0.45s ease-out;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Follow the pointer closely while it moves; ease back on leave. */
+.tilt[data-tilting] {
+  transition-duration: 0.08s;
+}
+
+.tilt:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 4px;
+}
+
+.lift {
+  transform-style: preserve-3d;
+}
+
+.lift[data-flip="back"] {
+  animation: lift-a 0.6s ease;
+}
+
+.lift[data-flip="front"] {
+  animation: lift-b 0.6s ease;
+}
+
+/* Two identical keyframes, so switching sides restarts the lift. */
+@keyframes lift-a {
+  50% {
+    transform: scale(1.05) translateZ(30px);
+  }
+}
+
+@keyframes lift-b {
+  50% {
+    transform: scale(1.05) translateZ(30px);
+  }
+}
+
+.flipper {
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.6s ease;
+}
+
+.flipped {
+  transform: rotateY(180deg);
+}
+
+.face {
+  border-radius: var(--radius-lg);
+  backface-visibility: hidden;
+  box-shadow: var(--shadow-md);
+  transition: box-shadow 0.3s ease;
+}
+
+.lift[data-flip="back"] .face {
+  animation: face-lift-a 0.6s ease;
+}
+
+.lift[data-flip="front"] .face {
+  animation: face-lift-b 0.6s ease;
+}
+
+@keyframes face-lift-a {
+  50% {
+    box-shadow: var(--shadow-xl);
+  }
+}
+
+@keyframes face-lift-b {
+  50% {
+    box-shadow: var(--shadow-xl);
+  }
+}
+
+.front {
+  position: relative;
+}
+
+.front .card {
+  box-shadow: none;
+}
+
+.back {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  border: 1px solid var(--blue-700);
+  background:
+    radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.16), transparent 60%),
+    linear-gradient(160deg, var(--blue-500) 0%, var(--blue-600) 55%, var(--blue-800) 100%);
+  color: var(--color-on-primary);
+  text-align: center;
+  transform: rotateY(180deg);
+}
+
+.logo {
+  width: 128px;
+  height: auto;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.35));
+}
+
+.wordmark {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.tagline {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tilt:hover .face {
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .scene {
+    animation: idle-float 5s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes idle-float {
+  to {
+    transform: translateY(-8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tilt,
+  .flipper {
+    transform: none;
+    transition: none;
+  }
+
+  .lift[data-flip],
+  .lift[data-flip] .face {
+    animation: none;
+  }
+
+  /* Instant swap without the 3D turn. */
+  .back {
+    transform: none;
+    visibility: hidden;
+  }
+
+  .flipped .back {
+    visibility: visible;
+  }
+
+  .flipped .front {
+    visibility: hidden;
+  }
+}
+
+@media (max-width: 480px) {
+  .logo {
+    width: 96px;
+  }
+
+  .wordmark {
+    font-size: 1.6rem;
+  }
+}

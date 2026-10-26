@@ -1,3 +1,4 @@
+/* Original labels (old .setting-label / CourseSearch labels): small, semibold, heading color. */
 .field {
   display: flex;
   flex-direction: column;
@@ -6,28 +7,28 @@
 }
 
 .label {
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
-  font-weight: var(--weight-semibold);
-  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--color-heading);
 }
 
 .required {
-  color: var(--danger);
+  color: var(--color-danger);
 }
 
 .hint,
 .error {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-1);
-  font-size: var(--text-xs);
-  line-height: var(--leading-xs);
-  color: var(--text-muted);
+  gap: 4px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--color-text-muted);
 }
 
 .error {
-  color: var(--danger);
+  color: var(--color-danger);
 }
 
 .error > svg {

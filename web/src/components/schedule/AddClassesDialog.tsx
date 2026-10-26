@@ -1,21 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import type { FormEvent } from "react";
-import { Banner } from "@/components/ui/Banner";
-import { Button } from "@/components/ui/Button";
+import { useRouter } from "next/navigation";
+import { useEffect, useId, useRef, useState } from "react";
+import type { FormEvent, KeyboardEvent } from "react";
 import { Dialog } from "@/components/ui/Dialog";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { Field } from "@/components/ui/Field";
-import { Input } from "@/components/ui/Input";
-import { Tabs } from "@/components/ui/Tabs";
-import { BookmarkIcon, SearchIcon } from "@/components/ui/icons";
 import type { CourseData } from "@/lib/gosolar/types";
 import { searchSections, type WatchDetailsItem } from "@/lib/client/courses";
 import { errorMessage, isAbortError } from "@/lib/client/http";
-import { AddClassRow, AddClassRowsSkeleton, addClassListClass } from "./AddClassRow";
+import { DAY_LABELS } from "@/lib/schedule/conflicts";
+import { meetingLocation } from "./layout";
+import { timeLabel, weekOrderedMeetings } from "./format";
 import { SubjectCombobox } from "./SubjectCombobox";
 import styles from "./AddClassesDialog.module.css";
+import { courseCode } from "@/lib/format";
+import { displayTitle } from "@/components/courses/format";
 
 export type AddTab = "search" | "tracked";
 
@@ -41,8 +39,6 @@ export type AddClassesDialogProps = {
   termLabel: string;
   tab: AddTab;
   onTabChange: (tab: AddTab) => void;
-  /** Tracked sections in this term (from the DB, before live details load). */
-  trackedCount: number;
   tracked: TrackedState;
   onRetryTracked: () => void;
   scheduledCrns: ReadonlySet<string>;
@@ -55,6 +51,10 @@ export type AddClassesDialogProps = {
 
 const RESULT_LIMIT = 150;
 const NUMBER = /^[A-Za-z0-9]{1,8}$/;
+const TABS: Array<{ id: AddTab; label: string }> = [
+  { id: "tracked", label: "From tracked classes" },
+  { id: "search", label: "Search catalog" },
+];
 
 type SearchState =
   | { status: "idle" }
@@ -66,42 +66,106 @@ const bySection = (a: CourseData, b: CourseData) =>
   (a.courseNumber ?? "").localeCompare(b.courseNumber ?? "", undefined, { numeric: true }) ||
   (a.sequenceNumber ?? "").localeCompare(b.sequenceNumber ?? "", undefined, { numeric: true });
 
-/** Add classes (pages.md §6): Search and Tracked tabs sharing one AddClassRow. `md`, sheet on mobile. */
+/** The original Add Classes modal (old AddClassesModal.jsx): tracked / search tabs over one list. */
 export function AddClassesDialog(props: AddClassesDialogProps) {
-  const { open, onClose, termLabel, tab, onTabChange, trackedCount } = props;
+  const { open, onClose, tab, onTabChange } = props;
+  const id = useId();
+
+  const onTabKey = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    const next = tab === "tracked" ? "search" : "tracked";
+    onTabChange(next);
+    document.getElementById(`${id}-tab-${next}`)?.focus();
+  };
+
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      title={`Add classes to ${termLabel}`}
-      size="md"
-      fixedHeight
-      footer={
-        <Button variant="primary" onClick={onClose}>
-          Done
-        </Button>
-      }
-    >
-      <Tabs
-        label="Add classes from"
-        value={tab}
-        onValueChange={(id) => onTabChange(id === "tracked" ? "tracked" : "search")}
-        panelClassName={styles.panel}
-        tabs={[
-          { id: "search", label: "Search", icon: <SearchIcon size={16} />, panel: <SearchPanel {...props} /> },
-          {
-            id: "tracked",
-            label: `Tracked classes (${trackedCount})`,
-            icon: <BookmarkIcon size={16} />,
-            panel: <TrackedPanel {...props} />,
-          },
-        ]}
-      />
+    <Dialog open={open} onClose={onClose} title="Add Classes" size="md" fixedHeight className={styles.modal} bodyClassName={styles.modalBody}>
+      <div className={styles.tabs} role="tablist" aria-label="Add classes from">
+        {TABS.map((item) => (
+          <button
+            key={item.id}
+            id={`${id}-tab-${item.id}`}
+            type="button"
+            role="tab"
+            aria-selected={tab === item.id}
+            aria-controls={`${id}-panel`}
+            tabIndex={tab === item.id ? 0 : -1}
+            className={styles.tab}
+            onClick={() => onTabChange(item.id)}
+            onKeyDown={onTabKey}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+      <div id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-tab-${tab}`} className={styles.panel}>
+        {tab === "tracked" ? <TrackedPanel {...props} /> : <SearchPanel {...props} />}
+      </div>
     </Dialog>
   );
 }
 
+type RowProps = {
+  section: CourseData | null;
+  /** Shown when `section` is null (GoSolar failed or no longer lists the CRN). */
+  fallback?: { subject: string; courseNumber: string; crn: string; title: string | null };
+  note?: string;
+  added: boolean;
+  busy: boolean;
+  disabled?: boolean;
+  conflictsWith: string[];
+  onToggle: () => void;
+};
+
+/** One `.add-list-item`: code + CRN, title, meeting rows, and the Add / Added toggle. */
+function AddRow({ section, fallback, note, added, busy, disabled, conflictsWith, onToggle }: RowProps) {
+  const code = section ? courseCode(section.subject, section.courseNumber) : fallback ? courseCode(fallback.subject, fallback.courseNumber) : "";
+  const seq = section?.sequenceNumber ?? null;
+  const name = seq ? `${code} · ${seq}` : code;
+  const crn = section?.courseReferenceNumber ?? fallback?.crn ?? "";
+  const title = displayTitle(section?.courseTitle ?? fallback?.title);
+  const meetings = section ? weekOrderedMeetings(section) : [];
+
+  return (
+    <div className={styles.item} role="listitem">
+      <div className={styles.info}>
+        <div className={styles.itemTitle}>
+          {name} {crn ? <span className={styles.crn}>CRN {crn}</span> : null}
+        </div>
+        {title ? <div className={styles.subtitle}>{title}</div> : null}
+        {!section ? (
+          <div className={styles.meeting}>{note ?? "Meeting times unavailable"}</div>
+        ) : meetings.length === 0 ? (
+          <div className={styles.meeting}>Online / TBA</div>
+        ) : (
+          meetings.map((meeting, index) => (
+            <div key={index} className={styles.meeting}>
+              <span>{meeting.days.map((day) => DAY_LABELS[day].short).join(", ")}</span>
+              <span>{timeLabel(meeting.start, meeting.end)}</span>
+              <span>{meetingLocation(meeting.meetingTime.buildingDescription, meeting.meetingTime.room) ?? "Room TBA"}</span>
+            </div>
+          ))
+        )}
+        {conflictsWith.length > 0 && !added ? <div className={styles.conflict}>overlaps {conflictsWith.join(", ")}</div> : null}
+      </div>
+      <button
+        type="button"
+        className={styles.actionBtn}
+        aria-pressed={added}
+        data-busy={busy || undefined}
+        disabled={busy || (disabled && !added)}
+        onClick={onToggle}
+      >
+        {busy ? (added ? "Removing…" : "Adding…") : added ? "Added" : "Add"}
+        <span className="sr-only"> {name}</span>
+      </button>
+    </div>
+  );
+}
+
 function SearchPanel({ term, scheduledCrns, busyCrns, conflictsFor, onAdd, onRemove }: AddClassesDialogProps) {
+  const id = useId();
   const [subject, setSubject] = useState("");
   const [courseNumber, setCourseNumber] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -126,19 +190,16 @@ function SearchPanel({ term, scheduledCrns, busyCrns, conflictsFor, onAdd, onRem
     controller.current?.abort();
     const ctrl = new AbortController();
     controller.current = ctrl;
-    const id = ++requestId.current;
+    const reqId = ++requestId.current;
     setState({ status: "loading" });
     searchSections({ term, subject: code, courseNumber: number || undefined }, ctrl.signal)
       .then((sections) => {
-        if (id !== requestId.current) return;
+        if (reqId !== requestId.current) return;
         setState({ status: "ok", sections: [...sections].sort(bySection), query: number ? `${code} ${number}` : code });
       })
       .catch((err: unknown) => {
-        if (isAbortError(err) || id !== requestId.current) return;
-        setState({
-          status: "error",
-          message: errorMessage(err, "Couldn't search GoSolar. Try again."),
-        });
+        if (isAbortError(err) || reqId !== requestId.current) return;
+        setState({ status: "error", message: errorMessage(err, "Couldn't search GoSolar. Try again.") });
       });
   };
 
@@ -148,96 +209,112 @@ function SearchPanel({ term, scheduledCrns, busyCrns, conflictsFor, onAdd, onRem
   };
 
   return (
-    <div className={styles.stack}>
-      <form className={styles.form} onSubmit={onSubmit} noValidate>
-        <Field label="Subject" error={error ?? undefined} className={styles.subject}>
-          <SubjectCombobox
-            term={term}
-            value={subject}
-            onChange={setSubject}
-            onSubmit={(code) => run(code)}
-            invalid={Boolean(error)}
-            data-autofocus
-          />
-        </Field>
-        <Field label="Course number" hint="Optional" className={styles.number}>
-          <Input
-            value={courseNumber}
-            onChange={(event) => setCourseNumber(event.target.value)}
-            inputMode="text"
-            autoComplete="off"
-            maxLength={8}
-            placeholder="2720"
-          />
-        </Field>
-        <Button type="submit" variant="secondary" leadingIcon={<SearchIcon />} loading={state.status === "loading"} className={styles.submit}>
-          Search
-        </Button>
+    <>
+      <form className={styles.searchForm} onSubmit={onSubmit} noValidate>
+        <div className={styles.formGrid}>
+          <div className={styles.formField}>
+            <label className={styles.formLabel} htmlFor={`${id}-subject`}>
+              Subject
+            </label>
+            <SubjectCombobox
+              id={`${id}-subject`}
+              className={styles.control}
+              term={term}
+              value={subject}
+              onChange={setSubject}
+              onSubmit={(code) => run(code)}
+              invalid={Boolean(error)}
+              aria-describedby={error ? `${id}-error` : undefined}
+              data-autofocus
+            />
+          </div>
+          <div className={styles.formField}>
+            <label className={styles.formLabel} htmlFor={`${id}-number`}>
+              Course number
+            </label>
+            <input
+              id={`${id}-number`}
+              className={styles.control}
+              value={courseNumber}
+              onChange={(event) => setCourseNumber(event.target.value)}
+              autoComplete="off"
+              maxLength={8}
+              placeholder="e.g. 1301 (optional)"
+            />
+          </div>
+        </div>
+        {error ? (
+          <p id={`${id}-error`} className={styles.fieldError} role="alert">
+            {error}
+          </p>
+        ) : null}
+        <div className={styles.actionsRow}>
+          <button type="submit" className={`${styles.actionBtn} ${styles.primary}`} disabled={state.status === "loading"}>
+            {state.status === "loading" ? "Searching…" : "Search classes"}
+          </button>
+        </div>
       </form>
 
-      <div className={styles.results}>
-        {state.status === "loading" ? <AddClassRowsSkeleton label="Searching sections" /> : null}
-        {state.status === "error" ? (
-          <Banner
-            tone="danger"
-            role="alert"
-            action={
-              <Button size="sm" variant="secondary" onClick={() => run()}>
-                Try again
-              </Button>
-            }
-          >
-            {state.message}
-          </Banner>
-        ) : null}
-        {state.status === "ok" ? (
-          state.sections.length === 0 ? (
-            <div role="status">
-              <EmptyState variant="no-results" icon={<SearchIcon size={24} />} title="No sections match" headingAs="h3">
-                Nothing for {state.query} this term. Check the course number, or search the whole subject.
-              </EmptyState>
+      {state.status === "loading" ? (
+        <div className={styles.loading} role="status">
+          Searching for courses…
+        </div>
+      ) : null}
+      {state.status === "error" ? (
+        <div className={styles.error} role="alert">
+          <p>{state.message}</p>
+          <button type="button" className={styles.link} onClick={() => run()}>
+            Try again
+          </button>
+        </div>
+      ) : null}
+      {state.status === "idle" ? (
+        <div className={styles.empty}>
+          <p>Run a search to find classes and add them to your schedule.</p>
+        </div>
+      ) : null}
+      {state.status === "ok" ? (
+        state.sections.length === 0 ? (
+          <div className={styles.empty} role="status">
+            <p>No sections match {state.query} this term. Check the course number, or search the whole subject.</p>
+          </div>
+        ) : (
+          <>
+            <p className={styles.count} role="status">
+              {state.sections.length} {state.sections.length === 1 ? "section" : "sections"} for {state.query}
+              {state.sections.length > RESULT_LIMIT ? `; showing the first ${RESULT_LIMIT}. Add a course number to narrow it.` : ""}
+            </p>
+            <div className={styles.list} role="list">
+              {state.sections.slice(0, RESULT_LIMIT).map((section) => {
+                const crn = section.courseReferenceNumber ?? "";
+                const added = scheduledCrns.has(crn);
+                return (
+                  <AddRow
+                    key={crn || `${section.courseNumber}-${section.sequenceNumber}`}
+                    section={section}
+                    added={added}
+                    busy={busyCrns.has(crn)}
+                    disabled={!crn || !section.subject || !section.courseNumber}
+                    conflictsWith={conflictsFor(section)}
+                    onToggle={() =>
+                      added
+                        ? onRemove(crn)
+                        : onAdd({
+                            crn,
+                            subject: section.subject ?? "",
+                            courseNumber: section.courseNumber ?? "",
+                            courseTitle: section.courseTitle,
+                            section,
+                          })
+                    }
+                  />
+                );
+              })}
             </div>
-          ) : (
-            <>
-              <p className={styles.count} role="status">
-                {state.sections.length} {state.sections.length === 1 ? "section" : "sections"} for {state.query}
-                {state.sections.length > RESULT_LIMIT ? `; showing the first ${RESULT_LIMIT}. Add a course number to narrow it.` : ""}
-              </p>
-              <ul className={addClassListClass}>
-                {state.sections.slice(0, RESULT_LIMIT).map((section) => {
-                  const crn = section.courseReferenceNumber ?? "";
-                  const added = scheduledCrns.has(crn);
-                  return (
-                    <AddClassRow
-                      key={crn || `${section.courseNumber}-${section.sequenceNumber}`}
-                      section={section}
-                      added={added}
-                      busy={busyCrns.has(crn)}
-                      disabled={!crn || !section.subject || !section.courseNumber}
-                      conflictsWith={conflictsFor(section)}
-                      onToggle={() =>
-                        added
-                          ? onRemove(crn)
-                          : onAdd({
-                              crn,
-                              subject: section.subject ?? "",
-                              courseNumber: section.courseNumber ?? "",
-                              courseTitle: section.courseTitle,
-                              section,
-                            })
-                      }
-                    />
-                  );
-                })}
-              </ul>
-            </>
-          )
-        ) : null}
-        {state.status === "idle" ? (
-          <p className={styles.hint}>Pick a subject, optionally a course number, then search. Live seat counts come from GoSolar.</p>
-        ) : null}
-      </div>
-    </div>
+          </>
+        )
+      ) : null}
+    </>
   );
 }
 
@@ -246,54 +323,59 @@ function TrackedPanel({
   termLabel,
   tracked,
   onRetryTracked,
+  onClose,
   scheduledCrns,
   busyCrns,
   conflictsFor,
   onAdd,
   onRemove,
 }: AddClassesDialogProps) {
+  const router = useRouter();
   if (tracked.status === "idle" || tracked.status === "loading") {
-    return <AddClassRowsSkeleton label="Loading tracked classes" />;
+    return (
+      <div className={styles.loading} role="status">
+        Loading tracked classes…
+      </div>
+    );
   }
   if (tracked.status === "error") {
     return (
-      <Banner
-        tone="danger"
-        role="alert"
-        action={
-          <Button size="sm" variant="secondary" onClick={onRetryTracked}>
-            Try again
-          </Button>
-        }
-      >
-        {tracked.message}
-      </Banner>
+      <div className={styles.error} role="alert">
+        <p>{tracked.message}</p>
+        <button type="button" className={styles.link} onClick={onRetryTracked}>
+          Try again
+        </button>
+      </div>
     );
   }
   const items = tracked.items.filter((item) => item.watch.term === term);
   if (items.length === 0) {
     return (
-      <EmptyState icon={<BookmarkIcon size={24} />} title={`None of your tracked sections are in ${termLabel}.`} headingAs="h3">
-        Watch a section from search to see it here.
-      </EmptyState>
+      <div className={styles.empty}>
+        <p>No tracked classes for {termLabel || "this term"}.</p>
+        <button
+          type="button"
+          className={styles.link}
+          onClick={() => {
+            onClose();
+            router.push("/tracked-classes");
+          }}
+        >
+          Manage tracked classes
+        </button>
+      </div>
     );
   }
   return (
-    <ul className={addClassListClass}>
+    <div className={styles.list} role="list">
       {items.map(({ watch, section, partial }) => {
         const added = scheduledCrns.has(watch.crn);
         const gone = !section && !partial;
         return (
-          <AddClassRow
+          <AddRow
             key={watch.crn}
             section={section}
-            fallback={{
-              subject: watch.subject,
-              courseNumber: watch.courseNumber,
-              crn: watch.crn,
-              title: watch.courseTitle,
-              instructor: watch.instructor,
-            }}
+            fallback={{ subject: watch.subject, courseNumber: watch.courseNumber, crn: watch.crn, title: watch.courseTitle }}
             note={gone ? "No longer listed in GoSolar" : "Live details unavailable right now"}
             added={added}
             busy={busyCrns.has(watch.crn)}
@@ -313,6 +395,6 @@ function TrackedPanel({
           />
         );
       })}
-    </ul>
+    </div>
   );
 }

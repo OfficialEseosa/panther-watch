@@ -2,28 +2,28 @@ import type { Metadata } from "next";
 import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
-import { DashboardSkeleton, MemberSectionsSkeleton } from "@/components/dashboard/DashboardSkeleton";
-import { FeatureCards } from "@/components/dashboard/FeatureCards";
-import { GettingStarted } from "@/components/dashboard/GettingStarted";
-import { GuestHero } from "@/components/dashboard/GuestHero";
-import { Stat } from "@/components/ui/Stat";
-import { firstName } from "@/lib/format";
-import { loadDashboardSummary, type DashboardSummary } from "@/components/dashboard/summary.server";
-import { WhatsNew } from "@/components/dashboard/WhatsNew";
-import { PageHeader } from "@/components/shell/PageHeader";
+import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
+import { FeatureCards, FeatureCardsSkeleton } from "@/components/dashboard/FeatureCards";
+import { loadDashboardSummary } from "@/components/dashboard/summary.server";
+import { WhatsNewLauncher } from "@/components/dashboard/WhatsNewLauncher";
+import { SIGN_IN_HREF } from "@/components/shell/nav";
 import { Banner } from "@/components/ui/Banner";
-import { ButtonAnchor, ButtonLink } from "@/components/ui/Button";
-import { BellIcon, BookmarkIcon, CalendarIcon, SearchIcon } from "@/components/ui/icons";
+import { ButtonAnchor } from "@/components/ui/Button";
+import { BookmarkIcon, LockIcon } from "@/components/ui/icons";
+import { firstName } from "@/lib/format";
 import { getCurrentUser, type CurrentUser } from "@/lib/auth/session";
 import layout from "@/components/dashboard/Dashboard.module.css";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
+const SUBTITLE = "Keep an eye on enrollment and act quickly when seats open across Georgia State courses.";
+
 /**
- * /dashboard (pages.md §2). The page itself is static; everything that depends on the visitor
- * (the session cookie, then their watches and schedule) streams in behind <Suspense>, so the
- * shell and skeletons paint first (Cache Components). Database only: no GoSolar calls here.
+ * /dashboard: the original dashboard (old Dashboard.jsx): a guest notice for guests, the
+ * greeting card with the tracked-classes count, and the three feature cards, plus the one-time
+ * "What's new" showcase. The page is static; everything that depends on the visitor streams in
+ * behind <Suspense>. Database only: no GoSolar calls here.
  */
 export default function DashboardPage() {
   return (
@@ -45,25 +45,36 @@ async function Dashboard() {
     return <AccountUnavailable />;
   }
   if (!user) return <GuestDashboard />;
-  return <MemberDashboard userId={user.id} firstName={firstName(user.name)} />;
+  return <MemberDashboard userId={user.id} name={firstName(user.name) ?? "Panther"} />;
 }
 
-function SearchAction({ variant }: { variant?: "primary" | "secondary" }) {
+/** The greeting card (old .dashboard-header): eyebrow, title, subtitle, and an optional aside. */
+function Greeting({ title, aside }: { title: string; aside?: ReactNode }) {
   return (
-    <ButtonLink href="/course-search" variant={variant} leadingIcon={<SearchIcon />}>
-      Search classes
-    </ButtonLink>
+    <section className={layout.header} aria-labelledby="dashboard-title">
+      <div className={layout.headerCopy}>
+        <span className={layout.eyebrow}>Overview</span>
+        <h1 id="dashboard-title" className={layout.title}>
+          {title}
+        </h1>
+        <p className={layout.subtitle}>{SUBTITLE}</p>
+      </div>
+      {aside}
+    </section>
   );
 }
 
-function FeaturesSection({ title, children }: { title: string; children: ReactNode }) {
+function TrackedSummary({ count }: { count: number | null }) {
   return (
-    <section className={layout.section} aria-labelledby="dashboard-features-title">
-      <h2 id="dashboard-features-title" className={layout.sectionTitle}>
-        {title}
-      </h2>
-      {children}
-    </section>
+    <div className={layout.summary} aria-live="polite">
+      <span className={layout.summaryIcon} aria-hidden="true">
+        <BookmarkIcon size={26} />
+      </span>
+      <div className={layout.summaryContent}>
+        <span className={layout.summaryLabel}>Tracked classes</span>{" "}
+        <span className={layout.summaryValue}>{count ?? "…"}</span>
+      </div>
+    </div>
   );
 }
 
@@ -71,25 +82,28 @@ function FeaturesSection({ title, children }: { title: string; children: ReactNo
 // Members
 // ---------------------------------------------------------------------------------------------
 
-function MemberDashboard({ userId, firstName }: { userId: string; firstName: string | null }) {
+function MemberDashboard({ userId, name }: { userId: string; name: string }) {
   return (
-    <div className={layout.stack}>
-      <PageHeader
-        title={firstName ? `Welcome back, ${firstName}.` : "Welcome back."}
-        description="Your watched sections, seat alerts and schedule at a glance."
-        actions={<SearchAction />}
-      />
-      <Suspense fallback={<MemberSectionsSkeleton />}>
-        <MemberSections userId={userId} />
+    <div className={layout.dashboard}>
+      <Suspense
+        fallback={
+          <>
+            <Greeting title={`Welcome back, ${name}.`} aside={<TrackedSummary count={null} />} />
+            <FeatureCardsSkeleton />
+          </>
+        }
+      >
+        <MemberSections userId={userId} name={name} />
       </Suspense>
+      <WhatsNewLauncher member />
     </div>
   );
 }
 
-async function MemberSections({ userId }: { userId: string }) {
-  let summary: DashboardSummary;
+async function MemberSections({ userId, name }: { userId: string; name: string }) {
+  let tracked: number;
   try {
-    summary = await loadDashboardSummary(userId);
+    tracked = (await loadDashboardSummary(userId)).tracked;
   } catch (error) {
     unstable_rethrow(error);
     console.error("dashboard: could not load the summary", error instanceof Error ? error.name : typeof error);
@@ -106,65 +120,15 @@ async function MemberSections({ userId }: { userId: string }) {
         >
           Your tracked classes and schedule are safe. This usually clears up in a moment.
         </Banner>
-        <FeaturesSection title="Jump back in">
-          <FeatureCards mode="member-unknown" />
-        </FeaturesSection>
+        <Greeting title={`Welcome back, ${name}.`} />
+        <FeatureCards mode="member-unknown" />
       </>
     );
   }
-
-  const { tracked, seatsOpened, scheduled } = summary;
   return (
     <>
-      <section aria-labelledby="dashboard-stats-title">
-        <h2 id="dashboard-stats-title" className="sr-only">
-          At a glance
-        </h2>
-        {/* Scrolls sideways on phones, so it must be reachable by keyboard (axe scrollable-region-focusable). */}
-        <div className={layout.stats} role="group" aria-labelledby="dashboard-stats-title" tabIndex={0}>
-          <Stat
-            label="Tracked"
-            value={tracked}
-            icon={<BookmarkIcon />}
-            helper={
-              tracked === 0
-                ? "Watch a full section to get alerts"
-                : tracked === 1
-                  ? "Section we’re watching"
-                  : "Sections we’re watching"
-            }
-          />
-          <Stat
-            label="Seats opened"
-            value={seatsOpened}
-            tone={seatsOpened > 0 ? "success" : "default"}
-            icon={<BellIcon />}
-            helper={seatsOpened > 0 ? "We emailed you. Register soon." : "We’ll email you when one opens"}
-          />
-          <Stat
-            label="Scheduled"
-            value={scheduled.count}
-            icon={<CalendarIcon />}
-            helper={
-              scheduled.termLabel
-                ? `${scheduled.count === 1 ? "Class" : "Classes"} scheduled for ${scheduled.termLabel}`
-                : "Nothing planned for an upcoming term"
-            }
-          />
-        </div>
-      </section>
-
-      <FeaturesSection title="Jump back in">
-        <FeatureCards
-          mode="member"
-          counts={{ tracked, scheduled: scheduled.count, scheduledTermLabel: scheduled.termLabel }}
-        />
-      </FeaturesSection>
-
-      <div className={layout.extras}>
-        <GettingStarted tracked={tracked > 0} scheduled={summary.hasSchedule} />
-        <WhatsNew />
-      </div>
+      <Greeting title={`Welcome back, ${name}.`} aside={<TrackedSummary count={tracked} />} />
+      <FeatureCards mode="member" tracked={tracked} />
     </>
   );
 }
@@ -175,40 +139,41 @@ async function MemberSections({ userId }: { userId: string }) {
 
 function GuestDashboard() {
   return (
-    <div className={layout.stack}>
-      <PageHeader
-        title="Welcome to PantherWatch"
-        description="Live seat counts, grade history and professor ratings for Georgia State classes."
-        actions={<SearchAction variant="secondary" />}
-      />
-      <GuestHero />
-      <FeaturesSection title="What you can do">
-        <FeatureCards mode="guest" />
-      </FeaturesSection>
+    <div className={layout.dashboard}>
+      <div className={layout.guestBanner} role="region" aria-label="Guest mode notice">
+        <div className={layout.guestCopy}>
+          <LockIcon size={20} className={layout.guestIcon} />
+          <p>
+            <strong>You&rsquo;re browsing as a guest.</strong> Search and grade history are open — log in to track
+            classes and build a schedule.
+          </p>
+        </div>
+        <ButtonAnchor href={SIGN_IN_HREF}>Log in</ButtonAnchor>
+      </div>
+      <Greeting title="Welcome, Panther." />
+      <FeatureCards mode="guest" />
+      <WhatsNewLauncher member={false} />
     </div>
   );
 }
 
-/** The session lookup itself failed (database down): no guest pitch, no numbers, just a way on. */
+/** The session lookup itself failed (database down): no numbers, just a way on. */
 function AccountUnavailable() {
   return (
-    <div className={layout.stack}>
-      <PageHeader title="Dashboard" actions={<SearchAction />}>
-        <Banner
-          tone="warning"
-          title="We couldn't load your account."
-          action={
-            <ButtonAnchor href="/dashboard" size="sm" variant="secondary">
-              Try again
-            </ButtonAnchor>
-          }
-        >
-          Course search still works. Your tracked classes and schedule are safe; try again in a moment.
-        </Banner>
-      </PageHeader>
-      <FeaturesSection title="Jump back in">
-        <FeatureCards mode="member-unknown" />
-      </FeaturesSection>
+    <div className={layout.dashboard}>
+      <Banner
+        tone="warning"
+        title="We couldn't load your account."
+        action={
+          <ButtonAnchor href="/dashboard" size="sm" variant="secondary">
+            Try again
+          </ButtonAnchor>
+        }
+      >
+        Course search still works. Your tracked classes and schedule are safe; try again in a moment.
+      </Banner>
+      <Greeting title="Dashboard" />
+      <FeatureCards mode="member-unknown" />
     </div>
   );
 }

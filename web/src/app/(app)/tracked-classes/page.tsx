@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import pageStyles from "@/components/courses/page.module.css";
 import { parseDialog, type RawSearchParams } from "@/components/courses/params";
-import { TrackedClasses, TrackedUnavailable, type TrackedFilter } from "@/components/tracked/TrackedClasses";
+import { TrackedClasses, TrackedUnavailable } from "@/components/tracked/TrackedClasses";
 import { expiryNotice } from "@/components/tracked/expiry";
 import { TrackedSkeleton } from "@/components/tracked/TrackedSkeleton";
 import { requireUser } from "@/lib/auth/session";
@@ -66,8 +66,6 @@ async function Tracked({ searchParams }: PageProps) {
     const notice = expiryNotice(code, now);
     if (notice) expiryNotices[code] = notice;
   }
-  const rawFilter = Array.isArray(params.filter) ? params.filter[0] : params.filter;
-  const filter: TrackedFilter = rawFilter === "open" || rawFilter === "full" ? rawFilter : "all";
 
   return (
     <TrackedClasses
@@ -75,7 +73,6 @@ async function Tracked({ searchParams }: PageProps) {
       termNames={termNames}
       scheduled={Object.values(schedule ?? {}).flatMap((entries) => entries.map((e) => sectionKey(e.term, e.crn)))}
       viewOnlyTerms={(terms ?? []).filter((t) => t.viewOnly).map((t) => t.code)}
-      initialFilter={filter}
       initialDialog={parseDialog(params)}
       expiryNotices={expiryNotices}
     />

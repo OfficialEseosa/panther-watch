@@ -19,7 +19,7 @@ export const viewport: Viewport = {
   // --surface in each theme (tokens.css). ThemeProvider rewrites these to the active theme.
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#121b2f" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b1625" },
   ],
 };
 

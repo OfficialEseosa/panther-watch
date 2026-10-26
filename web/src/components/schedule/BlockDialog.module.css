@@ -1,49 +1,73 @@
+/* Class dialog body: the old ExpandedCourseCard header pieces (.exp-tags, .exp-tag). */
 .body {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: 16px;
 }
 
-.facts {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: var(--space-4);
-}
-
-.facts dt {
-  font-size: var(--text-xs);
-  line-height: var(--leading-xs);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.facts dd {
-  margin-top: var(--space-1);
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
-  color: var(--text);
-}
-
-.seats {
+.tags {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
+  gap: 0.4rem;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  height: 1.6rem;
+  padding: 0 0.7rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: 999px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* The old CRN tag used primary-600 text on primary-100, unreadable in dark mode: use the
+   accent text token, which is light on dark surfaces. */
+.tagCrn {
+  background: var(--color-primary-100);
+  border-color: var(--color-primary-300);
+  color: var(--accent-text);
+}
+
+.notice {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.notice[data-tone="danger"] {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
+}
+
+.notice[data-tone="warning"] {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 30%, transparent);
 }
 
 .section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 8px;
 }
 
 .heading {
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
-  font-weight: var(--weight-semibold);
-  color: var(--text);
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
 }
 
 .meetings {
@@ -52,29 +76,33 @@
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 4px;
 }
 
-.meetings li {
-  display: flex;
-  flex-wrap: wrap;
-  column-gap: var(--space-3);
-  row-gap: var(--space-0-5);
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
+/* Same three-column meeting row as the Add classes list. */
+.meeting {
+  display: grid;
+  grid-template-columns: minmax(0, 120px) minmax(0, 170px) minmax(0, 1fr);
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--color-text);
 }
 
 .days {
-  min-width: 7em;
-  font-weight: var(--weight-medium);
-}
-
-.mono {
-  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--color-heading);
 }
 
 .muted {
-  color: var(--text-muted);
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 600px) {
+  .meeting {
+    grid-template-columns: 1fr;
+    gap: 2px;
+    padding-bottom: 6px;
+  }
 }

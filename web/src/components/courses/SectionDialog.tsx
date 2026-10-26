@@ -1,42 +1,31 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
-import type { CSSProperties, ReactNode } from "react";
-import { Badge } from "@/components/ui/Badge";
-import { Banner } from "@/components/ui/Banner";
-import { Button, ButtonAnchor } from "@/components/ui/Button";
-import { Dialog } from "@/components/ui/Dialog";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { BookmarkIcon, ChartIcon, ExternalIcon, MailIcon, SearchIcon, StarIcon, UserIcon } from "@/components/ui/icons";
-import { Input } from "@/components/ui/Input";
-import { Meter } from "@/components/ui/Meter";
-import { Skeleton, SkeletonGroup } from "@/components/ui/Skeleton";
-import { Tabs } from "@/components/ui/Tabs";
-import type { GradeAggregate, GradeDistributionResponse } from "@/lib/course-meta/grades/types";
+import Image from "next/image";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode, RefObject } from "react";
+import { GRADE_KEYS, type GradeAggregate, type GradeDistributionResponse } from "@/lib/course-meta/grades/types";
 import type { ProfessorRating } from "@/lib/course-meta/rmp";
 import type { SectionMeta } from "@/lib/courses/meta";
 import { cn } from "@/lib/ui/cn";
-import { useScrollEdges } from "@/lib/ui/hooks";
+import { playExit } from "@/lib/ui/motion";
+import { instructorOf, instructorsOf, plural } from "@/lib/format";
+import { courseHeading, creditsValue } from "./CourseCard";
 import {
-  DAY_SHORT,
-  dwfBadgeTone,
-  featuredGrades,
   foldText,
   formatGpa,
   formatPercent,
-  gpaBadgeTone,
-  meetingRows,
+  gpaTone,
   rmpProfileUrl,
-  sectionLabel,
   semesterSpan,
   titleOf,
   usableRating,
   type Section,
 } from "./format";
 import { GradeBar } from "./GradeBar";
+import { OldIcon, type OldIconName } from "./icons";
+import { EnrollmentStatus, MeetingTimes } from "./SectionParts";
 import type { DialogTab } from "./useCourseDialog";
 import styles from "./SectionDialog.module.css";
-import { creditsLabel, instructorOf, partOfTermName, plural } from "@/lib/format";
 
 export type SectionDialogProps = {
   /** The open section, or null when closed (the last one stays rendered during the exit). */
@@ -46,23 +35,38 @@ export type SectionDialogProps = {
   onClose: () => void;
   tab: DialogTab;
   onTabChange: (tab: DialogTab) => void;
-  /** Header controls (the same watch/schedule toggles as the card). */
+  /** Header controls (the same calendar / Watch buttons as the card). */
   actions?: ReactNode;
-  /** Term name for the badge row. */
+  /** Term name for the tag row. */
   termName?: string;
-  /** Shown above the tabs (e.g. "Couldn't reach GoSolar"). */
+  /** Shown above the sections (e.g. "Couldn't reach GoSolar"). */
   notice?: ReactNode;
-  /** The meta lookup for this section failed: the tabs show an error with Retry, not a skeleton. */
+  /** The meta lookup for this section failed: the sections show an error with Retry. */
   metaFailed?: boolean;
   onRetryMeta?: () => void;
+  /** Instructors teaching this course in the current results ("By professor" scope). */
+  currentInstructors?: readonly string[];
 };
+
+type Frozen = Pick<
+  SectionDialogProps,
+  "actions" | "termName" | "notice" | "meta" | "metaFailed" | "onRetryMeta" | "currentInstructors"
+>;
 
 type MetaState = { meta: SectionMeta | undefined; failed: boolean; onRetry?: () => void };
 
+const SECTIONS: Array<{ id: DialogTab; label: string; icon: OldIconName }> = [
+  { id: "overview", label: "Overview", icon: "dashboard" },
+  { id: "grades", label: "Grade history", icon: "analytics" },
+  { id: "ratings", label: "Professor ratings", icon: "people" },
+  { id: "syllabus", label: "Syllabus", icon: "bookmark" },
+];
+
 /**
- * Course detail dialog (pages.md §4): size lg, fixed height, a sheet on mobile. Tabs:
- * Overview, Grades, Ratings, Syllabus. Reads meta from props on every render, so data that
- * arrives after opening shows up immediately.
+ * The original expanded course card (old ExpandedCourseCard) as a native modal <dialog>: muted
+ * header with the red close button, title, tags and the calendar / Watch buttons; a left
+ * section sidebar (a top strip on phones) and the scrolling pane. URL-addressable through
+ * useCourseDialog; reads meta from props on every render, so late data shows up immediately.
  */
 export function SectionDialog({
   section,
@@ -75,551 +79,654 @@ export function SectionDialog({
   notice,
   metaFailed = false,
   onRetryMeta,
+  currentInstructors,
 }: SectionDialogProps) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const onCloseRef = useRef(onClose);
+  const pressStartedOutside = useRef(false);
+  const titleId = useId();
   // Keep the last section while the dialog plays its exit (adjusting state during render).
   const [shown, setShown] = useState<Section | null>(section);
   if (section && section !== shown) setShown(section);
   const current = section ?? shown;
   const open = section !== null;
+  // Likewise the header buttons and the rest: the parent stops passing them once the section
+  // closes, and dropping them mid-exit made the panel jump in height.
+  const live: Frozen = { actions, termName, notice, meta, metaFailed, onRetryMeta, currentInstructors };
+  const [frozen, setFrozen] = useState<Frozen>(live);
+  if (open && (Object.keys(live) as Array<keyof Frozen>).some((k) => live[k] !== frozen[k])) setFrozen(live);
+  const view = open ? live : frozen;
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (open) {
+      delete el.dataset.closing;
+      if (!el.open) {
+        el.showModal();
+        headingRef.current?.focus();
+      }
+      return;
+    }
+    if (!el.open) return;
+    let cancelled = false;
+    void playExit(el, { keep: true }).then(() => {
+      if (cancelled) return;
+      el.close();
+      delete el.dataset.closing;
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  const isOutside = (event: ReactPointerEvent<HTMLDialogElement>) => {
+    const el = ref.current;
+    if (!el || event.target !== el) return false;
+    const r = el.getBoundingClientRect();
+    return event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom;
+  };
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      size="lg"
-      fixedHeight
-      initialFocus="heading"
-      viewTransitionName={open ? "course-detail" : undefined}
-      title={current ? sectionLabel(current) : ""}
-      subtitle={current ? titleOf(current) : undefined}
-      actions={actions}
-      bodyClassName={styles.body}
+    <dialog
+      ref={ref}
+      className={styles.modal}
+      aria-labelledby={titleId}
+      onCancel={(event) => {
+        if (event.target !== event.currentTarget) return;
+        event.preventDefault();
+        onCloseRef.current();
+      }}
+      onClose={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (open) onCloseRef.current();
+      }}
+      onPointerDown={(event) => {
+        pressStartedOutside.current = isOutside(event);
+      }}
+      onPointerUp={(event) => {
+        if (pressStartedOutside.current && isOutside(event)) onCloseRef.current();
+        pressStartedOutside.current = false;
+      }}
     >
       {current ? (
         <DialogContent
           section={current}
-          meta={{ meta, failed: metaFailed && meta === undefined, onRetry: onRetryMeta }}
+          titleId={titleId}
+          headingRef={headingRef}
+          onClose={() => onCloseRef.current()}
+          actions={view.actions}
+          termName={view.termName}
+          notice={view.notice}
           tab={tab}
           onTabChange={onTabChange}
-          termName={termName}
-          notice={notice}
+          meta={{ meta: view.meta, failed: Boolean(view.metaFailed) && view.meta === undefined, onRetry: view.onRetryMeta }}
+          currentInstructors={view.currentInstructors}
         />
       ) : null}
-    </Dialog>
+    </dialog>
   );
 }
 
 function DialogContent({
   section,
-  meta,
-  tab,
-  onTabChange,
+  titleId,
+  headingRef,
+  onClose,
+  actions,
   termName,
   notice,
+  tab,
+  onTabChange,
+  meta,
+  currentInstructors,
 }: {
   section: Section;
-  meta: MetaState;
-  tab: DialogTab;
-  onTabChange: (tab: DialogTab) => void;
+  titleId: string;
+  headingRef: RefObject<HTMLHeadingElement | null>;
+  onClose: () => void;
+  actions?: ReactNode;
   termName?: string;
   notice?: ReactNode;
+  tab: DialogTab;
+  onTabChange: (tab: DialogTab) => void;
+  meta: MetaState;
+  currentInstructors?: readonly string[];
 }) {
-  const credits = creditsLabel(section);
-  const method = section.instructionalMethodDescription?.trim();
+  const baseId = useId();
+  const tabRefs = useRef(new Map<DialogTab, HTMLButtonElement>());
+  const sidebarRef = useRef<HTMLDivElement>(null);
+
+  // The active-section highlight slides between items (the original animated it too).
+  useLayoutEffect(() => {
+    const list = sidebarRef.current;
+    const el = tabRefs.current.get(tab);
+    if (!list || !el) return;
+    const measure = () => {
+      list.style.setProperty("--_x", `${el.offsetLeft}px`);
+      list.style.setProperty("--_y", `${el.offsetTop}px`);
+      list.style.setProperty("--_w", `${el.offsetWidth}px`);
+      list.style.setProperty("--_h", `${el.offsetHeight}px`);
+    };
+    measure();
+    const frame = requestAnimationFrame(() => {
+      list.dataset.ready = "";
+    });
+    const observer = new ResizeObserver(measure);
+    observer.observe(list);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [tab]);
+  const credits = creditsValue(section);
+  const crn = section.courseReferenceNumber;
+
+  const onTabKey = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const last = SECTIONS.length - 1;
+    let next: number | null = null;
+    if (event.key === "ArrowDown" || event.key === "ArrowRight") next = index === last ? 0 : index + 1;
+    else if (event.key === "ArrowUp" || event.key === "ArrowLeft") next = index === 0 ? last : index - 1;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = last;
+    if (next === null) return;
+    event.preventDefault();
+    const id = SECTIONS[next].id;
+    onTabChange(id);
+    tabRefs.current.get(id)?.focus();
+  };
+
   return (
-    <>
-      <div className={styles.badges}>
-        {section.courseReferenceNumber ? <Badge tone="accent">CRN {section.courseReferenceNumber}</Badge> : null}
-        {credits ? <Badge>{credits}</Badge> : null}
-        {termName ? <Badge>{termName}</Badge> : null}
-        {/* GoSolar's method text can be long ("Partially Distance +50% tech"): it wraps, never truncates. */}
-        {method ? (
-          <Badge className={styles.wrapBadge}>{method}</Badge>
-        ) : null}
+    <div className={styles.content}>
+      <header className={styles.header}>
+        <div className={styles.headerLeft}>
+          <button type="button" className={styles.close} onClick={onClose} aria-label="Close">
+            <OldIcon name="x" size={16} />
+          </button>
+          <div className={styles.heading}>
+            <h2
+              id={titleId}
+              ref={headingRef}
+              tabIndex={-1}
+              className={styles.title}
+              aria-label={section.sequenceNumber ? `${courseHeading(section)}, section ${section.sequenceNumber}` : undefined}
+            >
+              {courseHeading(section)}
+            </h2>
+            <p className={styles.subtitle}>{titleOf(section)}</p>
+            <div className={styles.tags}>
+              {crn ? <span className={cn(styles.tag, styles.tagCrn)}>CRN {crn}</span> : null}
+              {section.sequenceNumber ? <span className={styles.tag}>Section {section.sequenceNumber}</span> : null}
+              {credits ? <span className={styles.tag}>{credits} credits</span> : null}
+              {termName ? <span className={styles.tag}>{termName}</span> : null}
+            </div>
+          </div>
+        </div>
+        {actions ? <div className={styles.headerActions}>{actions}</div> : null}
+      </header>
+
+      {notice ? <div className={styles.notice}>{notice}</div> : null}
+
+      <div className={styles.main}>
+        <div
+          ref={sidebarRef}
+          className={styles.sidebar}
+          role="tablist"
+          aria-label="Course detail sections"
+          aria-orientation="vertical"
+        >
+          <span className={styles.navIndicator} aria-hidden="true" />
+          {SECTIONS.map((s, index) => {
+            const selected = s.id === tab;
+            return (
+              <button
+                key={s.id}
+                ref={(el) => {
+                  if (el) tabRefs.current.set(s.id, el);
+                  else tabRefs.current.delete(s.id);
+                }}
+                type="button"
+                role="tab"
+                id={`${baseId}-tab-${s.id}`}
+                aria-selected={selected}
+                aria-controls={`${baseId}-panel`}
+                tabIndex={selected ? 0 : -1}
+                className={styles.navItem}
+                onClick={() => onTabChange(s.id)}
+                onKeyDown={(event) => onTabKey(event, index)}
+              >
+                <OldIcon name={s.icon} size={17} />
+                <span className={styles.navLabel}>{s.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className={styles.pane} role="tabpanel" id={`${baseId}-panel`} aria-labelledby={`${baseId}-tab-${tab}`} tabIndex={0}>
+          <div key={tab} className={styles.paneInner}>
+            {tab === "overview" ? <OverviewSection section={section} /> : null}
+            {tab === "grades" ? <GradesSection section={section} state={meta} currentInstructors={currentInstructors} /> : null}
+            {tab === "ratings" ? <RatingsSection section={section} state={meta} /> : null}
+            {tab === "syllabus" ? <SyllabusSection section={section} state={meta} /> : null}
+          </div>
+        </div>
       </div>
-      {notice}
-      <Tabs
-        label="Section details"
-        value={tab}
-        onValueChange={(id) => onTabChange(id as DialogTab)}
-        className={styles.tabs}
-        panelClassName={styles.panel}
-        tabs={[
-          {
-            id: "overview",
-            label: "Overview",
-            icon: <SearchIcon size={16} />,
-            panel: <OverviewPanel section={section} meta={meta.meta} onTabChange={onTabChange} />,
-          },
-          { id: "grades", label: "Grades", icon: <ChartIcon size={16} />, panel: <GradesPanel section={section} meta={meta} /> },
-          { id: "ratings", label: "Ratings", icon: <StarIcon size={16} />, panel: <RatingsPanel section={section} meta={meta} /> },
-          { id: "syllabus", label: "Syllabus", icon: <BookmarkIcon size={16} />, panel: <SyllabusPanel section={section} meta={meta} /> },
-        ]}
+    </div>
+  );
+}
+
+function EmptyState({ icon, title, text, action }: { icon: OldIconName; title: string; text?: ReactNode; action?: ReactNode }) {
+  return (
+    <div className={styles.empty}>
+      <OldIcon name={icon} size={30} />
+      <p className={styles.emptyTitle}>{title}</p>
+      {text ? <p className={styles.emptyText}>{text}</p> : null}
+      {action}
+    </div>
+  );
+}
+
+/** What a meta-backed section shows before its data: a loading line, or the failure with Retry. */
+function MetaPending({ state, icon, loading }: { state: MetaState; icon: OldIconName; loading: string }) {
+  if (!state.failed) {
+    return (
+      <div role="status">
+        <EmptyState icon={icon} title={loading} />
+      </div>
+    );
+  }
+  return (
+    <div role="alert">
+      <EmptyState
+        icon={icon}
+        title="Couldn't load this section's details"
+        text="Grades, ratings and the syllabus didn't load. This usually clears in a moment."
+        action={
+          state.onRetry ? (
+            <button type="button" className={styles.retry} onClick={state.onRetry}>
+              Retry
+            </button>
+          ) : undefined
+        }
       />
-    </>
-  );
-}
-
-/** What a meta-backed tab shows before its data: a skeleton, or the failure with Retry. */
-function MetaPending({ state, label }: { state: MetaState; label: string }) {
-  if (!state.failed) return <PanelSkeleton label={label} />;
-  return (
-    <Banner
-      tone="warning"
-      role="alert"
-      action={
-        state.onRetry ? (
-          <Button size="sm" variant="secondary" onClick={state.onRetry}>
-            Retry
-          </Button>
-        ) : undefined
-      }
-    >
-      Couldn&rsquo;t load grades, ratings and the syllabus for this section.
-    </Banner>
-  );
-}
-
-function PanelSkeleton({ label }: { label: string }) {
-  return (
-    <SkeletonGroup label={label} className={styles.panelSkeleton}>
-      <Skeleton width="40%" height={16} />
-      <Skeleton width="100%" height={12} radius="full" />
-      <Skeleton width="70%" height={12} />
-      <Skeleton width="55%" height={12} />
-    </SkeletonGroup>
+    </div>
   );
 }
 
 // ------------------------------------------------------------------ overview
 
-function OverviewPanel({
-  section,
-  meta,
-  onTabChange,
-}: {
-  section: Section;
-  meta: SectionMeta | undefined;
-  onTabChange: (tab: DialogTab) => void;
-}) {
-  const id = useId();
-  const rows = meetingRows(section);
-  const featured = featuredGrades(meta?.grades);
-  const rating = usableRating(meta);
-  const primary = instructorOf(section);
-  const faculty = (section.faculty ?? []).filter((f) => f.displayName?.trim());
-  const details: Array<[string, string]> = [];
-  if (section.campusDescription) details.push(["Campus", section.campusDescription]);
-  if (section.instructionalMethodDescription) details.push(["Instructional method", section.instructionalMethodDescription]);
-  if (section.scheduleTypeDescription) details.push(["Schedule type", section.scheduleTypeDescription]);
-  const credits = creditsLabel(section);
-  if (credits) details.push(["Credit hours", credits]);
-  const partOfTerm = partOfTermName(section.partOfTerm);
-  if (partOfTerm) details.push(["Part of term", partOfTerm]);
-  if (section.isSectionLinked) details.push(["Linked sections", "Register for a linked lab or recitation too"]);
-
+function OverviewSection({ section }: { section: Section }) {
+  const faculty = instructorsOf(section);
   return (
-    <div className={styles.stack}>
-      <section className={styles.section} aria-labelledby={`${id}-enrollment`}>
-        <h3 id={`${id}-enrollment`} className={styles.heading}>
-          Enrollment
-        </h3>
-        <Meter
-          size="lg"
-          enrolled={section.enrollment}
-          capacity={section.maximumEnrollment}
-          available={section.seatsAvailable}
-          waitCount={section.waitCount}
-          waitCapacity={section.waitCapacity}
-        />
-        {section.maximumEnrollment > 0 ? (
-          <p className={styles.muted}>
-            {section.enrollment} of {section.maximumEnrollment} seats taken
-            {section.waitCapacity > 0 ? ` · ${section.waitAvailable} waitlist spots left` : " · No waitlist"}
-          </p>
-        ) : null}
-      </section>
-
-      <section className={styles.section} aria-labelledby={`${id}-meetings`}>
-        <h3 id={`${id}-meetings`} className={styles.heading}>
-          Meetings
-        </h3>
-        {rows.length === 0 ? (
-          <p className={styles.muted}>No meeting times are listed for this section.</p>
-        ) : (
-          <MeetingsTable rows={rows} labelledBy={`${id}-meetings`} />
-        )}
-      </section>
-
-      <section className={styles.section} aria-labelledby={`${id}-instructors`}>
-        <h3 id={`${id}-instructors`} className={styles.heading}>
-          {faculty.length > 1 ? "Instructors" : "Instructor"}
-        </h3>
-        {faculty.length === 0 ? (
-          <p className={styles.muted}>No instructor is listed yet (TBA).</p>
-        ) : (
-          <ul className={styles.people}>
-            {faculty.map((f, i) => {
-              const name = f.displayName?.trim() ?? "";
-              const isPrimary = name === primary;
-              return (
-                <li key={`${name}-${i}`} className={styles.person}>
-                  <span className={styles.personName}>
-                    <UserIcon size={16} />
-                    {name}
-                  </span>
-                  {f.emailAddress ? (
-                    <a className={styles.link} href={`mailto:${f.emailAddress}`}>
-                      <MailIcon size={16} />
-                      {f.emailAddress}
-                    </a>
-                  ) : null}
-                  {isPrimary && (featured || rating) ? (
-                    <span className={styles.personStats}>
-                      {featured && featured.aggregate.gpa != null ? (
-                        <button type="button" className={styles.statButton} onClick={() => onTabChange("grades")}>
-                          GPA {formatGpa(featured.aggregate.gpa)}{" "}
-                          <span className={styles.muted}>
-                            ({featured.instructor ? "n" : "course, n"}={featured.aggregate.total})
-                          </span>
-                        </button>
-                      ) : null}
-                      {rating?.avgRating != null ? (
-                        <button type="button" className={styles.statButton} onClick={() => onTabChange("ratings")}>
-                          RMP {rating.avgRating.toFixed(1)}{" "}
-                          <span className={styles.muted}>({plural(rating.numRatings ?? 0, "rating")})</span>
-                        </button>
-                      ) : null}
-                    </span>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-
-      {details.length ? (
-        <section className={styles.section} aria-labelledby={`${id}-details`}>
-          <h3 id={`${id}-details`} className={styles.heading}>
-            Details
-          </h3>
-          <dl className={styles.details}>
-            {details.map(([label, value]) => (
-              <div key={label} className={styles.detail}>
-                <dt>{label}</dt>
-                <dd>{value}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
+    <>
+      <EnrollmentStatus section={section} />
+      {faculty.length ? (
+        <div className={styles.faculty}>
+          <div className={styles.facultyTitle}>{faculty.length > 1 ? "Instructors" : "Instructor"}</div>
+          {faculty.map((name, i) => (
+            <div key={`${name}-${i}`} className={styles.facultyName}>
+              {name}
+            </div>
+          ))}
+        </div>
       ) : null}
-    </div>
+      <MeetingTimes section={section} />
+    </>
   );
 }
 
 // ------------------------------------------------------------------ grades
 
-/**
- * The Overview's meetings table. On phones it scrolls sideways: an edge fade shows there is
- * more, and while it overflows the scroller is focusable (keyboard scrolling) and described by
- * an sr-only "scroll for more" hint.
- */
-function MeetingsTable({ rows, labelledBy }: { rows: ReturnType<typeof meetingRows>; labelledBy: string }) {
-  const hintId = useId();
-  const [scrollRef, edges] = useScrollEdges();
+/** "last|first" key, mirroring the grade service's name matching (old gradeUtils.normalizeName). */
+function normalizeName(raw: string | null | undefined): string {
+  if (!raw) return "";
+  const s = raw.toLowerCase().replace(/\([^)]*\)/g, " ").replace(/\./g, "").trim();
+  let last: string;
+  let first: string;
+  if (s.includes(",")) {
+    const comma = s.indexOf(",");
+    last = s.slice(0, comma).trim();
+    first = s.slice(comma + 1).trim().split(/\s+/)[0] ?? "";
+  } else {
+    const tokens = s.split(/\s+/);
+    last = tokens[tokens.length - 1] ?? "";
+    first = tokens[0] ?? "";
+  }
+  last = last.replace(/[^a-z\s-]/g, "").replace(/\s+/g, " ").trim();
+  first = first.replace(/[^a-z-]/g, "");
+  return `${last}|${first}`;
+}
+
+type Tone = "high" | "good" | "mid" | "low" | "unknown";
+
+function dwfTone(pct: number | null | undefined): Tone {
+  if (pct == null) return "unknown";
+  if (pct >= 30) return "low";
+  if (pct >= 20) return "mid";
+  if (pct >= 10) return "good";
+  return "high";
+}
+
+function Metric({ value, label, tone }: { value: ReactNode; label: string; tone?: Tone }) {
   return (
-    <div
-      ref={scrollRef}
-      className={cn(styles.tableWrap, "edge-fade")}
-      data-fade={edges.fade}
-      role={edges.overflowing ? "region" : undefined}
-      aria-labelledby={edges.overflowing ? labelledBy : undefined}
-      aria-describedby={edges.overflowing ? hintId : undefined}
-      tabIndex={edges.overflowing ? 0 : undefined}
-    >
-      {edges.overflowing ? (
-        <span id={hintId} className="sr-only">
-          Scroll sideways for more columns.
-        </span>
-      ) : null}
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th scope="col">Days</th>
-            <th scope="col">Time</th>
-            <th scope="col">Location</th>
-            <th scope="col">Dates</th>
-            <th scope="col">Type</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr key={i}>
-              <td>{row.days.length ? row.days.map((d) => DAY_SHORT[d]).join(", ") : row.online ? "Online" : "TBA"}</td>
-              <td className={styles.num}>{row.time ?? (row.online ? "Asynchronous" : "TBA")}</td>
-              <td>{row.location ?? "TBA"}</td>
-              <td className={styles.num}>{row.dates ?? "—"}</td>
-              <td>{row.type ?? "—"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className={styles.metric} data-tone={tone}>
+      <span className={styles.metricValue}>{value}</span>
+      <span className={styles.metricLabel}>{label}</span>
     </div>
   );
 }
 
-function AggregateSummary({ title, aggregate }: { title: string; aggregate: GradeAggregate }) {
+function AggregateBlock({ aggregate, heading, subheading }: { aggregate: GradeAggregate; heading: string; subheading?: string }) {
+  const counts = aggregate.gradeCounts;
   return (
-    <div className={styles.aggregate}>
-      <h4 className={styles.subheading}>{title}</h4>
-      <div className={styles.aggregateStats}>
-        <Badge tone={gpaBadgeTone(aggregate.gpa)}>GPA {formatGpa(aggregate.gpa)}</Badge>
-        <Badge tone={dwfBadgeTone(aggregate.dwfPercent)}>DWF {formatPercent(aggregate.dwfPercent)}</Badge>
-        <span className={styles.muted}>
-          {plural(aggregate.total, "student")} · {plural(aggregate.sectionsCount, "section")}
-        </span>
+    <section className={styles.block}>
+      <div className={styles.blockHead}>
+        <div className={styles.blockHeadings}>
+          <h3 className={styles.blockTitle}>{heading}</h3>
+          {aggregate.termsTaught.length ? <span className={styles.blockSpan}>{semesterSpan(aggregate.termsTaught)}</span> : null}
+        </div>
+        {subheading ? <span className={styles.blockSub}>{subheading}</span> : null}
       </div>
-      <GradeBar gradeCounts={aggregate.gradeCounts} size="lg" legend />
-    </div>
-  );
-}
-
-type ProfSort = "gpa" | "name";
-
-function ProfessorsTable({ grades }: { grades: GradeDistributionResponse }) {
-  const id = useId();
-  const [sort, setSort] = useState<ProfSort>("gpa");
-  const [query, setQuery] = useState("");
-  const rows = useMemo(() => {
-    const folded = foldText(query.trim());
-    const list = grades.professors.filter((p) => !folded || foldText(p.professor ?? "").includes(folded));
-    return [...list].sort((a, b) =>
-      sort === "name"
-        ? (a.professor ?? "").localeCompare(b.professor ?? "")
-        : (b.gpa ?? -1) - (a.gpa ?? -1) || (a.professor ?? "").localeCompare(b.professor ?? ""),
-    );
-  }, [grades.professors, query, sort]);
-
-  if (grades.professors.length === 0) return null;
-  return (
-    <section className={styles.section} aria-labelledby={`${id}-professors`}>
-      <div className={styles.tableHead}>
-        <h4 id={`${id}-professors`} className={styles.subheading}>
-          By professor
-        </h4>
-        {grades.professors.length > 8 ? (
-          <Input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Filter professors"
-            aria-label="Filter professors by name"
-            leadingIcon={<SearchIcon size={16} />}
-            className={styles.tableFilter}
-          />
-        ) : null}
+      <div className={styles.metrics}>
+        <Metric value={formatGpa(aggregate.gpa)} label="Avg GPA" tone={gpaTone(aggregate.gpa) ?? "unknown"} />
+        <Metric value={formatPercent(aggregate.dwfPercent)} label="DWF rate" tone={dwfTone(aggregate.dwfPercent)} />
+        <Metric value={aggregate.total} label="Students" />
+        <Metric value={aggregate.withdrawCount} label="Withdrawals" />
+        <Metric value={aggregate.sectionsCount} label="Sections" />
       </div>
-      <div className={styles.tableWrap}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th scope="col" aria-sort={sort === "name" ? "ascending" : "none"}>
-                <button type="button" className={styles.sortButton} onClick={() => setSort("name")}>
-                  Professor
-                </button>
-              </th>
-              <th scope="col" aria-sort={sort === "gpa" ? "descending" : "none"}>
-                <button type="button" className={styles.sortButton} onClick={() => setSort("gpa")}>
-                  GPA
-                </button>
-              </th>
-              <th scope="col">DWF</th>
-              <th scope="col">Sections</th>
-              <th scope="col" className={styles.distCol}>
-                Grades
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((p, i) => (
-              <tr key={`${p.professor}-${i}`}>
-                <td>{p.professor ?? "Unknown"}</td>
-                <td className={styles.num}>
-                  <Badge tone={gpaBadgeTone(p.gpa)}>{formatGpa(p.gpa)}</Badge>
-                </td>
-                <td className={styles.num}>{formatPercent(p.dwfPercent)}</td>
-                <td className={styles.num}>{p.sectionsCount}</td>
-                <td className={styles.distCol}>
-                  <GradeBar gradeCounts={p.gradeCounts} />
-                </td>
-              </tr>
-            ))}
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={5} className={styles.muted}>
-                  No professors match &ldquo;{query}&rdquo;.
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
+      <GradeBar gradeCounts={counts} legend height={12} />
+      <div className={styles.fineGrid}>
+        {GRADE_KEYS.map((g) => (
+          <div key={g} className={styles.fineCell}>
+            <span className={styles.fineGrade}>{g}</span>
+            <span className={styles.fineCount}>{counts[g] ?? 0}</span>
+          </div>
+        ))}
       </div>
     </section>
   );
 }
 
-function GradesPanel({ section, meta: state }: { section: Section; meta: MetaState }) {
-  const { meta } = state;
-  if (meta === undefined) return <MetaPending state={state} label="Loading grade history" />;
-  const grades = meta.grades;
+const PROF_PAGE_SIZE = 8;
+
+function ProfessorTable({
+  grades,
+  currentInstructors,
+}: {
+  grades: GradeDistributionResponse;
+  currentInstructors?: readonly string[];
+}) {
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const current = grades.instructorDistribution?.professor ?? null;
+
+  // Only professors teaching this course now (when the results know who that is).
+  const scoped = useMemo(() => {
+    const keys = new Set((currentInstructors ?? []).map(normalizeName).filter(Boolean));
+    return keys.size ? grades.professors.filter((p) => keys.has(normalizeName(p.professor))) : grades.professors;
+  }, [grades.professors, currentInstructors]);
+
+  const shown = useMemo(() => {
+    const q = foldText(query.trim());
+    const list = q ? scoped.filter((p) => foldText(p.professor ?? "").includes(q)) : scoped;
+    return [...list].sort((a, b) => (b.gpa ?? -1) - (a.gpa ?? -1));
+  }, [scoped, query]);
+
+  if (scoped.length <= 1) return null;
+  const pageCount = Math.max(1, Math.ceil(shown.length / PROF_PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const paged = shown.slice((safePage - 1) * PROF_PAGE_SIZE, safePage * PROF_PAGE_SIZE);
+
+  return (
+    <section className={styles.block}>
+      <div className={styles.blockHead}>
+        <h3 className={styles.blockTitle}>By professor</h3>
+        <label className={styles.profSearch}>
+          <OldIcon name="search" size={14} />
+          <input
+            type="search"
+            className={styles.profSearchInput}
+            placeholder="Search professor"
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setPage(1);
+            }}
+            aria-label="Search professors by name"
+          />
+        </label>
+      </div>
+      <table className={styles.profTable}>
+        <thead>
+          <tr className={cn(styles.profRow, styles.profHead)}>
+            <th scope="col" className={styles.profName}>
+              Professor
+            </th>
+            <th scope="col">Avg GPA</th>
+            <th scope="col">DWF</th>
+            <th scope="col">Semesters</th>
+            <th scope="col" className={styles.profBarCol}>
+              Distribution
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {shown.length === 0 ? (
+            <tr>
+              <td colSpan={5} className={styles.profEmpty}>
+                No professors match &ldquo;{query}&rdquo;.
+              </td>
+            </tr>
+          ) : (
+            paged.map((p, i) => (
+              <tr key={`${p.professor ?? "unknown"}-${i}`} className={cn(styles.profRow, p.professor && p.professor === current && styles.isCurrent)}>
+                <td className={styles.profName}>{p.professor ?? "Unknown"}</td>
+                <td className={styles.profGpa} data-tone={gpaTone(p.gpa) ?? "unknown"}>
+                  {formatGpa(p.gpa)}
+                </td>
+                <td className={styles.toned} data-tone={dwfTone(p.dwfPercent)}>
+                  {formatPercent(p.dwfPercent)}
+                </td>
+                <td>{p.termsTaught.length}</td>
+                <td className={styles.profBarCol}>
+                  <GradeBar gradeCounts={p.gradeCounts} height={7} />
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+      {pageCount > 1 ? (
+        <div className={styles.pager}>
+          <button
+            type="button"
+            className={styles.pagerButton}
+            onClick={() => setPage(Math.max(1, safePage - 1))}
+            disabled={safePage === 1}
+            aria-label="Previous professors"
+          >
+            <OldIcon name="chevronLeft" size={14} />
+          </button>
+          <span className={styles.pagerInfo}>
+            {safePage} / {pageCount}
+          </span>
+          <button
+            type="button"
+            className={styles.pagerButton}
+            onClick={() => setPage(Math.min(pageCount, safePage + 1))}
+            disabled={safePage === pageCount}
+            aria-label="More professors"
+          >
+            <OldIcon name="chevronRight" size={14} />
+          </button>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function GradesSection({
+  section,
+  state,
+  currentInstructors,
+}: {
+  section: Section;
+  state: MetaState;
+  currentInstructors?: readonly string[];
+}) {
+  if (state.meta === undefined) return <MetaPending state={state} icon="analytics" loading="Loading grade history…" />;
+  const grades = state.meta.grades;
   if (!grades?.hasData || !grades.overall) {
     return (
-      <EmptyState variant="no-results" icon={<ChartIcon size={24} />} title="No published grade data for this course.">
-        GSU publishes grade distributions after each term ends. Newer courses may not have any yet.
-      </EmptyState>
+      <EmptyState
+        icon="analytics"
+        title="No grade history yet"
+        text="There's no published grade data for this course in the available terms."
+      />
     );
   }
   const instructor = instructorOf(section);
   return (
-    <div className={styles.stack}>
-      <p className={styles.muted}>{semesterSpan(grades.termsIncluded)}</p>
-      <div className={styles.aggregates}>
-        {grades.instructorHasTaught && grades.instructorDistribution ? (
-          <AggregateSummary
-            title={`How ${grades.instructorDistribution.professor ?? instructor ?? "this instructor"} grades`}
+    <>
+      {instructor ? (
+        grades.instructorHasTaught && grades.instructorDistribution ? (
+          <AggregateBlock
             aggregate={grades.instructorDistribution}
+            heading={`How ${instructor} grades`}
+            subheading="This section's instructor"
           />
-        ) : null}
-        <AggregateSummary title="All instructors" aggregate={grades.overall} />
-      </div>
-      {instructor && !grades.instructorHasTaught ? (
-        <p className={styles.muted}>No grade history for {instructor} in this course yet.</p>
+        ) : (
+          <div className={styles.expNotice}>
+            <OldIcon name="time" size={16} />
+            <span>
+              <strong>{instructor}</strong> hasn&rsquo;t taught this course in the available history. The course-wide
+              distribution is shown below.
+            </span>
+          </div>
+        )
       ) : null}
-      <ProfessorsTable grades={grades} />
-    </div>
+      <AggregateBlock aggregate={grades.overall} heading="All instructors" subheading="Course-wide average" />
+      <ProfessorTable grades={grades} currentInstructors={currentInstructors} />
+    </>
   );
 }
 
 // ------------------------------------------------------------------ ratings
 
-const DIST_ROWS: Array<{ key: "r5" | "r4" | "r3" | "r2" | "r1"; label: string }> = [
-  { key: "r5", label: "Awesome 5" },
-  { key: "r4", label: "Great 4" },
-  { key: "r3", label: "Good 3" },
-  { key: "r2", label: "OK 2" },
-  { key: "r1", label: "Awful 1" },
+const DIST_ROWS: Array<{ key: "r5" | "r4" | "r3" | "r2" | "r1"; label: string; score: number }> = [
+  { key: "r5", label: "Awesome", score: 5 },
+  { key: "r4", label: "Great", score: 4 },
+  { key: "r3", label: "Good", score: 3 },
+  { key: "r2", label: "OK", score: 2 },
+  { key: "r1", label: "Awful", score: 1 },
 ];
 
-function ratingTone(score: number): "success" | "warning" | "danger" {
-  if (score >= 4) return "success";
-  if (score >= 3) return "warning";
-  return "danger";
+function ratingTone(value: number | null | undefined): Tone {
+  if (value == null) return "unknown";
+  if (value >= 4) return "high";
+  if (value >= 3.5) return "mid";
+  return "low";
 }
 
+const oneDecimal = (v: number | null | undefined) => (v == null ? "—" : v.toFixed(1));
+
 function RatingDetails({ rating }: { rating: ProfessorRating }) {
-  const score = rating.avgRating ?? 0;
   const dist = rating.distribution;
   const max = dist ? Math.max(1, dist.r1, dist.r2, dist.r3, dist.r4, dist.r5) : 1;
-  const id = useId();
+  const reviews = rating.numRatings ?? 0;
   const url = rmpProfileUrl(rating);
+  const takeAgain =
+    rating.wouldTakeAgainPercent != null && rating.wouldTakeAgainPercent >= 0 ? formatPercent(rating.wouldTakeAgainPercent) : "—";
   return (
-    <div className={styles.stack}>
-      <div className={styles.ratingTop}>
-        <p className={styles.score} data-tone={ratingTone(score)}>
-          {score.toFixed(1)}
-          <span className={styles.scoreOutOf}> / 5</span>
-        </p>
-        <div className={styles.ratingText}>
-          <p className={styles.ratingTitle}>Overall quality</p>
-          <p className={styles.muted}>
-            Based on {plural(rating.numRatings ?? 0, "rating")}
-            {rating.matchedName ? ` for ${rating.matchedName}` : ""}
-            {rating.department ? ` · ${rating.department}` : ""}
-          </p>
+    <div className={styles.rmp}>
+      <div className={styles.rmpHead}>
+        <div className={styles.rmpScore}>
+          <div className={styles.rmpScoreNum} data-tone={ratingTone(rating.avgRating)}>
+            {oneDecimal(rating.avgRating)}
+            <span className={styles.rmpScoreMax}>/5</span>
+          </div>
+          <div className={styles.rmpScoreMeta}>
+            <span className={styles.rmpScoreLabel}>Overall quality</span>
+            <span className={styles.rmpScoreSub}>Based on {plural(reviews, "rating")}</span>
+          </div>
+        </div>
+        <div className={styles.rmpSecondary}>
+          <div className={styles.rmpStat}>
+            <span className={styles.rmpStatNum}>{takeAgain}</span>
+            <span className={styles.rmpStatLabel}>Would take again</span>
+          </div>
+          <div className={styles.rmpDivider} />
+          <div className={styles.rmpStat}>
+            <span className={styles.rmpStatNum}>{oneDecimal(rating.avgDifficulty)}</span>
+            <span className={styles.rmpStatLabel}>Level of difficulty</span>
+          </div>
         </div>
       </div>
-      <dl className={styles.ratingStats}>
-        {rating.avgDifficulty != null ? (
-          <div className={styles.detail}>
-            <dt>Level of difficulty</dt>
-            <dd>{rating.avgDifficulty.toFixed(1)} / 5</dd>
-          </div>
-        ) : null}
-        {rating.wouldTakeAgainPercent != null && rating.wouldTakeAgainPercent >= 0 ? (
-          <div className={styles.detail}>
-            <dt>Would take again</dt>
-            <dd>{Math.round(rating.wouldTakeAgainPercent)}%</dd>
-          </div>
-        ) : null}
-      </dl>
+
       {dist ? (
-        <section className={styles.section} aria-labelledby={`${id}-dist`}>
-          <h4 id={`${id}-dist`} className={styles.subheading}>
-            Rating distribution
-          </h4>
-          <ul className={styles.dist}>
-            {DIST_ROWS.map((row) => (
-              <li key={row.key} className={styles.distRow}>
-                <span className={styles.distLabel}>{row.label}</span>
-                <span className={styles.distTrack} aria-hidden="true">
-                  <span className={styles.distFill} style={{ "--_share": dist[row.key] / max } as CSSProperties} />
-                </span>
-                <span className={styles.num}>{dist[row.key]}</span>
-              </li>
-            ))}
+        <section className={styles.rmpPanel}>
+          <h4 className={styles.rmpPanelTitle}>Rating distribution</h4>
+          <ul className={styles.rmpDist}>
+            {DIST_ROWS.map((row) => {
+              const count = dist[row.key] ?? 0;
+              return (
+                <li key={row.key} className={styles.rmpDistRow}>
+                  <span className={styles.rmpDistLabel}>
+                    {row.label} <strong>{row.score}</strong>
+                  </span>
+                  <span className={styles.rmpDistTrack} aria-hidden="true">
+                    <span className={styles.rmpDistFill} style={{ width: `${(count / max) * 100}%` }} />
+                  </span>
+                  <span className={styles.rmpDistCount}>{count}</span>
+                </li>
+              );
+            })}
           </ul>
         </section>
       ) : null}
+
       {rating.topTags.length ? (
-        <section className={styles.section} aria-labelledby={`${id}-tags`}>
-          <h4 id={`${id}-tags`} className={styles.subheading}>
-            Top tags
-          </h4>
-          <ul className={styles.tags}>
-            {rating.topTags.slice(0, 10).map((tag) => (
-              <li key={tag.name}>
-                <Badge>{tag.name}</Badge>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <ul className={styles.rmpTags} aria-label="Top tags">
+          {rating.topTags.map((tag) => (
+            <li key={tag.name} className={styles.rmpTag}>
+              {tag.name}
+            </li>
+          ))}
+        </ul>
       ) : null}
+
       {url ? (
-        <div>
-          <ButtonAnchor
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            variant="secondary"
-            size="sm"
-            trailingIcon={<ExternalIcon size={16} />}
-          >
-            View on Rate My Professors
-          </ButtonAnchor>
-        </div>
+        <a className={styles.rmpButton} href={url} target="_blank" rel="noopener noreferrer">
+          <Image src="/brand/rmp.svg" alt="Rate My Professors" width={35} height={20} className={styles.rmpButtonLogo} unoptimized />
+          <span className={styles.rmpCta}>
+            See all {reviews} review{reviews === 1 ? "" : "s"}
+          </span>
+          <OldIcon name="external" size={15} />
+        </a>
       ) : null}
     </div>
   );
 }
 
-function RatingsPanel({ section, meta: state }: { section: Section; meta: MetaState }) {
-  const { meta } = state;
+function RatingsSection({ section, state }: { section: Section; state: MetaState }) {
   const instructor = instructorOf(section);
   if (!instructor) {
-    return (
-      <EmptyState variant="no-results" icon={<StarIcon size={24} />} title="No instructor is listed yet.">
-        Ratings appear once GSU assigns an instructor to this section.
-      </EmptyState>
-    );
+    return <EmptyState icon="people" title="No ratings found" text="No instructor is listed for this section yet." />;
   }
-  if (meta === undefined) return <MetaPending state={state} label="Loading ratings" />;
-  const rating = usableRating(meta);
+  if (state.meta === undefined) return <MetaPending state={state} icon="people" loading="Looking up ratings…" />;
+  const rating = usableRating(state.meta);
   if (!rating) {
     return (
-      <EmptyState variant="no-results" icon={<StarIcon size={24} />} title={`No Rate My Professors profile found for ${instructor}.`}>
-        Ratings come from Rate My Professors and only cover instructors with a GSU profile there.
-      </EmptyState>
+      <EmptyState
+        icon="people"
+        title="No ratings found"
+        text={`We couldn't find ${instructor} on Rate My Professors for Georgia State.`}
+      />
     );
   }
   return <RatingDetails rating={rating} />;
@@ -640,32 +747,24 @@ function syllabusUrl(raw: string | null | undefined): string | null {
   }
 }
 
-function SyllabusPanel({ section, meta: state }: { section: Section; meta: MetaState }) {
-  const { meta } = state;
-  if (meta === undefined) return <MetaPending state={state} label="Looking for the syllabus" />;
-  const url = syllabusUrl(meta.syllabus?.url);
+function SyllabusSection({ section, state }: { section: Section; state: MetaState }) {
+  if (state.meta === undefined) return <MetaPending state={state} icon="bookmark" loading="Looking for the syllabus…" />;
+  const url = syllabusUrl(state.meta.syllabus?.url);
   if (!url) {
     return (
-      <EmptyState variant="no-results" icon={<BookmarkIcon size={24} />} title="No syllabus on file for this section.">
-        GSU hasn&rsquo;t published one yet. Check back closer to the start of the term.
-      </EmptyState>
+      <EmptyState
+        icon="bookmark"
+        title="No syllabus published"
+        text="GSU doesn't have a syllabus on file for this section yet. Check back closer to the term."
+      />
     );
   }
   return (
-    <div className={cn(styles.stack, styles.syllabus)}>
-      <div>
-        <ButtonAnchor
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          variant="secondary"
-          size="sm"
-          trailingIcon={<ExternalIcon size={16} />}
-        >
-          Open PDF in a new tab
-        </ButtonAnchor>
-      </div>
-      <iframe className={styles.pdf} src={url} title={`Syllabus for ${sectionLabel(section)}`} referrerPolicy="no-referrer" />
+    <div className={styles.syllabus}>
+      <a className={styles.pdfLink} href={url} target="_blank" rel="noopener noreferrer">
+        <OldIcon name="external" size={14} /> Open PDF in a new tab
+      </a>
+      <iframe className={styles.pdf} src={url} title={`Syllabus for ${courseHeading(section)}`} referrerPolicy="no-referrer" />
     </div>
   );
 }

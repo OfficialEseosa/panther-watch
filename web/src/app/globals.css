@@ -1,6 +1,7 @@
 /*
- * Global base styles (docs/design/spec.md §1.11). Imported once, from src/app/layout.tsx.
- * Everything else is a CSS Module next to its component. See src/styles/README.md.
+ * Global base styles: the ORIGINAL app's index.css + App.css base, restored 2026-10-26
+ * (docs/design/spec.md). Imported once, from src/app/layout.tsx. Everything else is a CSS
+ * Module next to its component. See src/styles/README.md.
  */
 @import "../styles/tokens.css";
 @import "../styles/motion.css";
@@ -15,7 +16,11 @@ html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   scrollbar-gutter: stable;
-  scrollbar-color: var(--border-strong) transparent;
+}
+
+html,
+body {
+  min-height: 100%;
 }
 
 /* Scroll lock while a modal dialog is open (native <dialog> already makes the page inert). */
@@ -26,13 +31,36 @@ html:has(dialog[open]:modal) {
 body {
   margin: 0;
   min-height: 100dvh;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--color-page-background);
+  color: var(--color-text);
   font-family: var(--font-sans);
-  font-size: var(--text-base);
-  line-height: var(--leading-base);
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* A whisper-faint statue behind every page, fixed so it doesn't scroll (original App.css).
+   Page wrappers are transparent so it shows through the whitespace while opaque surfaces
+   (cards, headers) sit cleanly on top. The image is decorative and fixed-size, so it never
+   shifts layout; avif/webp first, jpg for older engines. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: url("/brand/statue.jpg");
+  background-image: image-set(
+    url("/brand/statue.avif") type("image/avif"),
+    url("/brand/statue.webp") type("image/webp"),
+    url("/brand/statue.jpg") type("image/jpeg")
+  );
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  opacity: var(--statue-opacity);
+  pointer-events: none;
 }
 
 h1,
@@ -64,22 +92,83 @@ video {
   max-width: 100%;
 }
 
-button,
-input,
-select,
-textarea {
+main {
+  display: block;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--accent-text);
+}
+
+/* Original form/button base. :where() keeps it at zero specificity, so any component class
+   (UI kit, page modules) overrides it without a fight. */
+:where(button, input, select, textarea) {
   font: inherit;
   color: inherit;
 }
 
-a {
-  color: var(--accent-text);
-  text-underline-offset: 2px;
+:where(button) {
+  cursor: pointer;
+  border: none;
+  border-radius: var(--radius-sm);
+  transition:
+    transform var(--transition-base),
+    box-shadow var(--transition-base),
+    background var(--transition-base),
+    color 0.3s ease,
+    border-color 0.3s ease;
 }
 
+:where(button:disabled) {
+  cursor: not-allowed;
+  opacity: 0.65;
+  box-shadow: none;
+  transform: none;
+}
+
+:where(input:not([type="checkbox"], [type="radio"], [type="range"]), select, textarea) {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  padding: 0.65rem 0.75rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  transition:
+    border-color var(--transition-base),
+    box-shadow var(--transition-base),
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+
+:where(input, textarea)::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.7;
+}
+
+:where(input, select, textarea):focus {
+  outline: none;
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+select option {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+/* Keyboard focus for everything else (the original relied on browser defaults; this keeps a
+   visible ring in both themes). */
 :focus-visible {
   outline: var(--ring-width) solid var(--focus-ring);
   outline-offset: var(--ring-offset);
+}
+
+:where(input, select, textarea):focus-visible {
+  outline: none;
 }
 
 :focus:not(:focus-visible) {
@@ -88,7 +177,25 @@ a {
 
 ::selection {
   background: var(--selection);
-  color: var(--text);
+  color: var(--color-text);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(21, 32, 68, 0.25);
+  border-radius: 99px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(148, 178, 218, 0.3);
 }
 
 /* Visually hidden but available to assistive tech. Also exported as <VisuallyHidden>. */
@@ -125,4 +232,15 @@ a {
 /* Popover UA defaults (inset/margin/border/padding/background) are reset per component. */
 [popover] {
   color: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

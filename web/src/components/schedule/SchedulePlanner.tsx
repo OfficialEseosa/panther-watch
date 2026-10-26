@@ -1,40 +1,27 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { PageHeader } from "@/components/shell/PageHeader";
-import { Banner } from "@/components/ui/Banner";
-import { Button } from "@/components/ui/Button";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { Field } from "@/components/ui/Field";
-import { IconButton } from "@/components/ui/IconButton";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { Select } from "@/components/ui/Select";
-import { Spinner } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
-import { Tooltip } from "@/components/ui/Tooltip";
-import { BookmarkIcon, CalendarIcon, DownloadIcon, PlusIcon } from "@/components/ui/icons";
+import { CalendarIcon, ChevronLeftIcon, PlusIcon } from "@/components/ui/icons";
 import type { CourseData } from "@/lib/gosolar/types";
 import { fetchWatchDetails } from "@/lib/client/courses";
 import { errorMessage, isAbortError, reportApiError } from "@/lib/client/http";
 import { addScheduleEntry, removeScheduleEntry, setScheduleColor, type ScheduleEntry } from "@/lib/client/schedule";
 import { SCHEDULE_PALETTE } from "@/lib/schedule/colors";
-import { findConflicts, findConflictsWith, meetingsOf } from "@/lib/schedule/conflicts";
+import { findConflicts, findConflictsWith, meetingsOf, type Conflict } from "@/lib/schedule/conflicts";
 import { generateIcs } from "@/lib/schedule/ics";
 import { prefersReducedMotion, withViewTransition } from "@/lib/ui/motion";
 import { AddClassesDialog, type AddRequest, type AddTab, type TrackedState } from "./AddClassesDialog";
-import { AgendaList } from "./AgendaList";
+import { AgendaList, UnscheduledList, type UnscheduledItem } from "./AgendaList";
 import { BlockDialog } from "./BlockDialog";
-import { ConflictBanner } from "./ConflictBanner";
-import { CourseLegend, UnscheduledList, type LegendItem, type UnscheduledItem } from "./CourseLegend";
 import { buildBlocks, fileSlug, hourRange, layoutWeek, visibleDays, type ResolvedCourse } from "./layout";
-import { CalendarSkeleton } from "./ScheduleSkeleton";
-import { useScheduleView, type ScheduleView } from "./useScheduleView";
 import type { ResolvedSchedule } from "./resolve";
 import { useSectionResolver } from "./useSectionResolver";
 import { WeekGrid } from "./WeekGrid";
 import styles from "./SchedulePlanner.module.css";
-import { courseCode, creditsLabel, sectionKey } from "@/lib/format";
+import { courseCode, sectionKey } from "@/lib/format";
 
 export type TermOption = { code: string; label: string; viewOnly: boolean };
 
@@ -44,8 +31,6 @@ export type SchedulePlannerProps = {
   /** Terms with entries plus the open registration terms, newest first. */
   termOptions: TermOption[];
   initialTerm: string;
-  /** Tracked sections per term (DB count, for the empty state and the dialog tab). */
-  trackedCounts: Record<string, number>;
   /** The GoSolar term list failed to load; only terms from the schedule are offered. */
   termsUnavailable: boolean;
   /** Live sections for the scheduled classes, resolved by the page on the server. */
@@ -55,10 +40,9 @@ export type SchedulePlannerProps = {
 /** Pause before the fresh highlight, so it starts once the Add classes dialog has faded out. */
 const FRESH_DELAY_MS = 250;
 
-const VIEW_OPTIONS: Array<{ value: ScheduleView; label: string }> = [
-  { value: "week", label: "Week" },
-  { value: "agenda", label: "Agenda" },
-];
+/** Below this width the week grid gives way to the agenda list (old ScheduleBuilder.css). */
+const WIDE_QUERY = "(min-width: 769px)";
+const isWide = () => typeof window !== "undefined" && window.matchMedia(WIDE_QUERY).matches;
 
 const without = <T,>(set: ReadonlySet<T>, value: T) => {
   const next = new Set(set);
@@ -82,8 +66,10 @@ function replaceIfPresent(schedule: Record<string, ScheduleEntry[]>, entry: Sche
 }
 
 /**
- * The Schedule Builder controller (pages.md §6): term + view switches, the week grid or agenda,
- * conflicts, the class dialog (color, remove), the Add classes dialog and .ics export. All
+ * The Schedule Builder controller, laid out like the original page (old ScheduleBuilder.jsx):
+ * back link, title, term selector, Add classes and Export to calendar; the week grid on wide
+ * screens and the agenda list on phones; conflicts, the class dialog (color, remove), the Add
+ * classes dialog and .ics export. All
  * writes go straight to the API; local state only mirrors what the server confirmed (plus
  * optimistic removes/color changes that roll back on failure).
  */
@@ -91,7 +77,6 @@ export function SchedulePlanner({
   initialSchedule,
   termOptions,
   initialTerm,
-  trackedCounts,
   termsUnavailable,
   resolved: serverResolved,
 }: SchedulePlannerProps) {
@@ -99,11 +84,10 @@ export function SchedulePlanner({
   const [schedule, setSchedule] = useState(initialSchedule);
   const [term, setTerm] = useState(initialTerm);
   const [sources, setSources] = useState({ schedule: initialSchedule, term: initialTerm });
-  const [view, setView] = useScheduleView();
   const [selectedCrn, setSelectedCrn] = useState<string | null>(null);
   const [blockOpen, setBlockOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
-  const [addTab, setAddTab] = useState<AddTab>("search");
+  const [addTab, setAddTab] = useState<AddTab>("tracked");
   const [tracked, setTracked] = useState<TrackedState>({ status: "idle" });
   /** Busy (term, crn) keys: CRNs repeat across terms. */
   const [busyKeys, setBusyKeys] = useState<ReadonlySet<string>>(new Set());
@@ -167,33 +151,15 @@ export function SchedulePlanner({
   const range = useMemo(() => hourRange(blocks), [blocks]);
   const positioned = useMemo(() => [...week.values()].flat(), [week]);
 
-  const conflictCrns = useMemo(() => {
-    const set = new Set<string>();
-    for (const conflict of conflicts) for (const crn of conflict.crns) if (crn) set.add(crn);
-    return set;
-  }, [conflicts]);
-
-  const legendItems: LegendItem[] = entries.map((entry) => ({
-    entry,
-    resolution: resolutions.get(entry.crn) ?? { status: "loading", section: null },
-    conflict: conflictCrns.has(entry.crn),
-  }));
-  const unscheduled: UnscheduledItem[] = legendItems
+  const unscheduled: UnscheduledItem[] = entries
+    .map((entry) => ({ entry, resolution: resolutions.get(entry.crn) ?? { status: "loading" as const, section: null } }))
     .filter(({ resolution }) =>
       resolution.status === "ok" ? meetingsOf(resolution.section).length === 0 : resolution.status !== "loading",
-    )
-    .map(({ entry, resolution }) => ({ entry, resolution }));
-  const loadingCount = legendItems.filter((item) => item.resolution.status === "loading").length;
-  const failed = legendItems.filter((item) => item.resolution.status === "failed");
+    );
+  const loadingCount = entries.filter((entry) => (resolutions.get(entry.crn)?.status ?? "loading") === "loading").length;
+  const failed = entries.filter((entry) => resolutions.get(entry.crn)?.status === "failed");
   const timedCount = resolved.filter((c) => meetingsOf(c.section).length > 0).length;
   const scheduledCrns = useMemo(() => new Set(entries.map((e) => e.crn)), [entries]);
-  const trackedCount = trackedCounts[term] ?? 0;
-
-  const credits = resolved.length ? creditsLabel(resolvedSections) : null;
-  const description =
-    entries.length === 0
-      ? `Nothing scheduled for ${termLabel} yet`
-      : `${entries.length} ${entries.length === 1 ? "class" : "classes"}${credits ? ` · ${credits}` : ""}`;
 
   const selectedEntry = selectedCrn ? (entries.find((e) => e.crn === selectedCrn) ?? null) : null;
   const selectedConflicts = selectedCrn
@@ -254,7 +220,7 @@ export function SchedulePlanner({
     setAddOpen(false);
     const added = (schedule[term] ?? []).filter((e) => sessionAdded.current.has(sectionKey(e.term, e.crn))).map((e) => e.crn);
     sessionAdded.current.clear();
-    if (view !== "week" || added.length === 0) return;
+    if (!isWide() || added.length === 0) return;
     window.clearTimeout(freshTimer.current);
     freshTimer.current = window.setTimeout(() => setFreshCrns(new Set(added)), FRESH_DELAY_MS);
   };
@@ -323,7 +289,7 @@ export function SchedulePlanner({
     };
     // The removed blocks pop out and lanes re-split (motion.md §4.11). The dialog closes inside
     // the same transition, so its snapshot crossfades away with the root.
-    if (animate && view === "week") void withViewTransition("schedule", () => flushSync(apply));
+    if (animate && isWide()) void withViewTransition("schedule", () => flushSync(apply));
     else apply();
     const key = sectionKey(entry.term, entry.crn);
     sessionAdded.current.delete(key);
@@ -366,7 +332,10 @@ export function SchedulePlanner({
   };
 
   const showConflicts = () => {
-    const target = viewRef.current?.querySelector<HTMLElement>("[data-conflict]");
+    // The grid and the agenda are both rendered (CSS shows one): take the first visible outline.
+    const target = [...(viewRef.current?.querySelectorAll<HTMLElement>("[data-conflict]") ?? [])].find(
+      (element) => element.getClientRects().length > 0,
+    );
     if (!target) return;
     target.scrollIntoView({ block: "center", inline: "center", behavior: prefersReducedMotion() ? "auto" : "smooth" });
     target.focus({ preventScroll: true });
@@ -396,146 +365,134 @@ export function SchedulePlanner({
 
   // ---- Render ----
   const exportDisabled = timedCount === 0;
-  const exportTip = exportDisabled ? "Nothing to export: no classes with meeting times yet" : "Download an .ics calendar file";
   const addDisabled = viewOnly;
-
-  const exportButton = (
-    <Tooltip content={exportTip}>
-      <Button variant="secondary" leadingIcon={<DownloadIcon />} onClick={exportIcs} disabled={exportDisabled}>
-        Export .ics
-      </Button>
-    </Tooltip>
-  );
-
-  const headerActions = (
-    <div className={styles.wideOnly}>
-      {exportButton}
-      <Button variant="primary" leadingIcon={<PlusIcon />} onClick={() => openAdd("search")} disabled={addDisabled}>
-        Add classes
-      </Button>
-    </div>
-  );
+  const allLoading = resolved.length === 0 && loadingCount > 0;
 
   return (
     <div className={styles.page}>
-      <PageHeader title="Schedule" description={description} actions={headerActions}>
-        {termsUnavailable ? (
-          <Banner tone="warning">
-            Couldn&rsquo;t load GoSolar&rsquo;s term list, so only terms already on your schedule are shown.
-          </Banner>
-        ) : null}
-        {viewOnly ? (
-          <Banner tone="info" title={`Registration for ${termLabel} is closed.`}>
-            You can view, recolor and export this schedule, but classes can no longer be added.
-          </Banner>
-        ) : null}
-        {failed.length > 0 ? (
-          <Banner
-            tone="warning"
-            title="Some meeting times are missing."
-            action={
-              <Button size="sm" variant="secondary" onClick={() => retryFailed(term)}>
-                Retry
-              </Button>
-            }
-          >
-            Couldn&rsquo;t load {failed.map(({ entry }) => courseCode(entry.subject, entry.courseNumber)).join(", ")} from
-            GoSolar.
-          </Banner>
-        ) : null}
-        <ConflictBanner conflicts={conflicts} onShow={showConflicts} />
-      </PageHeader>
-
-      <div className={styles.toolbar}>
-        <Field label="Term" hideLabel className={styles.term}>
-          <Select value={term} onChange={(event) => changeTerm(event.target.value)}>
-            {termOptions.map((option) => (
-              <option key={option.code} value={option.code}>
-                {option.viewOnly ? `${option.label} (view only)` : option.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <div className={styles.toolbarEnd}>
-          <SegmentedControl label="Calendar view" options={VIEW_OPTIONS} value={view} onChange={setView} />
-          <div className={styles.narrowOnly}>
-            <IconButton
-              label="Export .ics"
-              tooltip={exportTip}
-              variant="outline"
-              icon={<DownloadIcon />}
+      <header className={styles.header}>
+        <div className={styles.headerTop}>
+          <Link href="/dashboard" className={styles.backButton}>
+            <ChevronLeftIcon size={16} />
+            Back
+          </Link>
+        </div>
+        <div className={styles.headerContent}>
+          <div className={styles.headerText}>
+            <h1 className={styles.title}>Schedule Builder</h1>
+            <p className={styles.description}>
+              Plan your week visually. Add classes straight from search results, your tracked list, or the catalog,
+              then export everything to your calendar app.
+            </p>
+          </div>
+          <div className={styles.headerActions}>
+            <select
+              className={styles.termSelector}
+              aria-label="Term"
+              value={term}
+              onChange={(event) => changeTerm(event.target.value)}
+            >
+              {termOptions.map((option) => (
+                <option key={option.code} value={option.code}>
+                  {option.viewOnly ? `${option.label} (view only)` : option.label}
+                </option>
+              ))}
+            </select>
+            <button type="button" className={styles.btnSecondary} onClick={() => openAdd("tracked")} disabled={addDisabled}>
+              Add classes
+            </button>
+            <button
+              type="button"
+              className={styles.btnPrimary}
               onClick={exportIcs}
               disabled={exportDisabled}
-            />
-            <IconButton
-              label="Add classes"
-              variant="outline"
-              icon={<PlusIcon />}
-              onClick={() => openAdd("search")}
-              disabled={addDisabled}
-            />
+              title={exportDisabled ? "No classes with meeting times to export yet" : "Download an .ics file for your calendar app"}
+            >
+              <CalendarIcon size={18} />
+              Export to calendar
+            </button>
           </div>
         </div>
-      </div>
+      </header>
 
-      {entries.length === 0 ? (
-        <EmptyState
-          icon={<CalendarIcon size={24} />}
-          title={`Nothing on your ${termLabel} schedule yet.`}
-          actions={
-            addDisabled ? null : (
-              <>
-                <Button variant="primary" leadingIcon={<PlusIcon />} onClick={() => openAdd("search")}>
-                  Add classes
-                </Button>
-                {trackedCount > 0 ? (
-                  <Button variant="secondary" leadingIcon={<BookmarkIcon />} onClick={() => openAdd("tracked")}>
-                    {`Add from tracked (${trackedCount})`}
-                  </Button>
-                ) : null}
-              </>
-            )
-          }
-        >
-          {addDisabled
-            ? "Registration for this term is closed."
-            : "Search GoSolar or pick from your tracked classes. Overlaps are flagged, not blocked."}
-        </EmptyState>
-      ) : (
-        <div className={styles.content}>
-          {loadingCount > 0 && resolved.length > 0 ? (
-            <p className={styles.status} role="status">
-              <Spinner size={14} /> Loading meeting times for {loadingCount} {loadingCount === 1 ? "class" : "classes"}…
+      {termsUnavailable || viewOnly || failed.length > 0 || conflicts.length > 0 ? (
+        <div className={styles.notices}>
+          {termsUnavailable ? (
+            <p className={styles.notice} data-tone="warning">
+              Couldn&rsquo;t load GoSolar&rsquo;s term list, so only terms already on your schedule are shown.
             </p>
           ) : null}
-          <div ref={viewRef}>
-            {resolved.length === 0 && loadingCount > 0 ? (
-              <CalendarSkeleton label="Loading meeting times" />
-            ) : view === "week" ? (
-              <WeekGrid
-                label={`${termLabel} week`}
-                days={days}
-                range={range}
-                week={week}
-                freshCrns={freshCrns}
-                onFreshDone={onFreshDone}
-                onOpen={openBlock}
-              />
-            ) : positioned.length > 0 ? (
-              <AgendaList blocks={positioned} onOpen={openBlock} />
+          {viewOnly ? (
+            <p className={styles.notice} data-tone="info">
+              Registration for {termLabel} is closed. You can view, recolor and export this schedule, but classes can no
+              longer be added.
+            </p>
+          ) : null}
+          {failed.length > 0 ? (
+            <div className={styles.notice} data-tone="warning">
+              <span>
+                Couldn&rsquo;t load meeting times for{" "}
+                {failed.map((entry) => courseCode(entry.subject, entry.courseNumber)).join(", ")} from GoSolar.
+              </span>
+              <button type="button" className={styles.noticeAction} onClick={() => retryFailed(term)}>
+                Retry
+              </button>
+            </div>
+          ) : null}
+          <ConflictNotice conflicts={conflicts} onShow={showConflicts} />
+        </div>
+      ) : null}
+
+      <div className={styles.container} ref={viewRef}>
+        {loadingCount > 0 && !allLoading ? (
+          <p className={styles.status} role="status">
+            Loading meeting times for {loadingCount} {loadingCount === 1 ? "class" : "classes"}…
+          </p>
+        ) : null}
+        <WeekGrid
+          label={`${termLabel} week`}
+          days={days}
+          range={range}
+          week={week}
+          freshCrns={freshCrns}
+          onFreshDone={onFreshDone}
+          onOpen={openBlock}
+        />
+        <AgendaList blocks={positioned} onOpen={openBlock} />
+
+        {allLoading ? (
+          <div className={styles.emptySchedule} role="status">
+            <p>Loading meeting times…</p>
+          </div>
+        ) : entries.length === 0 ? (
+          <div className={styles.emptySchedule}>
+            <CalendarIcon size={48} />
+            <h3>No classes scheduled</h3>
+            {addDisabled ? (
+              <p>Registration for {termLabel} is closed, so classes can no longer be added.</p>
             ) : (
-              <p className={styles.status}>No classes with set meeting times.</p>
+              <>
+                <p>
+                  Add classes from your tracked list, or tap the calendar icon on any course in search results to drop it
+                  onto your schedule.
+                </p>
+                <button type="button" className={styles.btnSecondary} onClick={() => openAdd("tracked")}>
+                  <PlusIcon size={16} />
+                  Add classes
+                </button>
+              </>
             )}
           </div>
-          <CourseLegend items={legendItems} onOpen={openBlock} />
-          <UnscheduledList items={unscheduled} onOpen={openBlock} />
-        </div>
-      )}
+        ) : null}
+      </div>
+
+      <UnscheduledList items={unscheduled} onOpen={openBlock} />
 
       <BlockDialog
         open={blockOpen}
         onClose={() => setBlockOpen(false)}
         entry={selectedEntry}
+        termLabel={termLabel}
         resolution={selectedCrn ? (resolutions.get(selectedCrn) ?? null) : null}
         conflicts={selectedConflicts}
         onColor={changeColor}
@@ -549,7 +506,6 @@ export function SchedulePlanner({
         termLabel={termLabel}
         tab={addTab}
         onTabChange={changeAddTab}
-        trackedCount={trackedCount}
         tracked={tracked}
         onRetryTracked={() => loadTracked(true)}
         scheduledCrns={scheduledCrns}
@@ -561,7 +517,37 @@ export function SchedulePlanner({
           if (entry) removeClass(entry, { animate: false });
         }}
       />
+    </div>
+  );
+}
 
+const codeOf = (section: Conflict["sections"][number]) => courseCode(section.subject, section.courseNumber);
+
+/** Every overlapping pair, styled as the old app's error notice, with [Show]. */
+function ConflictNotice({ conflicts, onShow }: { conflicts: Conflict[]; onShow: () => void }) {
+  if (conflicts.length === 0) return null;
+  const first = conflicts[0];
+  return (
+    <div className={styles.notice} data-tone="danger" role="status">
+      <div>
+        <strong>
+          {conflicts.length === 1
+            ? `1 conflict: ${codeOf(first.sections[0])} and ${codeOf(first.sections[1])} overlap ${first.label}.`
+            : `${conflicts.length} conflicts`}
+        </strong>
+        {conflicts.length > 1 ? (
+          <ul className={styles.pairs}>
+            {conflicts.map((conflict) => (
+              <li key={`${conflict.crns[0]}-${conflict.crns[1]}`}>
+                {codeOf(conflict.sections[0])} and {codeOf(conflict.sections[1])} overlap {conflict.label}.
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+      <button type="button" className={styles.noticeAction} onClick={onShow}>
+        Show
+      </button>
     </div>
   );
 }

@@ -2,19 +2,27 @@
 
 import { useState } from "react";
 import type { AnimationEvent } from "react";
-import { Button } from "@/components/ui/Button";
-import { IconButton } from "@/components/ui/IconButton";
-import { CalendarPlusIcon, CheckIcon, EyeIcon, TrashIcon } from "@/components/ui/icons";
 import { cn } from "@/lib/ui/cn";
+import { OldIcon } from "./icons";
 import styles from "./CourseActions.module.css";
 
-/** Plays the success pulse once (motion.md §4.10): set on a user "turn on", cleared on animationend. */
+const VIEW_ONLY = "This term is view only. Registration is closed";
+
+/** A brief success pulse when a toggle turns on; cleared on animationend (or a failed toggle). */
 function usePulse() {
-  const [pulse, setPulse] = useState(0);
+  const [pulse, setPulse] = useState(false);
   return {
-    pulse: pulse > 0,
-    trigger: () => setPulse((n) => n + 1),
-    clear: () => setPulse(0),
+    props: {
+      "data-pulse": pulse || undefined,
+      onAnimationEnd: (event: AnimationEvent) => {
+        if (event.target === event.currentTarget) setPulse(false);
+      },
+    },
+    run: async (turningOn: boolean, toggle: () => Promise<boolean> | void) => {
+      if (turningOn) setPulse(true);
+      const result = await toggle();
+      if (turningOn && result === false) setPulse(false);
+    },
   };
 }
 
@@ -24,62 +32,34 @@ export type WatchToggleProps = {
   /** Accessible context, e.g. "CSC 2720 · 003". */
   code: string;
   onToggle: () => Promise<boolean> | void;
-  /** Icon-only form (narrow cards). */
-  compact?: boolean;
+  /** View-only term and not watching: shown disabled, as in the original app. */
+  disabled?: boolean;
+  /** Tooltip for guests ("Sign in to track classes"). */
+  hint?: string;
   className?: string;
 };
 
 /**
- * Watch toggle (spec.md §2.6): Button sm secondary with aria-pressed. The visible label shows the
- * state ("Watch" / "Watching" with a check), and the accessible name is that label plus sr-only
- * context ("Watching CSC 2720 · 003"), so the name always contains the visible text (WCAG 2.5.3).
- * aria-pressed carries the state for screen readers.
+ * The original Watch button: icon + "Watch" / "Watching". aria-pressed carries the state; the
+ * accessible name is the visible word plus sr-only context ("Watching CSC 2720 · 003").
  */
-export function WatchToggle({ watched, pending = false, code, onToggle, compact = false, className }: WatchToggleProps) {
-  const { pulse, trigger, clear } = usePulse();
-  const icon = watched ? <CheckIcon key="on" className={styles.icon} /> : <EyeIcon key="off" />;
-  const word = watched ? "Watching" : "Watch";
-  const handle = async () => {
-    const turningOn = !watched;
-    if (turningOn) trigger();
-    const result = await onToggle();
-    if (turningOn && result === false) clear();
-  };
-  const common = {
-    "data-pulse": pulse || undefined,
-    onAnimationEnd: (event: AnimationEvent) => {
-      if (event.target === event.currentTarget) clear();
-    },
-  };
-  if (compact) {
-    return (
-      <IconButton
-        size="sm"
-        variant="outline"
-        icon={icon}
-        pressed={watched}
-        aria-busy={pending || undefined}
-        label={`${word} ${code}`}
-        className={cn(styles.toggle, className)}
-        onClick={handle}
-        {...common}
-      />
-    );
-  }
+export function WatchToggle({ watched, pending = false, code, onToggle, disabled = false, hint, className }: WatchToggleProps) {
+  const pulse = usePulse();
   return (
-    <Button
-      size="sm"
-      variant="secondary"
+    <button
+      type="button"
+      className={cn(styles.button, styles.watch, watched && styles.active, className)}
       aria-pressed={watched}
       aria-busy={pending || undefined}
-      leadingIcon={icon}
-      className={cn(styles.toggle, className)}
-      onClick={handle}
-      {...common}
+      disabled={disabled}
+      title={disabled ? VIEW_ONLY : hint}
+      onClick={() => void pulse.run(!watched, onToggle)}
+      {...pulse.props}
     >
-      {word}
+      <OldIcon key={watched ? "on" : "off"} name={watched ? "watching" : "watch"} className={styles.icon} />
+      {watched ? "Watching" : "Watch"}
       <span className="sr-only"> {code}</span>
-    </Button>
+    </button>
   );
 }
 
@@ -88,80 +68,51 @@ export type ScheduleToggleProps = {
   pending?: boolean;
   code: string;
   onToggle: () => Promise<boolean> | void;
-  /** Icon-only form (narrow cards). */
-  compact?: boolean;
+  /** View-only term: shown disabled with the original tooltip. */
+  disabled?: boolean;
+  hint?: string;
   className?: string;
 };
 
-/**
- * Add to / remove from schedule (spec.md §2.6), toggle form with aria-pressed. The visible label
- * shows the state ("Add" / "Added" with a check); the accessible name is that label plus sr-only
- * context ("Added CSC 2720 · 003 to schedule").
- */
-export function ScheduleToggle({ scheduled, pending = false, code, onToggle, compact = false, className }: ScheduleToggleProps) {
-  const { pulse, trigger, clear } = usePulse();
-  const word = scheduled ? "Added" : "Add";
-  const icon = scheduled ? <CheckIcon key="on" className={styles.icon} /> : <CalendarPlusIcon key="off" />;
-  const common = {
-    "aria-busy": pending || undefined,
-    className: cn(styles.toggle, className),
-    "data-pulse": pulse || undefined,
-    onAnimationEnd: (event: AnimationEvent) => {
-      if (event.target === event.currentTarget) clear();
-    },
-    onClick: async () => {
-      const turningOn = !scheduled;
-      if (turningOn) trigger();
-      const result = await onToggle();
-      if (turningOn && result === false) clear();
-    },
-  };
-  if (compact) {
-    return <IconButton size="sm" variant="outline" pressed={scheduled} icon={icon} label={`${word} ${code} to schedule`} {...common} />;
-  }
+/** The original calendar icon button: a green check once the section is on the schedule. */
+export function ScheduleToggle({ scheduled, pending = false, code, onToggle, disabled = false, hint, className }: ScheduleToggleProps) {
+  const pulse = usePulse();
   return (
-    <Button size="sm" variant="secondary" aria-pressed={scheduled} leadingIcon={icon} {...common}>
-      {word}
-      <span className="sr-only"> {code} to schedule</span>
-    </Button>
+    <button
+      type="button"
+      className={cn(styles.button, styles.calendar, scheduled && styles.added, className)}
+      aria-pressed={scheduled}
+      aria-busy={pending || undefined}
+      aria-label={`${scheduled ? "Added" : "Add"} ${code} to schedule`}
+      disabled={disabled}
+      title={disabled ? VIEW_ONLY : (hint ?? (scheduled ? "On your schedule. Click to remove" : "Add to schedule"))}
+      onClick={() => void pulse.run(!scheduled, onToggle)}
+      {...pulse.props}
+    >
+      <OldIcon key={scheduled ? "on" : "off"} name={scheduled ? "check" : "calendar"} className={styles.icon} />
+    </button>
   );
 }
 
-/** Tracked view: replaces Watch (spec.md §2.6). */
-export function RemoveWatchButton({
-  code,
-  pending = false,
-  onRemove,
-  compact = false,
-}: {
-  code: string;
-  pending?: boolean;
-  onRemove: () => void;
-  compact?: boolean;
-}) {
-  if (compact) {
-    return (
-      <IconButton
-        size="sm"
-        variant="danger-ghost"
-        icon={<TrashIcon />}
-        label={`Remove ${code} from tracked classes`}
-        loading={pending}
-        onClick={onRemove}
-      />
-    );
-  }
+/** Tracked view: the original red "Remove" button in place of Watch. */
+export function RemoveWatchButton({ code, pending = false, onRemove }: { code: string; pending?: boolean; onRemove: () => void }) {
   return (
-    <Button
-      size="sm"
-      variant="danger-ghost"
-      leadingIcon={<TrashIcon />}
-      loading={pending}
+    <button
+      type="button"
+      className={cn(styles.button, styles.watch, styles.remove)}
       // Starts with the visible word (WCAG 2.5.3 Label in Name).
       aria-label={`Remove ${code} from tracked classes`}
+      aria-busy={pending || undefined}
+      disabled={pending}
       onClick={onRemove}
     >
-      Remove
-    </Button>
+      {pending ? (
+        "Saving…"
+      ) : (
+        <>
+          <OldIcon name="remove" /> Remove
+        </>
+      )}
+    </button>
   );
 }

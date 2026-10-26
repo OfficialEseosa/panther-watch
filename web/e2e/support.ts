@@ -160,6 +160,17 @@ export async function hydrated(locator: Locator): Promise<Locator> {
   return locator;
 }
 
+/** localStorage key of the one-time "What's new" showcase (components/dashboard/WhatsNewLauncher). */
+export const WHATS_NEW_KEY = "pantherwatch.whatsNew.v3";
+
+/**
+ * Marks the "What's new" showcase as seen before any page script runs, so a member's first
+ * /dashboard visit doesn't open the full-screen overlay over what the test is about.
+ */
+export async function skipWhatsNew(page: Page): Promise<void> {
+  await page.addInitScript((key) => window.localStorage.setItem(key, "1"), WHATS_NEW_KEY);
+}
+
 /**
  * Waits for every finite CSS animation on the page to finish (dialog/sheet entrances and
  * exits). Use before `force` actions, which skip Playwright's own stability check.

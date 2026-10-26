@@ -31,8 +31,8 @@ export function AccountMenu({ placement }: AccountMenuProps) {
   if (!user) {
     if (placement === "topbar") {
       return (
-        <ButtonAnchor href={SIGN_IN_HREF} size="sm">
-          Sign in
+        <ButtonAnchor href={SIGN_IN_HREF} size="sm" className={styles.loginPill}>
+          Log in
         </ButtonAnchor>
       );
     }

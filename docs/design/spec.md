@@ -1,5 +1,63 @@
 # PantherWatch design system
 
+> **Superseded 2026-10-26: the owner rejected the redesign; the original design is the baseline.**
+>
+> The owner's words: "I hate the redesign. It has drifted so much from the original design. I really loved the original page design, card design and image at the back. Now there is too much going on on every page. Keep the original card design but iteratively improve on that, though I like the font changes and the side bar changes." A follow-up asked for visual polish only (contrast, button/card micro-interactions, tinted backgrounds, consistent spacing), not new elements.
+>
+> Everything from **"Original specification (historical)"** down describes the rejected redesign. Keep it only for its engineering rules that still hold (CSS Modules, no undefined `var()`, `npm run check:css`, keyframes through `--kf-*` aliases, `next/font`, the pre-paint theme script, reduced motion). Its visual rules (tokens, three breakpoints, the gradient/dot-grid hero, stat tiles, Getting started checklist, removed statue) no longer apply.
+
+## The restored design (current)
+
+**Source of truth:** the original React/Vite app's CSS (`frontend-web/src/App.css`, `index.css`, `pages/Home/Home.css`, `pages/Dashboard/Dashboard.css`, `pages/Settings/Settings.css`, `components/Header|Sidebar|AnnouncementBanner/*.css`, `pages/Legal/Legal.css`, `components/CourseResults/CourseResults.css`). When in doubt, match it, then fix the problem listed below if it has one.
+
+**Kept from the redesign:** Inter via `next/font` (`--font-sans`), the sidebar/rail + bottom-nav shell and its navigation (recolored to the original palette), the `data-theme` pre-paint theme mechanism, CSS Modules, the UI-kit component APIs.
+
+### Tokens (`web/src/styles/tokens.css`, mirrored in `./tokens.css`)
+
+The original `App.css` `:root`, verbatim names:
+
+| Token | Light | Dark (`:root[data-theme="dark"]`, the old `.theme-dark`) |
+|---|---|---|
+| `--color-primary-900 / 700 / 600 / 500` | `#0b1c3d` / `#0f2f61` / `#0039a6` / `#1f5fc3` | same |
+| `--color-primary-300 / 100` | `#7fa9e6` / `#e4eef9` | `#4668a8` / `#1c2f52` |
+| `--color-page-background` | `#f5f6fb` | `#11234e` |
+| `--color-surface` / `--color-surface-muted` | `#ffffff` / `#f1f4f9` | `#0b1625` / `#152a45` |
+| `--color-border` / `--color-border-strong` | `#d6deeb` / `#b5bfd3` | `#1e3352` / `#2f4a6d` |
+| `--color-text` / `--color-text-muted` / `--color-heading` | `#1f2937` / `#4b5563` / `#152044` | `#e4ecf8` / `#9db2d2` / `#f7fbff` |
+| `--color-success` / `--color-warning` / `--color-danger` | `#17703f`* / `#94570a`* / `#b42318` | `#5cc98a` / `#f2b84b` / `#ff8a7f`* |
+| `--shadow-xs / sm / md` | `0 1px 0 rgba(15,23,42,.06)` / `0 2px 6px rgba(15,23,42,.08)` / `0 12px 30px rgba(15,23,42,.12)` | `0 1px 0 rgba(0,0,0,.4)` / `0 6px 16px rgba(3,10,22,.45)` / `0 20px 40px rgba(3,10,22,.6)` |
+| `--radius-sm / md / lg` | `6px / 10px / 16px` | same |
+| `--transition-base` | `150ms ease` | same |
+
+\* changed for contrast (see below). Also defined, because the old CSS used them without defining them: `--color-primary-50`, `--color-primary-400`, `--color-primary`, `--color-primary-dark`, `--color-bg`, `--color-card-bg`, `--card-bg`, `--hover-bg`, `--border-color`, `--text-primary`, `--text-secondary`, `--color-gray-100`, `--color-gray-400`. Small additions so dark mode stays token-driven: `--color-focus-ring`, `--color-success-bg / -warning-bg / -danger-bg` (tints), `--color-overlay`, `--color-on-primary`, `--color-surface-translucent` (panel behind text over the statue), `--color-banner-*` (announcement gradients), `--statue-opacity` (0.04 light / 0.06 dark).
+
+The redesign's semantic names (`--bg`, `--surface`, `--text`, `--accent`, `--border`, `--success`, ...) still exist as **aliases of the original values**, so older component CSS renders in the original palette. Spacing, type-scale, z-index, layout and motion tokens are unchanged. New CSS should prefer the `--color-*` names. Breakpoints: the original `max-width` 1024 / 768 / 600 / 480 are fine again.
+
+### Look
+
+- **Background:** `body::before` draws the statue (`/brand/statue.avif|webp|jpg`, 1600 px, ≤ 80 KB avif/webp) fixed, `cover`, `center top`, at `--statue-opacity`. Page wrappers are transparent; cards are opaque.
+- **Cards:** surface, 1 px `--color-border`, `--radius-lg`, `--shadow-sm`, 24 px padding; interactive cards lift 4 px to `--shadow-md`. Icon tiles: 48–56 px, 14 px radius, `--color-primary-100` fill, primary text.
+- **Buttons:** 6 px radius, semibold; primary = `--color-primary-600` → `--color-primary-500` on hover, `--color-primary-700` on press, scale 0.98; secondary = surface + border → muted surface. `lg` (landing) lifts 2 px with the blue glow.
+- **Modal:** centered card, 10 px radius, `0 10px 40px rgba(0,0,0,.2)`, 50% black overlay, fade + slide-up 0.2 s, at every width (no bottom sheet).
+- **Pages:** Home = old Home (header, hero, highlights pills, four feature cards, footer) with the sample course card beside the hero copy (a 3D card: click/Enter/Space flips it to the panther on GSU blue, the mouse tilts it ±8°, it floats when idle; reduced motion = instant swap, no tilt or float); Dashboard = guest notice, greeting card with the tracked count, three feature cards, the one-time 3D What's new showcase; Settings = old section cards (Profile, Appearance, Notifications, Account actions with action rows); Legal = old single 820 px column.
+
+### Problems in the original that the restore fixes
+
+- Warning text `#b36b09` was 4.0:1 on white → `#94570a` (5.8:1); success `#1d814c` was 4.4:1 on its tint → `#17703f`.
+- Dark mode kept light-theme success/warning/danger and `--color-primary-300` `#4668a8` (≈3:1 as text on `#0b1625`): dark now has its own status colors and uses `#7fa9e6` for accent text (links, active nav, icons).
+- Undefined variables (`--color-primary-400`, `--color-gray-*`, `--border-color`, `--text-secondary`, ...) silently fell back; all are defined now.
+- Announcement gradients `#4a90e2` / `#f5a623` carried white text at ~3:1 → brand/status gradients ≥ 4.5:1.
+- Locked dashboard cards faded the whole card to 0.72 (text below 4.5:1) and disabled their button: now full contrast, lock icon, button goes to sign-in.
+- Hero copy sat directly on the statue/gradient: it now has a faint translucent surface panel.
+- Settings action rows only dimmed to 0.7 on hover: now a tinted hover row + press.
+- Removed noise: the pulsing hero glow, the dot grid and the 80 px line grid on the landing page; staggered fade-ups (one fade per block now); the redesign's page-enter animation.
+- Statue was 343 KB JPEG; now ≤ 80 KB AVIF/WebP with a 106 KB JPEG fallback.
+
+---
+
+# Original specification (historical)
+
+
 Status: approved for implementation · Owner: design lead · Date: 2026-10-25
 Companion files: [`tokens.css`](./tokens.css) (the values, ready to import), [`motion.md`](./motion.md), [`pages.md`](./pages.md).
 

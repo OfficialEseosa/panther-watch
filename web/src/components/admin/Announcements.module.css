@@ -1,94 +1,208 @@
-.rowBody {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
-}
+/* Announcement Manager (old AnnouncementManager.css). The old raw hex accents (#4a90e2,
+   #f5a623, #e74c3c and pastel badges) are mapped to the status tokens so text reaches AA in
+   both themes. */
 
-.badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.message {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
-  color: var(--text);
-  overflow-wrap: anywhere;
-}
-
-.window {
-  font-size: var(--text-xs);
-  line-height: var(--leading-xs);
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-
+/* Inline form (.announcement-manager__form) */
 .form {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: 18px;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  animation: var(--kf-fade-in) var(--dur) var(--ease-out) both;
 }
 
-.field {
+.formTitle {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-heading);
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.formActions {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-.label {
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
-  font-weight: var(--weight-semibold);
-  color: var(--text);
-}
-
-.counter {
-  font-variant-numeric: tabular-nums;
+  gap: 12px;
 }
 
 .over {
-  color: var(--danger);
+  color: var(--color-danger);
+}
+
+/* List */
+.list {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.empty {
+  text-align: center;
+  padding: 48px;
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+}
+
+.empty svg {
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty p {
+  margin: 0;
+}
+
+.card {
+  --level: var(--accent-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--level);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  transition: box-shadow var(--transition-base), opacity var(--transition-base);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.card[data-level="warning"] {
+  --level: var(--color-warning);
+}
+
+.card[data-level="error"] {
+  --level: var(--color-danger);
+}
+
+/* Inactive / expired cards recede, but stay readable (the old 0.5 opacity failed contrast). */
+.card[data-status="paused"],
+.card[data-status="expired"] {
+  background: var(--color-surface-muted);
+}
+
+.card[data-status="paused"] .message,
+.card[data-status="expired"] .message {
+  color: var(--color-text-muted);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.cardType {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--level);
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid transparent;
+}
+
+.badge[data-status="live"] {
+  background: var(--color-success-bg);
+  border-color: color-mix(in srgb, var(--color-success) 30%, transparent);
+  color: var(--color-success);
+}
+
+.badge[data-status="scheduled"] {
+  background: var(--color-primary-50);
+  border-color: var(--color-primary-100);
+  color: var(--accent-text);
+}
+
+.badge[data-status="paused"] {
+  background: var(--color-danger-bg);
+  border-color: color-mix(in srgb, var(--color-danger) 30%, transparent);
+  color: var(--color-danger);
+}
+
+.badge[data-status="expired"] {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.message {
+  margin: 0 0 16px;
+  color: var(--color-text);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 .dates {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
 }
 
-@media (min-width: 640px) {
-  .dates {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+.dates > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
 }
 
-.tzNote {
-  margin-top: calc(-1 * var(--space-2));
-  font-size: var(--text-xs);
-  line-height: var(--leading-xs);
-  color: var(--text-muted);
+.dates svg {
+  flex: none;
 }
 
-/* The banner is full-bleed in the shell; frame it as a card-like preview here. */
-.preview {
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  pointer-events: none;
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .confirmText {
-  font-size: var(--text-base);
-  line-height: var(--leading-base);
-  color: var(--text-muted);
+  margin: 0;
+  color: var(--color-text);
+  line-height: 1.6;
   overflow-wrap: anywhere;
+}
+
+@media (max-width: 768px) {
+  .form {
+    padding: 16px;
+  }
+
+  .formRow {
+    grid-template-columns: 1fr;
+  }
+
+  .formActions {
+    flex-direction: column;
+  }
+
+  .actions > * {
+    flex: 1 1 auto;
+  }
 }

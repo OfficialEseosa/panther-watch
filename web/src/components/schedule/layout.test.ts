@@ -206,15 +206,27 @@ describe("hourRange", () => {
     expect(hourRange([{ start: 600, end: 675 }])).toEqual({ startHour: 8, endHour: 18 });
   });
 
-  it("pads content by an hour within 7:00–22:00", () => {
-    expect(hourRange([{ start: 8 * 60, end: 9 * 60 }])).toEqual({ startHour: 7, endHour: 18 });
-    expect(hourRange([{ start: 18 * 60, end: 20 * 60 + 30 }])).toEqual({ startHour: 8, endHour: 22 });
-    expect(hourRange([{ start: 19 * 60, end: 21 * 60 + 40 }])).toEqual({ startHour: 8, endHour: 22 });
+  it("keeps 8:00–18:00 for a class at the edges of the day", () => {
+    expect(hourRange([{ start: 8 * 60, end: 9 * 60 }])).toEqual({ startHour: 8, endHour: 18 });
+    expect(hourRange([{ start: 17 * 60, end: 18 * 60 }])).toEqual({ startHour: 8, endHour: 18 });
   });
 
-  it("extends past 7:00–22:00 only for classes outside it", () => {
+  it("extends the bottom to an hour past an evening class", () => {
+    expect(hourRange([{ start: 18 * 60, end: 20 * 60 + 30 }])).toEqual({ startHour: 8, endHour: 22 });
+    // 19:00–21:45 (e.g. a TR night section): the grid runs to 23:00.
+    expect(hourRange([{ start: 19 * 60, end: 21 * 60 + 45 }])).toEqual({ startHour: 8, endHour: 23 });
+    expect(hourRange([{ start: 18 * 60 + 15, end: 18 * 60 + 30 }])).toEqual({ startHour: 8, endHour: 20 });
+  });
+
+  it("extends the top to the start hour of an early class", () => {
+    expect(hourRange([{ start: 7 * 60 + 30, end: 8 * 60 + 45 }])).toEqual({ startHour: 7, endHour: 18 });
     expect(hourRange([{ start: 6 * 60 + 30, end: 7 * 60 + 45 }])).toEqual({ startHour: 6, endHour: 18 });
-    expect(hourRange([{ start: 21 * 60, end: 22 * 60 + 30 }])).toEqual({ startHour: 8, endHour: 23 });
+  });
+
+  it("never clips a late class: capped only at midnight", () => {
+    expect(hourRange([{ start: 21 * 60, end: 22 * 60 + 30 }])).toEqual({ startHour: 8, endHour: 24 });
+    expect(hourRange([{ start: 22 * 60, end: 23 * 60 + 50 }])).toEqual({ startHour: 8, endHour: 24 });
+    expect(hourRange([{ start: 7 * 60 + 30, end: 9 * 60 }, { start: 19 * 60, end: 21 * 60 + 45 }])).toEqual({ startHour: 7, endHour: 23 });
   });
 });
 

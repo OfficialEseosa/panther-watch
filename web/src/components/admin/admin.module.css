@@ -1,323 +1,730 @@
-/* Shared admin layout pieces: frame, sections, stat grids, list/table rows. */
+/* Admin panel: the original AdminPanel.css, AdminStats.css and UserSearchSection.css, with the
+   same structure and polished contrast, focus and press states. Tab-specific styles live in
+   Announcements / Grades / EmailComposer / Jobs .module.css. */
 
-.frame {
-  width: 100%;
-  max-width: var(--content-max);
-  margin-inline: auto;
-}
-
-.gateSkeleton {
+/* ---------- Frame (AdminPanel.css) ---------- */
+.panel {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 8px 0 48px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 24px;
 }
 
-.stack {
+.header {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-}
-
-.section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  min-width: 0;
-}
-
-.sectionHead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.sectionTitle {
-  font-size: var(--text-md);
-  line-height: var(--leading-md);
-  font-weight: var(--weight-semibold);
-  color: var(--text);
-}
-
-.capsLabel {
-  font-size: var(--text-xs);
-  line-height: var(--leading-xs);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.muted {
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
-  color: var(--text-muted);
-}
-
-.prose {
-  max-width: 68ch;
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
-  color: var(--text-muted);
-}
-
-.prose strong {
-  color: var(--text);
-  font-weight: var(--weight-semibold);
-}
-
-.stats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4);
-}
-
-@media (min-width: 900px) {
-  .stats {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--space-6);
-  }
-}
-
-@media (min-width: 1200px) {
-  .stats {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-.wide {
-  grid-column: 1 / -1;
-}
-
-@media (min-width: 900px) {
-  .wide {
-    grid-column: span 2;
-  }
-}
-
-.chips {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.facts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3) var(--space-4);
-  margin-top: var(--space-4);
-}
-
-@media (min-width: 640px) {
-  .facts {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-.fact {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-0-5);
-  min-width: 0;
-}
-
-.factValue {
-  font-size: var(--text-md);
-  line-height: var(--leading-md);
-  font-weight: var(--weight-bold);
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-}
-
-.runHead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
-  color: var(--text-muted);
-}
-
-/* ---------- list/table rows: cards below 640, a table grid at >= 640 ---------- */
-
-.list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-@media (min-width: 640px) {
-  .list {
-    gap: 0;
-    overflow: hidden;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-xs);
-  }
-}
-
-.row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  min-width: 0;
-  padding: var(--space-4);
-  background: var(--surface);
-  border: 1px solid var(--border);
+  gap: 16px;
+  padding: 26px 28px;
+  background: var(--color-surface);
   border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.headingIcon {
+  flex: none;
+  color: var(--accent-text);
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 1.85rem;
+  font-weight: 600;
+  color: var(--color-heading);
+}
+
+.header p {
+  margin: 6px 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.98rem;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  padding: 0 4px 4px;
+  overflow-x: auto;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.9rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--transition-base), border-color var(--transition-base), color var(--transition-base),
+    box-shadow var(--transition-base), transform var(--transition-base);
+}
+
+.tab svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
+.tab:hover {
+  background: var(--color-surface-muted);
+  border-color: var(--color-primary-300);
+  color: var(--color-heading);
   box-shadow: var(--shadow-xs);
 }
 
-@media (min-width: 640px) {
-  .row {
-    flex-direction: row;
-    align-items: center;
-    gap: var(--space-4);
-    padding: var(--space-3) var(--space-5);
-    border: 0;
-    border-radius: 0;
-    box-shadow: none;
-  }
-
-  .row + .row {
-    border-top: 1px solid var(--border);
-  }
+.tab:active {
+  transform: scale(0.98);
 }
 
-.rowMain {
-  display: flex;
-  flex: 1 1 auto;
-  align-items: center;
-  gap: var(--space-3);
-  min-width: 0;
+.tab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
 
-.rowText {
+.tab[aria-current="page"],
+.tab[aria-current="page"]:hover {
+  background: var(--color-primary-600);
+  border-color: var(--color-primary-600);
+  color: var(--color-on-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.content {
   display: flex;
   flex-direction: column;
+  gap: 24px;
+}
+
+/* One card per tab (.admin-section). */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 28px;
   min-width: 0;
 }
 
-.rowTitle {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
-  font-weight: var(--weight-semibold);
-  color: var(--text);
+.loading {
+  margin: 0;
+  padding: 32px 0;
+  text-align: center;
+  color: var(--color-text-muted);
 }
 
-.rowSub {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
-  color: var(--text-muted);
-}
-
-.rowMeta {
+/* Gate fallback (.loading-spinner) */
+.gate {
+  min-height: 50vh;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2) var(--space-3);
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
+  justify-content: center;
+  padding: 12px;
 }
 
-@media (min-width: 640px) {
-  .rowMeta {
-    flex: none;
-    flex-wrap: nowrap;
+.gateCard {
+  text-align: center;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 32px 36px;
+  min-width: 280px;
+}
+
+.gateCard p {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.spinner {
+  width: 42px;
+  height: 42px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary-500);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
-.rowActions {
+/* ---------- Shared bits ---------- */
+
+/* Section heading row: icon + title (UserSearchSection .section-heading). */
+.sectionHead {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-heading);
+}
+
+.sectionHeading svg {
   flex: none;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-1);
+  color: var(--accent-text);
 }
 
-.pager {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.pagerButtons {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.search {
-  flex: 1 1 280px;
-  max-width: 480px;
-}
-
-.numeric {
-  font-variant-numeric: tabular-nums;
+.muted {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
 }
 
 .code {
   margin: 0;
-  max-height: 360px;
+  max-height: 320px;
   overflow: auto;
-  padding: var(--space-3);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  line-height: var(--leading-xs);
-  color: var(--text);
-  white-space: pre;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
-.tabs {
-  margin-top: var(--space-1);
+/* Error / status notices (EmailComposer .status-message). */
+.notice {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.5;
 }
 
-.errors {
+.notice[data-tone="danger"] {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
+}
+
+.notice[data-tone="warning"] {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 30%, transparent);
+}
+
+.notice[data-tone="success"] {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  border: 1px solid color-mix(in srgb, var(--color-success) 30%, transparent);
+}
+
+.notice[data-tone="info"] {
+  background: var(--color-primary-50);
+  color: var(--color-text);
+  border: 1px solid var(--color-primary-100);
+}
+
+/* Buttons (.btn + variants from the old app) */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--transition-base), border-color var(--transition-base), color var(--transition-base),
+    box-shadow var(--transition-base), transform var(--transition-base);
+}
+
+.btn svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btnSmall {
+  padding: 6px 12px;
+  font-size: 0.82rem;
+}
+
+.btnPrimary {
+  background: var(--color-primary-600);
+  border-color: var(--color-primary-600);
+  color: var(--color-on-primary);
+  box-shadow: var(--shadow-xs);
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: var(--color-primary-700);
+  border-color: var(--color-primary-700);
+}
+
+.btnSecondary {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-heading);
+}
+
+.btnSecondary:hover:not(:disabled) {
+  background: var(--color-surface-muted);
+  border-color: var(--color-border-strong);
+}
+
+/* The old green "Send email" (.send-email-btn). In dark mode the success green is light, so the
+   label switches to the dark inverse text to stay readable. */
+.btnSend {
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: var(--text-inverse);
+  box-shadow: var(--shadow-xs);
+}
+
+.btnSend:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-success) 85%, black);
+  border-color: color-mix(in srgb, var(--color-success) 85%, black);
+}
+
+/* The old warning/success/danger buttons were white text on light fills (~2:1). Tinted fills
+   with the status color as text keep the cue and read at every theme. */
+.btnWarning,
+.btnSuccess,
+.btnDanger {
+  border-color: color-mix(in srgb, currentColor 35%, transparent);
+}
+
+.btnWarning {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.btnSuccess {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.btnDanger {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.btnWarning:hover:not(:disabled),
+.btnSuccess:hover:not(:disabled),
+.btnDanger:hover:not(:disabled) {
+  border-color: currentColor;
+}
+
+/* Form controls (.form-group) */
+.formGroup {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  margin-top: var(--space-4);
+  gap: 8px;
+  min-width: 0;
 }
 
-.errors > summary {
-  cursor: pointer;
+.formLabel {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--color-heading);
 }
 
-.list[data-loading] {
+.control {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.9rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.control:focus {
+  outline: none;
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.control[aria-invalid="true"] {
+  border-color: var(--color-danger);
+}
+
+textarea.control {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.fieldError {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--color-danger);
+}
+
+/* ---------- Statistics (AdminStats.css) ---------- */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.statCard {
+  --tone-color: var(--accent-text);
+  --tone-surface: color-mix(in srgb, var(--color-primary-500) 14%, transparent);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
+}
+
+.statCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-border-strong);
+}
+
+.toneSuccess {
+  --tone-color: var(--color-success);
+  --tone-surface: var(--color-success-bg);
+}
+
+.toneWarning {
+  --tone-color: var(--color-warning);
+  --tone-surface: var(--color-warning-bg);
+}
+
+.toneDanger {
+  --tone-color: var(--color-danger);
+  --tone-surface: var(--color-danger-bg);
+}
+
+.statIcon {
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--tone-surface);
+  color: var(--tone-color);
+  flex-shrink: 0;
+}
+
+.statContent {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.statLabel {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.statValue {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-heading);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.statHint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+/* ---------- Users (UserSearchSection.css) ---------- */
+.searchBox {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 12px 42px 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.95rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.searchIcon {
+  position: absolute;
+  right: 14px;
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.usersGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 22px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  transition: opacity var(--transition-base);
+}
+
+.usersGrid[aria-busy="true"] {
   opacity: 0.6;
-  transition: opacity var(--dur) var(--ease-standard);
 }
 
-.skeletonText {
+.userCard {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 22px 20px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
+}
+
+.userCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-border-strong);
+}
+
+.userCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.avatar {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--color-primary-100);
+  color: var(--accent-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.userInfo {
   flex: 1;
-  gap: var(--space-1);
+  min-width: 0;
+}
+
+.userName {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-heading);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.userEmail {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.userStats {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+}
+
+.statItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.statItem svg {
+  flex: none;
+  color: var(--accent-text);
+}
+
+.statItem dd {
+  margin: 0;
+}
+
+.userActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.noUsers {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.noUsers svg {
+  margin: 0 auto 12px;
+  color: var(--color-primary-300);
+}
+
+.noUsers p {
+  margin: 0;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.pagerButtons {
+  display: flex;
+  gap: 8px;
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .tab:active,
+  .btn:active:not(:disabled),
+  .statCard:hover,
+  .userCard:hover {
+    transform: none;
+  }
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 768px) {
+  .panel {
+    padding: 4px 0 32px;
+  }
+
+  .tabs {
+    padding: 0 2px 4px;
+  }
+
+  .tab {
+    padding: 8px 14px;
+    font-size: 0.85rem;
+  }
+
+  .tab svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .header,
+  .section {
+    padding: 22px;
+  }
+
+  .header h1 {
+    font-size: 1.6rem;
+  }
+
+  .statsGrid {
+    gap: 16px;
+  }
+
+  .statCard {
+    padding: 16px;
+  }
+
+  .usersGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .userCard {
+    padding: 18px;
+  }
 }

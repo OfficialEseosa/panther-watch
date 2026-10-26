@@ -123,10 +123,13 @@ export function Dialog({
     return event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom;
   };
 
-  // ---- Sheet drag (< 640 px), on the handle and header only ----
+  // ---- Sheet drag, on the handle and header only ----
+  // The restored original design shows a centered modal at every width (no bottom sheet), so
+  // dragging is only enabled while the sheet handle is actually rendered.
   const onDragStart = (event: ReactPointerEvent<HTMLElement>) => {
     const el = ref.current;
-    if (!el || window.matchMedia("(min-width: 640px)").matches) return;
+    const handle = el?.querySelector(`.${styles.handle}`);
+    if (!el || !handle || getComputedStyle(handle).display === "none") return;
     if ((event.target as HTMLElement).closest("button, a, input, select, textarea")) return;
     drag.current = { startY: event.clientY, lastY: event.clientY, lastT: event.timeStamp, velocity: 0, id: event.pointerId };
     event.currentTarget.setPointerCapture(event.pointerId);

@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { SchedulePlanner, type TermOption } from "@/components/schedule/SchedulePlanner";
-import { SchedulePageSkeleton } from "@/components/schedule/ScheduleSkeleton";
+import { ScheduleLoading } from "@/components/schedule/ScheduleLoading";
 import { requireUser } from "@/lib/auth/session";
 import { getTerms, type TermInfo } from "@/lib/courses";
 import { listSchedule } from "@/lib/schedule";
-import { listWatches } from "@/lib/watches";
 import { resolveScheduleSections } from "@/components/schedule/resolve.server";
 import { nyDateParts, termLabel } from "@/lib/format";
 
@@ -57,13 +56,12 @@ function pickInitialTerm(options: TermOption[], schedule: Record<string, unknown
 
 async function ScheduleBuilderData({ searchParams }: { searchParams: SearchParams }) {
   const user = await requireUser();
-  const [schedule, terms, watches, params] = await Promise.all([
+  const [schedule, terms, params] = await Promise.all([
     listSchedule(user.id),
     getTerms().catch((error: unknown) => {
       console.warn("schedule builder: term list unavailable:", error instanceof Error ? error.message : error);
       return null;
     }),
-    listWatches(user.id).catch(() => []),
     searchParams,
   ]);
 
@@ -73,8 +71,6 @@ async function ScheduleBuilderData({ searchParams }: { searchParams: SearchParam
   if (!termOptions.some((o) => o.code === initialTerm)) {
     termOptions.unshift({ code: initialTerm, label: termLabel(initialTerm), viewOnly: false });
   }
-  const trackedCounts: Record<string, number> = {};
-  for (const watch of watches) trackedCounts[watch.term] = (trackedCounts[watch.term] ?? 0) + 1;
   // Meeting times for every scheduled class (the shown term first), so the calendar arrives
   // complete instead of resolving in a client waterfall on every visit.
   const resolved = await resolveScheduleSections(schedule, [initialTerm]);
@@ -84,7 +80,6 @@ async function ScheduleBuilderData({ searchParams }: { searchParams: SearchParam
       initialSchedule={schedule}
       termOptions={termOptions}
       initialTerm={initialTerm}
-      trackedCounts={trackedCounts}
       termsUnavailable={terms === null}
       resolved={resolved}
     />
@@ -93,12 +88,12 @@ async function ScheduleBuilderData({ searchParams }: { searchParams: SearchParam
 
 /**
  * Schedule builder (pages.md §6). Signed-in only (`requireUser()` redirects to `/`). The
- * server loads every term's schedule, the term list, tracked counts and the live meeting times
+ * server loads every term's schedule, the term list and the live meeting times
  * (one GoSolar search per course, 4 at a time); the client planner owns all interaction.
  */
 export default function ScheduleBuilderPage({ searchParams }: { searchParams: SearchParams }) {
   return (
-    <Suspense fallback={<SchedulePageSkeleton />}>
+    <Suspense fallback={<ScheduleLoading />}>
       <ScheduleBuilderData searchParams={searchParams} />
     </Suspense>
   );

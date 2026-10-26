@@ -5,9 +5,6 @@ import { readStorage, writeStorage } from "@/lib/ui/storage";
 
 /** localStorage keys owned by the dashboard. */
 export const DASHBOARD_KEYS = {
-  gettingStartedDismissed: "pantherwatch.gettingStarted.dismissed",
-  /** Set when the visitor follows the checklist's "Search a course" step. */
-  gettingStartedSearched: "pantherwatch.gettingStarted.searched",
   whatsNew: (version: string) => `pantherwatch.whatsNew.${version}`,
 } as const;
 

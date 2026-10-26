@@ -20,6 +20,9 @@
 # production
 /build
 
+# local Postgres for `npm run dev:local`
+/.pglocal/
+
 # misc
 .DS_Store
 *.pem

@@ -171,23 +171,19 @@ export interface HourRange {
 }
 
 export const DEFAULT_RANGE: HourRange = { startHour: 8, endHour: 18 };
-/** The usual window; content is padded by an hour but not past these unless it lies outside. */
-const SOFT_MIN_HOUR = 7;
-const SOFT_MAX_HOUR = 22;
 
 /**
- * Grid hours: the content's floor/ceiling hours padded by one hour, kept within 7:00–22:00
- * unless a class itself starts before 7 or ends after 22, and always covering 8:00–18:00
- * (spec.md §2.17). An empty week is 8:00–18:00.
+ * Grid hours. Always 8:00–18:00; a class that starts before 8:00 pulls the top up to its start
+ * hour (a 7:30 AM lab -> 7:00), and a class that ends after 18:00 pushes the bottom to one full
+ * hour past its end (a 7:00–9:45 PM class -> 23:00), capped only at midnight, so no class is ever
+ * clipped. An empty week is 8:00–18:00.
  */
 export function hourRange(blocks: readonly { start: number; end: number }[]): HourRange {
   if (blocks.length === 0) return DEFAULT_RANGE;
   const earliest = Math.min(...blocks.map((block) => block.start));
   const latest = Math.max(...blocks.map((block) => block.end));
-  const floorHour = Math.floor(earliest / 60);
-  const ceilHour = Math.ceil(latest / 60);
-  const startHour = Math.max(0, Math.min(DEFAULT_RANGE.startHour, Math.max(floorHour - 1, Math.min(SOFT_MIN_HOUR, floorHour))));
-  const endHour = Math.min(24, Math.max(DEFAULT_RANGE.endHour, Math.min(ceilHour + 1, Math.max(SOFT_MAX_HOUR, ceilHour))));
+  const startHour = earliest < DEFAULT_RANGE.startHour * 60 ? Math.max(0, Math.floor(earliest / 60)) : DEFAULT_RANGE.startHour;
+  const endHour = latest > DEFAULT_RANGE.endHour * 60 ? Math.min(24, Math.ceil(latest / 60) + 1) : DEFAULT_RANGE.endHour;
   return { startHour, endHour };
 }
 

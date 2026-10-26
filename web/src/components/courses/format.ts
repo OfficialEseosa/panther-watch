@@ -5,8 +5,7 @@ import type { GradeAggregate, GradeDistributionResponse, GradeKey } from "@/lib/
 import type { SectionMeta } from "@/lib/courses/meta";
 import type { CourseData, MeetingTime } from "@/lib/gosolar/types";
 import { toMinutes } from "@/lib/schedule/conflicts";
-import { courseCode, formatTimeRange, instructorOf, instructorsOf, MONTHS, plural, termLabel, titleCase } from "@/lib/format";
-import type { Tone } from "@/components/ui/Badge";
+import { courseCode, formatTimeRange, instructorOf, MONTHS, plural, termLabel, titleCase } from "@/lib/format";
 
 /** GoSolar sends a few fields the ported DTO doesn't declare. */
 export type Section = CourseData & {
@@ -44,13 +43,6 @@ export const sectionLabel = (section: Pick<CourseData, "subject" | "courseNumber
 export const displayTitle = (title: string | null | undefined): string => titleCase(decodeEntities(title).trim());
 
 export const titleOf = (section: Pick<CourseData, "courseTitle">) => displayTitle(section.courseTitle) || "Untitled course";
-
-/** "Smith, Jane" / "Smith, Jane +1" / "TBA". */
-export function instructorLabel(section: Pick<CourseData, "faculty">): string {
-  const all = instructorsOf(section);
-  if (all.length === 0) return "TBA";
-  return all.length > 1 ? `${all[0]} +${all.length - 1}` : all[0];
-}
 
 // ------------------------------------------------------------------ meetings
 
@@ -137,11 +129,6 @@ export function meetingRows(section: Section): MeetingRow[] {
   return rows;
 }
 
-/** Days any meeting uses (for the day-letter row and the Days filter). */
-export function sectionDays(section: Section): Set<DayKey> {
-  return new Set(meetingRows(section).flatMap((row) => row.days));
-}
-
 // ------------------------------------------------------------------ grades
 
 export type GpaTone = "high" | "good" | "mid" | "low";
@@ -152,23 +139,6 @@ export function gpaTone(gpa: number | null | undefined): GpaTone | null {
   if (gpa >= 3.0) return "good";
   if (gpa >= 2.5) return "mid";
   return "low";
-}
-
-/** Badge tone for a GPA (spec.md §2.6): high/good -> success, mid -> warning, low -> danger. */
-export function gpaBadgeTone(gpa: number | null | undefined): Tone {
-  const tone = gpaTone(gpa);
-  if (tone === "high" || tone === "good") return "success";
-  if (tone === "mid") return "warning";
-  if (tone === "low") return "danger";
-  return "neutral";
-}
-
-/** Badge tone for a DWF rate (higher is worse). */
-export function dwfBadgeTone(pct: number | null | undefined): Tone {
-  if (pct == null) return "neutral";
-  if (pct >= 30) return "danger";
-  if (pct >= 20) return "warning";
-  return "success";
 }
 
 export const formatGpa = (gpa: number | null | undefined) => (gpa == null ? "—" : gpa.toFixed(2));

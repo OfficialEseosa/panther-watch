@@ -2,16 +2,14 @@ import type { Metadata } from "next";
 import { unstable_rethrow } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { CourseResults, ResultsUnavailable } from "@/components/courses/CourseResults";
+import { CourseResults, ResultsUnavailable, editSearchHref, resultsTitle } from "@/components/courses/CourseResults";
 import { metaItemOf, type Section } from "@/components/courses/format";
 import pageStyles from "@/components/courses/page.module.css";
 import { parseDialog, parseFilters, parseSearch, resultsHref, type RawSearchParams } from "@/components/courses/params";
 import { ResultsSkeleton } from "@/components/courses/ResultsSkeleton";
-import { PageHeader } from "@/components/shell/PageHeader";
+import { ResultsToolbar } from "@/components/courses/ResultsToolbar";
+import { ErrorMessage } from "@/components/courses/SectionParts";
 import { loadViewer } from "@/components/shell/viewer.server";
-import { ButtonLink } from "@/components/ui/Button";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { SearchIcon } from "@/components/ui/icons";
 import { getBatchMeta, getTerms, isUpstreamError, searchSections, type SectionMeta, type TermInfo } from "@/lib/courses";
 import { listSchedule } from "@/lib/schedule";
 import { listWatches } from "@/lib/watches";
@@ -63,21 +61,10 @@ async function Results({ searchParams }: PageProps) {
 
   if (!search.ok) {
     return (
-      <>
-        <PageHeader title="Course results" />
-        <EmptyState
-          variant="first-use"
-          icon={<SearchIcon size={24} />}
-          title={search.reason === "empty" ? "Start with a search" : "This search link isn’t valid"}
-          actions={
-            <ButtonLink href="/course-search" leadingIcon={<SearchIcon />}>
-              Search classes
-            </ButtonLink>
-          }
-        >
-          {search.message}
-        </EmptyState>
-      </>
+      <div className={pageStyles.stack}>
+        <ResultsToolbar title={search.reason === "empty" ? "Start with a search" : "This search link isn’t valid"} />
+        <ErrorMessage role="status">{search.message}</ErrorMessage>
+      </div>
     );
   }
 
@@ -115,16 +102,15 @@ async function Results({ searchParams }: PageProps) {
   // Sorted once, here: the client keeps this order for its default (course) sort.
   sections.sort(compareSections);
 
-  const editHref = `/course-search?${new URLSearchParams({ term, subjects: subjects.join(",") }).toString()}`;
   const termInfo = terms?.find((t) => t.code === term);
   const name = describeTerm(term, termInfo?.description ?? sections.find((s) => s.termDesc)?.termDesc);
 
   if (failedSubjects.length === subjects.length) {
     return (
-      <>
-        <PageHeader title={`${subjects.join(", ")}${courseNumber ? ` ${courseNumber}` : ""} · ${name}`} />
-        <ResultsUnavailable editHref={editHref} />
-      </>
+      <ResultsUnavailable
+        title={resultsTitle({ subjects, courseNumber }, name)}
+        editHref={editSearchHref({ term, subjects, courseNumber, level })}
+      />
     );
   }
 
@@ -152,15 +138,14 @@ async function Results({ searchParams }: PageProps) {
     if (entry) initialMeta[keyOf(entry.section)] = meta;
   });
 
-  // Keyed by the search: a new search (inline Edit search, a Recent search chip) is a new
-  // results view, so filters, page, the edit form and optimistic toggle state start fresh.
+  // Keyed by the search: a new search is a new results view, so the filter, page and
+  // optimistic toggle state start fresh.
   return (
     <CourseResults
       key={resultsHref(search)}
       search={{ term, subjects, courseNumber, level }}
       termName={name}
       viewOnly={termInfo?.viewOnly ?? false}
-      terms={terms}
       sections={sections}
       failedSubjects={failedSubjects}
       initialMeta={initialMeta}

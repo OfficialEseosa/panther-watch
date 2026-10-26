@@ -1,242 +1,212 @@
-.scroller {
-  --_hour: calc(var(--hour-h) - 4px);
-  --_rail: 52px;
-  --_day-min: 120px;
-  --_head-h: 40px;
-  position: relative;
-  overflow: auto;
-  max-height: max(420px, calc(100dvh - 220px));
-  overscroll-behavior-x: contain;
-  border: 1px solid var(--border);
+/* The original week grid (old ScheduleBuilder.css "Calendar" section). */
+.calendarWeek {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  background: var(--surface);
-  /* < 640: swipe between days; each day column snaps to the rail's edge. */
-  scroll-snap-type: x mandatory;
-  scroll-padding-inline-start: var(--_rail);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  box-shadow: var(--shadow-sm);
 }
 
-@media (min-width: 640px) {
-  .scroller {
-    scroll-snap-type: none;
-  }
+.calendarWeek:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
 
-@media (min-width: 900px) {
-  .scroller {
-    --_hour: var(--hour-h);
-  }
+.inner {
+  min-width: 640px;
 }
 
-.grid {
+.headRow {
   display: grid;
-  grid-template-columns: var(--_rail) repeat(var(--_days), minmax(var(--_day-min), 1fr));
-  grid-template-rows: var(--_head-h) calc(var(--_hours) * var(--_hour));
-  min-width: calc(var(--_rail) + var(--_days) * var(--_day-min));
+  grid-template-columns: 72px repeat(var(--day-count, 5), 1fr);
+  background: var(--color-surface-muted);
+  border-bottom: 2px solid var(--color-border);
 }
 
-.head,
 .corner {
-  grid-row: 1;
-  position: sticky;
-  top: 0;
-  z-index: var(--z-sticky);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  border-right: 2px solid var(--color-border);
 }
 
-.head {
-  border-left: 1px solid var(--border);
-  font-size: var(--text-xs);
-  line-height: var(--leading-xs);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-/* Placed last in the DOM so it paints over the sticky head row and rail. */
-.corner {
-  grid-column: 1;
-  left: 0;
-}
-
-.rail {
-  grid-row: 2;
-  grid-column: 1;
-  position: sticky;
-  left: 0;
-  z-index: var(--z-sticky);
-  background: var(--surface);
-}
-
-.hour {
-  position: absolute;
-  top: calc(var(--_hour) * var(--_i));
-  right: var(--space-2);
-  margin-top: var(--space-1);
-  font-size: var(--text-xs);
-  line-height: var(--leading-xs);
-  color: var(--text-subtle);
-  font-variant-numeric: tabular-nums;
+.dayHead {
+  padding: 12px 8px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--color-heading);
+  border-right: 1px solid var(--color-border);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.day {
-  grid-row: 2;
+.dayHead:last-child {
+  border-right: none;
+}
+
+.dayAbbr {
+  display: none;
+}
+
+.body {
+  display: grid;
+  grid-template-columns: 72px repeat(var(--day-count, 5), 1fr);
   position: relative;
-  border-left: 1px solid var(--border);
-  background-image: linear-gradient(to bottom, var(--border) 1px, transparent 1px);
-  background-size: 100% var(--_hour);
-  scroll-snap-align: start;
 }
 
-.block {
+.hours {
+  background: var(--color-surface-muted);
+  border-right: 2px solid var(--color-border);
+}
+
+.hourLabel {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+  box-sizing: border-box;
+}
+
+.dayCol {
+  position: relative;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.dayCol:last-child {
+  border-right: none;
+}
+
+.hourLine {
+  border-bottom: 1px solid var(--color-border);
+  box-sizing: border-box;
+}
+
+/* Class block: absolutely positioned so start time and duration are exact. The flat fill and a
+   readable text color (white or navy, >= 4.5:1; the old app used translucent white everywhere)
+   are set inline. */
+.classBlock {
   position: absolute;
-  top: calc(var(--_hour) * var(--_top));
-  left: calc(var(--_left) * 100% + 2px);
-  width: calc(var(--_width) * 100% - 4px);
-  height: calc(var(--_hour) * var(--_len) - 2px);
-  min-height: 20px;
+  background: var(--color-primary-600);
+  border: none;
+  border-radius: 8px;
+  padding: 6px 8px;
+  margin: 1px;
+  cursor: pointer;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 0;
-  padding: var(--space-1) 6px;
-  overflow: hidden;
-  border: 0;
-  border-radius: var(--radius-sm);
-  color: var(--sched-text);
-  box-shadow: var(--shadow-xs);
+  align-items: stretch;
+  gap: 2px;
+  box-sizing: border-box;
   text-align: left;
-  cursor: pointer;
+  font: inherit;
+  box-shadow: var(--shadow-xs);
+  transition: transform var(--transition-base), box-shadow var(--transition-base), filter var(--transition-base);
   view-transition-class: sched-block;
-  transition:
-    background-color var(--dur-fast) var(--ease-standard),
-    filter var(--dur-fast) var(--ease-standard),
-    box-shadow var(--dur-fast) var(--ease-standard),
-    transform var(--dur-fast) var(--ease-standard);
 }
 
-.block:active {
-  transform: scale(var(--scale-press));
+/* Polish: a subtle lift on hover and a press-in on click (both off under reduced motion). */
+.classBlock:hover {
+  z-index: 10;
+  transform: translateY(-1px);
+  filter: saturate(1.08);
+  box-shadow: var(--shadow-sm);
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .block:hover {
-    z-index: var(--z-raised);
-    filter: brightness(1.08);
-    box-shadow: var(--shadow-md);
+.classBlock:active {
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .classBlock:hover,
+  .classBlock:active {
+    transform: none;
   }
 }
 
-.block:focus-visible {
-  z-index: var(--z-raised);
+.classBlock:focus-visible {
+  outline: 2px solid var(--color-surface);
+  outline-offset: 0;
+  box-shadow: 0 0 0 4px var(--color-primary-500);
+  z-index: 10;
 }
 
-.block[data-conflict] {
-  outline: 2px solid var(--danger);
+/* Overlapping classes stay on the schedule with a red outline. */
+.classBlock[data-conflict] {
+  outline: 2px solid var(--color-danger);
   outline-offset: 1px;
-  padding-right: 22px;
 }
 
-.block[data-conflict]:focus-visible {
-  outline: var(--ring-width) solid var(--focus-ring);
-  outline-offset: var(--ring-offset);
+.classBlock[data-conflict]:focus-visible {
+  outline: 2px solid var(--color-danger);
+  outline-offset: 1px;
 }
 
-.block[data-fresh] {
-  outline: 2px solid transparent;
+.classBlock[data-fresh] {
   animation: var(--kf-fresh-ring) var(--dur-slower) var(--ease-out) 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .block[data-fresh] {
+  .classBlock[data-fresh] {
     animation: none;
-    outline: 2px solid var(--indicator);
-    outline-offset: 1px;
+    box-shadow: 0 0 0 3px var(--color-primary-300);
   }
 }
 
-.code,
-.time,
-.location {
-  display: block;
-  max-width: 100%;
+.classCode {
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: inherit;
+  line-height: 1.2;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.classTime {
+  font-size: 0.68rem;
+  color: inherit;
+  font-weight: 600;
   white-space: nowrap;
-  font-size: var(--text-xs);
-  line-height: var(--leading-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.code {
-  font-weight: var(--weight-bold);
-}
-
-.seq {
-  font-weight: var(--weight-medium);
-}
-
-/* Lane-split blocks show the course code only. It wraps between subject and number instead of
-   truncating mid-word ("CSC …"), and the conflict glyph moves to the bottom corner so the code
-   gets the full width. */
-.block[data-narrow] .code {
-  white-space: normal;
-  text-overflow: clip;
-  overflow-wrap: normal;
-  word-break: keep-all;
-}
-
-.block[data-narrow][data-conflict] {
-  padding-right: 6px;
-}
-
-.block[data-narrow] .alert {
-  top: auto;
-  bottom: 3px;
-}
-
-.time {
-  font-weight: var(--weight-medium);
-  opacity: 0.9;
-  font-variant-numeric: tabular-nums;
-}
-
-.location {
-  display: none;
-  opacity: 0.85;
-}
-
-.block[data-tall] .location {
-  display: block;
-}
-
-.alert {
-  position: absolute;
-  top: 3px;
-  right: 3px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: var(--radius-full);
-  background: var(--danger-fill);
-  color: var(--danger-contrast);
+.classLocation {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 @media (forced-colors: active) {
-  .block {
+  .classBlock {
     border: 1px solid CanvasText;
   }
-  .block[data-conflict] {
+  .classBlock[data-conflict] {
     outline-color: Highlight;
   }
 }
 
-.headLong {
-  white-space: nowrap;
+@media (max-width: 1100px) {
+  .dayFull {
+    display: none;
+  }
+  .dayAbbr {
+    display: inline;
+  }
+}
+
+/* Below this point the week grid gives way to the agenda list. */
+@media (max-width: 768px) {
+  .calendarWeek {
+    display: none;
+  }
 }

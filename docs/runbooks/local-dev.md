@@ -1,5 +1,44 @@
 # Local development: `web/` (Next.js)
 
+## Fastest way to see it
+
+Needs Node 22, `npm ci` done in `web/`, and the Postgres 17 server binaries (`scoop install postgresql`; `initdb`/`pg_ctl` are found on PATH, `$PG_BIN` or scoop's app dir). No Docker, no Google OAuth client, no `.env.local` to fill in.
+
+```sh
+cd web
+npm run dev:local
+```
+
+It starts a local Postgres on `127.0.0.1:54330` (database `pantherwatch_local`), applies the migrations, loads the grade history (first run only), seeds a demo account, starts a fake Resend on `127.0.0.1:3461`, and runs `next dev` on http://localhost:3000. When it is ready it prints a banner with two one-click sign-in links:
+
+```text
+http://localhost:3000/api/test/login?secret=<E2E_TEST_SECRET>&email=raphaelomorose@gmail.com&name=Raphael   (admin, via ADMIN_EMAILS)
+http://localhost:3000/api/test/login?secret=<E2E_TEST_SECRET>&email=student@local.test&name=Student          (plain member)
+```
+
+`<E2E_TEST_SECRET>` is the value in `web/.env.local`; the banner prints the links with it filled in. Each link sets the session cookie and lands on `/dashboard`. Any other email works too (`&admin=1` asserts the account is in `ADMIN_EMAILS`). The route is the e2e test login (`src/app/api/test/login/route.ts`): it exists only while `E2E_TEST_SECRET` is set and neither `NODE_ENV` nor `VERCEL_ENV` is `production`, and a missing or wrong secret is a plain 404.
+
+What you get:
+
+- **Seed data** for raphaelomorose@gmail.com (`npm run seed:local`, run automatically the first time): term 202701 (Spring 2027) with CSC 1301 and MATH 2211 sections fetched live from GoSolar. The first section of each is on the schedule and the second of each is watched. There is also an active "Welcome to the new PantherWatch" announcement.
+- **Real GoSolar** for search, seat counts and the watcher.
+- **No real email.** Every send goes to the fake Resend. The terminal logs each one (`EMAIL to ...: "subject"`), and http://127.0.0.1:3461/ lists them with their HTML. To fire seat alerts, run the watcher once (the seeded watches have open seats). `CRON_SECRET` is in `web/.env.local`:
+
+  ```sh
+  CRON_SECRET=$(grep '^CRON_SECRET=' web/.env.local | cut -d= -f2-)
+  curl -X POST 'http://localhost:3000/api/cron/watch?sync=1' -H "Authorization: Bearer $CRON_SECRET"
+  ```
+
+- **Env:** `web/.env.local` is read first. `JWT_SECRET`, `CRON_SECRET` and `E2E_TEST_SECRET` are generated into it on the first run. Real `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` are used if present there, otherwise dummies (Google sign-in then fails, but the links above work). The seeded account is bound to `google_sub` `local:raphaelomorose@gmail.com`, so a real Google sign-in with that email reports an account conflict until you reset the data. `DATABASE_URL`, `RESEND_*`, `APP_URL` and `ADMIN_EMAILS` are always forced to the local values, so a Supabase URL in `.env.local` is never used. A `GOSOLAR_BASE_URL` in `.env.local` makes it refuse to start. Because `E2E_TEST_SECRET` now lives in `.env.local`, plain `npm run dev` also serves the `/api/test` routes. They're still local only.
+
+**Stop:** press Ctrl+C (or Ctrl+Break). That stops `next dev`, the fake Resend and Postgres (`pg_ctl stop`). On Windows, cmd may ask "Terminate batch job (Y/N)?" afterwards; either answer is fine. If a crash leaves Postgres running, the next `npm run dev:local` reuses it and stops it on exit.
+
+**Data** lives in `web/.pglocal/` (gitignored): the cluster in `data/` and the server log in `postgres.log`. It survives restarts. **Reset:** stop it, delete `web/.pglocal`, and run `npm run dev:local` again for a fresh database, grades and seed.
+
+Notes: it clears `web/.next/dev` on every start (see the reload-loop note in section 5), and it refuses to start while another `next dev` is running in `web/`. Stop it before `npm run e2e`, which runs its own dev server. Ports 3000, 3461 and 54330 must be free.
+
+The rest of this page sets things up by hand: Docker or PGlite, a real Google OAuth client, and so on.
+
 Requirements: Node 22, npm. You also need a Postgres: Docker Desktop for option A, or nothing extra for option B (PGlite). `psql` is optional.
 
 ```sh

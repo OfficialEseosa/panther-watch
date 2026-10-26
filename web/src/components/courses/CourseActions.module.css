@@ -1,29 +1,138 @@
-/* Watch / schedule toggle success pulse (motion.md §4.10). */
-.toggle {
+/*
+ * The original card action buttons (old .calendar-button / .watch-button), polished: token
+ * colors with dark variants, readable text on the tinted states, hover / press / focus
+ * feedback and a short success pulse when a toggle turns on (all <= 200 ms).
+ */
+.button {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  cursor: pointer;
+  /* AA text on the tinted "on" states (the original's light-mode green/amber were ~4:1). */
+  --_success-text: light-dark(color-mix(in srgb, var(--color-success) 85%, black), var(--color-success));
+  transition:
+    background var(--dur) ease,
+    border-color var(--dur) ease,
+    color var(--dur) ease,
+    transform var(--dur-instant) ease,
+    box-shadow var(--dur) ease;
 }
 
-.toggle::before {
+.button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* Success pulse (motion.css pulse-ring / icon-pop). */
+.button::before {
   content: "";
   position: absolute;
   inset: -1px;
   border-radius: inherit;
-  border: 2px solid var(--indicator);
+  border: 2px solid currentColor;
   opacity: 0;
   pointer-events: none;
 }
 
-.toggle[data-pulse]::before {
-  animation: var(--kf-pulse-ring) var(--dur-slow) var(--ease-out) both;
+.button[data-pulse]::before {
+  animation: var(--kf-pulse-ring) var(--dur) var(--ease-out) both;
 }
 
-.toggle[data-pulse] .icon {
+.button[data-pulse] .icon {
   animation: var(--kf-icon-pop) var(--dur) var(--ease-spring) both;
 }
 
+.calendar {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: var(--color-text-muted);
+}
+
+.watch {
+  gap: 8px;
+  padding: 8px 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--color-heading);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .button:hover:not(:disabled) {
+    border-color: var(--accent-subtle-border);
+    color: var(--accent-text);
+    background: var(--color-primary-50);
+  }
+
+  .calendar.added:hover:not(:disabled),
+  .remove:hover:not(:disabled) {
+    background: var(--danger-subtle);
+    border-color: var(--color-danger);
+    color: var(--color-danger);
+  }
+
+  .watch.active:hover:not(:disabled) {
+    background: var(--accent-subtle-hover);
+    color: var(--accent-subtle-text);
+  }
+}
+
+.watch.active {
+  background: var(--accent-subtle);
+  border-color: var(--accent-subtle-border);
+  color: var(--accent-subtle-text);
+}
+
+/* On the schedule: green check, click again to remove. */
+.calendar.added {
+  background: var(--success-subtle);
+  border-color: var(--success-border);
+  color: var(--_success-text);
+}
+
+.remove {
+  background: var(--danger-subtle);
+  border-color: var(--danger-border);
+  color: var(--color-danger);
+}
+
+.button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.button[aria-busy="true"] {
+  opacity: 0.75;
+}
+
+@media (max-width: 600px) {
+  .calendar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .watch {
+    padding: 7px 10px;
+    font-size: 0.8rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .toggle[data-pulse]::before,
-  .toggle[data-pulse] .icon {
+  .button:active:not(:disabled) {
+    transform: none;
+  }
+
+  .button[data-pulse]::before,
+  .button[data-pulse] .icon {
     animation: none;
   }
 }

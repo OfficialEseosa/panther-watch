@@ -1,4 +1,9 @@
-/* Base (900–1199): the 72 px rail. Hidden below 900 px. >= 1200 px: the full sidebar. */
+/* Navigation sidebar, in the ORIGINAL palette (old Sidebar.css): white surface with a right
+   border, full-bleed rows, the active row tinted primary-100 with a 4px primary bar at the left
+   edge, hover = muted surface + primary text. Structure is the redesign's (rail 900–1199, full
+   sidebar >= 1200), which the owner kept.
+
+   Base (900–1199): the 72 px rail. Hidden below 900 px. >= 1200 px: the full sidebar. */
 .sidebar {
   display: none;
 }
@@ -12,8 +17,8 @@
     flex-direction: column;
     width: var(--rail-w);
     height: 100dvh;
-    background: var(--surface);
-    border-right: 1px solid var(--border);
+    background: var(--color-surface);
+    border-right: 1px solid var(--color-border);
   }
 }
 
@@ -23,6 +28,7 @@
   align-items: center;
   justify-content: center;
   height: 64px;
+  border-bottom: 1px solid var(--color-border);
 }
 
 /* Rail: the wordmark stays as the link's accessible name but is visually hidden. */
@@ -41,13 +47,13 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: var(--space-3);
+  padding: 20px 0;
 }
 
 .list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -72,28 +78,28 @@
   width: 48px;
   height: 48px;
   margin-inline: auto;
-  border-radius: var(--radius-md);
-  color: var(--text-muted);
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
-  font-weight: var(--weight-medium);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: 0.95rem;
+  line-height: 1.4;
+  font-weight: 500;
   text-decoration: none;
   transition:
-    background-color var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard);
+    background-color var(--transition-base),
+    color var(--transition-base);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .link:hover {
-    background: var(--surface-2);
-    color: var(--text);
+    background: var(--color-surface-muted);
+    color: var(--accent-text);
   }
 }
 
 .link[aria-current="page"] {
-  background: var(--accent-subtle);
+  background: var(--color-primary-100);
   color: var(--accent-subtle-text);
-  font-weight: var(--weight-semibold);
+  font-weight: 600;
 }
 
 /* "You are here" bar at the sidebar's left edge (outside the item). */
@@ -101,10 +107,10 @@
   content: "";
   position: absolute;
   top: 50%;
-  left: calc(var(--space-3) * -1);
-  width: 3px;
-  height: 20px;
-  border-radius: 0 var(--radius-full) var(--radius-full) 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
   background: var(--indicator);
   transform: translateY(-50%);
 }
@@ -129,13 +135,13 @@
   top: 6px;
   right: 6px;
   display: flex;
-  color: var(--text-subtle);
+  color: var(--color-text-muted);
 }
 
 .divider {
-  margin: var(--space-2) 0;
+  margin: 12px 0;
   border: 0;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--color-border);
 }
 
 /* Pinned to the viewport's bottom edge: while the announcement banner is on screen the sticky
@@ -149,15 +155,15 @@
   flex-direction: column;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-3);
-  border-top: 1px solid var(--border);
-  background: var(--surface);
+  padding: 12px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
 }
 
 .legal {
   font-size: var(--text-xs);
   line-height: var(--leading-xs);
-  color: var(--text-subtle);
+  color: var(--color-text-muted);
 }
 
 .legal a {
@@ -166,7 +172,7 @@
 
 @media (hover: hover) and (pointer: fine) {
   .legal a:hover {
-    color: var(--text);
+    color: var(--accent-text);
   }
 }
 
@@ -189,7 +195,7 @@
 
   .sidebar .brandRow {
     justify-content: flex-start;
-    padding: 0 var(--space-5);
+    padding: 0 20px;
   }
 
   .brandName {
@@ -203,8 +209,13 @@
   .sidebar .link {
     justify-content: flex-start;
     width: 100%;
-    height: 40px;
-    padding: 0 var(--space-3);
+    height: 46px;
+    padding: 0 20px;
+    border-radius: 0;
+  }
+
+  .sidebar .link[aria-current="page"]::before {
+    border-radius: 0;
   }
 
   .sidebar .icon {
@@ -257,14 +268,14 @@
   margin: 0;
   padding: 0;
   border: 0;
-  border-right: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: var(--shadow-xl);
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-md);
 }
 
 .drawer::backdrop {
-  background: var(--overlay);
+  background: rgba(17, 24, 39, 0.35);
 }
 
 .drawer[open] {
@@ -297,8 +308,13 @@
 .drawer .link {
   justify-content: flex-start;
   width: 100%;
-  height: 40px;
-  padding: 0 var(--space-3);
+  height: 46px;
+  padding: 0 20px;
+  border-radius: 0;
+}
+
+.drawer .link[aria-current="page"]::before {
+  border-radius: 0;
 }
 
 .drawer .icon {

@@ -1,3 +1,5 @@
+/* Seat meter in the original palette (old CourseResults.css seat colors: success / warning /
+   danger on a muted track). No fill-in animation. */
 .root {
   --_track-h: 6px;
   display: flex;
@@ -28,7 +30,8 @@
   height: var(--_track-h);
   overflow: hidden;
   border-radius: var(--radius-full);
-  background: var(--meter-track);
+  background: var(--color-surface-muted);
+  box-shadow: inset 0 0 0 1px var(--color-border);
 }
 
 .fill {
@@ -37,12 +40,6 @@
   border-radius: inherit;
   transform-origin: left;
   transform: scaleX(var(--_fill));
-  transition: transform var(--dur-slow) var(--ease-out);
-  transition-delay: calc(var(--i, 0) * var(--stagger) + 80ms);
-
-  @starting-style {
-    transform: scaleX(0);
-  }
 }
 
 .fill.open {
@@ -67,34 +64,34 @@
 
 .word {
   font-weight: var(--weight-semibold);
-  color: var(--text-muted);
+  color: var(--color-text-muted);
 }
 
 .word.open {
-  color: var(--success);
+  color: var(--color-success);
 }
 
 .word.low {
-  color: var(--warning);
+  color: var(--color-warning);
 }
 
 .word.full {
-  color: var(--danger);
+  color: var(--color-danger);
 }
 
 .counts {
-  color: var(--text-muted);
+  color: var(--color-text-muted);
 }
 
 .wait {
   font-size: var(--text-xs);
   line-height: var(--leading-xs);
-  color: var(--text-muted);
+  color: var(--color-text-muted);
   font-variant-numeric: tabular-nums;
 }
 
 .waitFull {
-  color: var(--danger);
+  color: var(--color-danger);
 }
 
 @media (prefers-reduced-motion: reduce) {

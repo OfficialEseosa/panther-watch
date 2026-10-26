@@ -1,83 +1,88 @@
+/* The original dashboard cards (old Dashboard.css .dashboard-grid / .dashboard-card).
+   Polish: locked cards keep full-contrast text (the original faded the whole card to 0.72,
+   which dropped the description below 4.5:1); the lock shows in the icon tile and button. */
 .grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-@media (min-width: 640px) {
-  .grid {
-    gap: var(--space-6);
-  }
-}
-
-@media (min-width: 900px) {
-  .grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
 .card {
-  height: 100%;
-}
-
-.body {
   display: flex;
   flex-direction: column;
-}
-
-.icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-md);
-  background: var(--accent-subtle);
-  color: var(--accent-subtle-text);
-}
-
-.title {
-  margin-top: var(--space-4);
-  font-size: var(--text-md);
-  line-height: var(--leading-md);
-  font-weight: var(--weight-semibold);
-  color: var(--text);
-}
-
-.text {
-  flex: 1;
-  margin-top: var(--space-1);
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
-  color: var(--text-muted);
-}
-
-.meta {
-  display: flex;
-  align-items: center;
-  min-height: 22px;
-  margin-top: var(--space-4);
-}
-
-.go {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
-  font-weight: var(--weight-medium);
-  color: var(--accent-text);
-}
-
-.go > svg {
-  transition: transform var(--dur-fast) var(--ease-standard);
+  gap: 16px;
+  padding: 24px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform var(--transition-base),
+    box-shadow var(--transition-base);
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .card:hover .go > svg {
-    transform: translateX(var(--move-xs));
+  .card:not(.locked):hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
   }
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--color-primary-100);
+  color: var(--color-primary-600);
+}
+
+:root[data-theme="dark"] .icon {
+  color: var(--accent-text);
+}
+
+.locked .icon {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-heading);
+}
+
+.description {
+  margin: 0;
+  line-height: 1.6;
+  color: var(--color-text-muted);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: auto;
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--color-primary-100);
+  color: var(--accent-subtle-text);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.skeletonText {
+  margin-top: 16px;
 }

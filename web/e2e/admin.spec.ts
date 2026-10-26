@@ -15,7 +15,7 @@ test.beforeEach(async ({ request }) => {
 });
 
 const stat = (page: Page, label: string) =>
-  page.getByTestId("stat").filter({ has: page.getByText(label, { exact: true }) }).locator(".sr-only");
+  page.getByTestId("stat").filter({ has: page.getByText(label, { exact: true }) }).getByTestId("stat-value");
 
 test("non-admins get the not-found page", async ({ page }) => {
   await login(page.request, freshUser("not-admin"));
@@ -31,8 +31,8 @@ test("overview tiles and the users search", async ({ page }) => {
   await login(page.request, ADMIN);
 
   await page.goto("/admin");
-  await expect(page.getByRole("heading", { level: 1, name: "Admin" })).toBeVisible();
-  await expect(stat(page, "Users")).toHaveText("2");
+  await expect(page.getByRole("heading", { level: 1, name: "Admin panel" })).toBeVisible();
+  await expect(stat(page, "Total users")).toHaveText("2");
   await expect(stat(page, "Watched sections")).toHaveText("1");
   await expect(stat(page, "Schedule entries")).toHaveText("0");
 
@@ -44,7 +44,7 @@ test("overview tiles and the users search", async ({ page }) => {
   await expect(list.getByRole("listitem")).toHaveCount(1);
   await expect(list).toContainText(member.email);
   await expect(list).toContainText("Morgan Member");
-  await expect(list).toContainText("1 tracked");
+  await expect(list).toContainText("1 tracked class");
   await expect(page).toHaveURL(/[?&]q=findme/);
   await search.fill("nobody-matches-this");
   await expect(page.getByText("No users match “nobody-matches-this”.")).toBeVisible();
@@ -55,12 +55,14 @@ test("announcements: publish shows the banner to members, pause hides it", async
   const member = freshUser("banner-viewer");
   await login(page.request, ADMIN);
   await page.goto("/admin/announcements");
-  await (await hydrated(page.getByRole("button", { name: "New announcement" }).first())).click();
-  const editor = page.getByRole("dialog", { name: "New announcement" });
+  await (await hydrated(page.getByRole("button", { name: "New Announcement" }))).click();
+  const editor = page.getByRole("form", { name: "New announcement" });
   await editor.getByRole("textbox", { name: "Message" }).fill(message);
-  await editor.getByRole("button", { name: "Publish" }).click();
+  await editor.getByRole("button", { name: "Create Announcement" }).click();
   await expect(toast(page, "Announcement published")).toBeVisible();
-  await expect(page.getByRole("region", { name: /^Live/ }).getByText(message)).toBeVisible();
+  const card = page.getByRole("list", { name: "Announcements" }).getByRole("listitem").filter({ hasText: message });
+  await expect(card).toBeVisible();
+  await expect(card.getByText("Active", { exact: true })).toBeVisible();
 
   await login(page.request, member);
   await page.goto("/dashboard");
@@ -68,10 +70,10 @@ test("announcements: publish shows the banner to members, pause hides it", async
 
   await login(page.request, ADMIN);
   await page.goto("/admin/announcements");
-  const row = page.getByRole("listitem").filter({ hasText: message });
-  await (await hydrated(row.getByRole("button", { name: "Pause" }))).click();
-  await expect(toast(page, "Announcement paused")).toBeVisible();
-  await expect(row.getByRole("button", { name: "Resume" })).toBeVisible();
+  const row = page.getByRole("list", { name: "Announcements" }).getByRole("listitem").filter({ hasText: message });
+  await (await hydrated(row.getByRole("button", { name: "Deactivate" }))).click();
+  await expect(toast(page, "Announcement deactivated")).toBeVisible();
+  await expect(row.getByRole("button", { name: "Activate" })).toBeVisible();
 
   await login(page.request, member);
   await page.goto("/dashboard");
@@ -83,10 +85,10 @@ test("announcements: dismissing the only announcement persists across a reload",
   const message = `E2E dismiss me ${Date.now()}`;
   await login(page.request, ADMIN);
   await page.goto("/admin/announcements");
-  await (await hydrated(page.getByRole("button", { name: "New announcement" }).first())).click();
-  const editor = page.getByRole("dialog", { name: "New announcement" });
+  await (await hydrated(page.getByRole("button", { name: "New Announcement" }))).click();
+  const editor = page.getByRole("form", { name: "New announcement" });
   await editor.getByRole("textbox", { name: "Message" }).fill(message);
-  await editor.getByRole("button", { name: "Publish" }).click();
+  await editor.getByRole("button", { name: "Create Announcement" }).click();
   await expect(toast(page, "Announcement published")).toBeVisible();
 
   await login(page.request, freshUser("banner-dismisser"));
@@ -111,7 +113,7 @@ test("announcements: dismissing the only announcement persists across a reload",
 test("grades: the two real CSVs upload; swapped files are flagged", async ({ page }) => {
   await login(page.request, ADMIN);
   await page.goto("/admin/grades");
-  const form = page.locator("form").filter({ has: page.getByRole("textbox", { name: "Term code" }) });
+  const form = page.getByRole("form", { name: "Upload a term" });
   await hydrated(form.getByRole("textbox", { name: "Term code" }));
 
   // Swapped: the detailed export in the summary slot and vice versa.
@@ -125,7 +127,7 @@ test("grades: the two real CSVs upload; swapped files are flagged", async ({ pag
   await form.getByRole("textbox", { name: "Term code" }).fill("202601");
   await form.getByRole("button", { name: "Upload" }).click();
   await expect(toast(page, "Spring 2026 uploaded")).toBeVisible({ timeout: 45_000 });
-  await expect(page.getByRole("region", { name: /Terms on file|Stored terms|Grade terms/ }).getByText("Spring 2026")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Terms on file" }).getByText("Spring 2026")).toBeVisible();
 });
 
 test("email: a one-off send reaches the fake Resend and is logged", async ({ page }) => {

@@ -1,5 +1,6 @@
+/* Original .settings-page: a centered column up to 1000px. */
 .page {
   width: 100%;
-  max-width: var(--content-narrow);
+  max-width: 1000px;
   margin-inline: auto;
 }

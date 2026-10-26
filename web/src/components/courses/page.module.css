@@ -1,40 +1,12 @@
-/* Page wrappers for the course routes (spec.md §3.2 content widths). */
-.narrow {
-  width: 100%;
-  max-width: var(--content-narrow);
-  margin-inline: auto;
-}
-
+/* Page wrappers for the course routes: the original 1200 px content column. */
 .default {
   width: 100%;
   max-width: var(--content-max);
   margin-inline: auto;
 }
 
-.formSkeleton {
+.stack {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
-}
-
-.skeletonRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-5);
-}
-
-@media (min-width: 640px) {
-  .skeletonRow {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.skeletonField {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.bannerGap {
-  margin-bottom: var(--space-5);
+  gap: 20px;
 }

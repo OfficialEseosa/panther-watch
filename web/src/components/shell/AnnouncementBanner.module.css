@@ -8,48 +8,51 @@
   overflow: hidden;
 }
 
-/* Dismiss: collapse + fade (motion.md §4.13). */
+/* Dismiss: collapse + fade. */
 .collapsing {
   grid-template-rows: 0fr;
   transition: grid-template-rows var(--dur) var(--ease-in);
   animation: var(--kf-fade-out) var(--dur) var(--ease-in) both;
 }
 
+/* Original announcement bar (old AnnouncementBanner.css): a full-width gradient strip with
+   white text and a slide-down entrance. Polish: the gradients are the brand/status colors,
+   darkened so white text passes 4.5:1 (the original #4a90e2 / #f5a623 did not). */
 .banner {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-3);
+  gap: 12px;
   min-height: 44px;
-  padding: 10px var(--gutter);
-  border-bottom: 1px solid;
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
+  padding: 12px 20px;
+  color: #ffffff;
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 500;
+  animation: banner-down 0.3s ease-out both;
+}
+
+@keyframes banner-down {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
 }
 
 .info {
-  background: var(--accent-subtle);
-  color: var(--accent-subtle-text);
-  border-color: var(--accent-subtle-border);
+  background: linear-gradient(135deg, var(--blue-500) 0%, var(--blue-600) 100%);
 }
 
 .warning {
-  background: var(--warning-subtle);
-  color: var(--text);
-  border-color: var(--warning-border);
-}
-
-.warning .icon {
-  color: var(--warning);
+  background: linear-gradient(135deg, var(--color-banner-warning-from) 0%, var(--color-banner-warning-to) 100%);
 }
 
 .error {
-  background: var(--danger-subtle);
-  color: var(--text);
-  border-color: var(--danger-border);
+  background: linear-gradient(135deg, var(--color-banner-error-from) 0%, var(--color-banner-error-to) 100%);
 }
 
-.error .icon {
-  color: var(--danger);
+.banner :global(button[aria-label]:hover) {
+  background: rgba(0, 0, 0, 0.12);
+  color: #ffffff;
 }
 
 .icon {
@@ -57,6 +60,7 @@
   width: 20px;
   height: 20px;
   margin-top: 2px;
+  color: #ffffff;
 }
 
 .text {

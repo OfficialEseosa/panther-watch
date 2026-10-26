@@ -1,7 +1,10 @@
+/* Original button language: .btn / .btn-primary / .btn-secondary (old Home.css), .card-button
+   (old Dashboard.css) and .modal-button (old Settings.css). Small radius, semibold, solid
+   GSU blue primary that brightens to primary-500 on hover. */
 .button {
-  --_h: var(--control-h-md);
-  --_px: var(--space-4);
-  --_gap: var(--space-2);
+  --_h: 40px;
+  --_px: 16px;
+  --_gap: 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -9,26 +12,27 @@
   min-height: var(--_h);
   padding: 0 var(--_px);
   border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
-  font-weight: var(--weight-semibold);
+  border-radius: var(--radius-sm);
+  font-size: 0.9375rem;
+  line-height: 1.25;
+  font-weight: 600;
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
   transition:
-    background-color var(--dur-fast) var(--ease-standard),
-    border-color var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard),
-    transform var(--dur-fast) var(--ease-standard);
+    background var(--transition-base),
+    border-color var(--transition-base),
+    color var(--transition-base),
+    box-shadow var(--transition-base),
+    transform var(--transition-base);
 }
 
 .button > svg {
   flex: none;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
 .label {
@@ -37,13 +41,14 @@
 }
 
 .button:active:not(:disabled, [aria-busy="true"]) {
-  transform: scale(var(--scale-press));
-  transition-duration: var(--dur-instant);
+  transform: scale(0.98);
 }
 
 .button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
 }
 
 .button[aria-busy="true"] {
@@ -52,9 +57,10 @@
 
 /* Sizes */
 .sm {
-  --_h: var(--control-h-sm);
-  --_px: var(--space-3);
+  --_h: 32px;
+  --_px: 12px;
   --_gap: 6px;
+  font-size: 0.85rem;
 }
 
 .sm > svg {
@@ -63,14 +69,14 @@
 }
 
 .md {
-  --_h: var(--control-h-md);
+  --_h: 40px;
 }
 
+/* The landing page's .btn-lg */
 .lg {
-  --_h: var(--control-h-lg);
-  --_px: var(--space-5);
-  font-size: var(--text-base);
-  line-height: var(--leading-base);
+  --_h: 50px;
+  --_px: 1.75rem;
+  font-size: 1.0625rem;
 }
 
 .fullWidth {
@@ -80,83 +86,93 @@
 
 /* Variants */
 .primary {
-  background: var(--accent);
-  color: var(--accent-contrast);
+  background: var(--color-primary-600);
+  color: var(--color-on-primary);
+}
+
+.lg.primary {
+  box-shadow: 0 4px 14px rgba(31, 95, 195, 0.25);
 }
 
 .secondary {
-  background: var(--surface);
-  border-color: var(--border);
-  color: var(--text);
-  box-shadow: var(--shadow-xs);
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text);
 }
 
 .ghost {
   background: transparent;
-  color: var(--text-muted);
+  color: var(--color-text-muted);
 }
 
 .danger {
+  background: var(--color-danger);
+  color: #ffffff;
+}
+
+:root[data-theme="dark"] .danger {
   background: var(--danger-fill);
-  color: var(--danger-contrast);
 }
 
 .danger-ghost {
   background: transparent;
-  color: var(--danger);
+  color: var(--color-danger);
 }
 
-/* Pressed (toggle) state for secondary buttons, e.g. Watch / Watching (spec.md §2.2, §2.6). */
+/* Pressed (toggle) state for secondary buttons, e.g. Watch / Watching. */
 .secondary[aria-pressed="true"] {
-  background: var(--accent-subtle);
-  border-color: var(--accent-subtle-border);
+  background: var(--color-primary-100);
+  border-color: var(--color-primary-300);
   color: var(--accent-subtle-text);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .primary:hover:not(:disabled) {
-    background: var(--accent-hover);
+    background: var(--color-primary-500);
+    color: var(--color-on-primary);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .lg.primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(31, 95, 195, 0.35);
   }
 
   .secondary:hover:not(:disabled) {
-    background: var(--surface-2);
-    border-color: var(--border-strong);
+    background: var(--color-surface-muted);
+    border-color: var(--color-primary-300);
+    color: var(--color-text);
+  }
+
+  .lg.secondary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+    border-color: var(--color-border);
   }
 
   .secondary[aria-pressed="true"]:hover:not(:disabled) {
     background: var(--accent-subtle-hover);
-    border-color: var(--accent-subtle-border);
+    color: var(--accent-subtle-text);
   }
 
   .ghost:hover:not(:disabled) {
-    background: var(--surface-2);
-    color: var(--text);
+    background: var(--color-surface-muted);
+    color: var(--color-primary-600);
+  }
+
+  :root[data-theme="dark"] .ghost:hover:not(:disabled) {
+    color: var(--accent-text);
   }
 
   .danger:hover:not(:disabled) {
     background: var(--danger-fill-hover);
+    color: #ffffff;
   }
 
   .danger-ghost:hover:not(:disabled) {
-    background: var(--danger-subtle);
+    background: var(--color-danger-bg);
+    color: var(--color-danger);
   }
-}
-
-.primary:active:not(:disabled) {
-  background: var(--accent-active);
-}
-
-.secondary:active:not(:disabled),
-.ghost:active:not(:disabled) {
-  background: var(--surface-2);
-}
-
-.danger:active:not(:disabled) {
-  background: var(--danger-fill-hover);
-}
-
-.danger-ghost:active:not(:disabled) {
-  background: var(--danger-subtle);
 }
 
 @media (pointer: coarse) {
@@ -174,5 +190,37 @@
 @media (forced-colors: active) {
   .button {
     border-color: ButtonText;
+  }
+}
+
+/* Press: settle (scale 0.98, set on .button) and a darker fill. */
+.primary:active:not(:disabled) {
+  background: var(--color-primary-700);
+}
+
+.secondary:active:not(:disabled),
+.ghost:active:not(:disabled) {
+  background: var(--color-surface-muted);
+}
+
+.danger:active:not(:disabled) {
+  background: var(--danger-fill-hover);
+}
+
+/* Toggle confirmation (Watch -> Watching, Add -> Added): a brief ring pulse right after the
+   click turns the button on (it is focused then; nothing pulses on page load). */
+.secondary[aria-pressed="true"]:focus {
+  animation: pressed-pulse 0.2s ease-out;
+}
+
+@keyframes pressed-pulse {
+  from {
+    box-shadow: 0 0 0 0 var(--color-focus-ring);
+  }
+  50% {
+    box-shadow: 0 0 0 5px var(--color-focus-ring);
+  }
+  to {
+    box-shadow: 0 0 0 0 transparent;
   }
 }

@@ -1,5 +1,5 @@
-import { OverviewSkeleton } from "@/components/admin/Overview";
+import { AdminLoading } from "@/components/admin/AdminFrame";
 
 export default function Loading() {
-  return <OverviewSkeleton />;
+  return <AdminLoading label="Loading statistics…" />;
 }

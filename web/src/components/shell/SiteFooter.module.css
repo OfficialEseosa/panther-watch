@@ -1,40 +1,49 @@
+/* Original landing footer (old Home.css .home-footer): centered muted text under a short
+   fading rule. The legal pages pass their own class for the old .legal-footer look. */
 .footer {
-  border-top: 1px solid var(--border);
-  background: var(--bg);
+  position: relative;
+  margin-top: 3rem;
+}
+
+.footer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 200px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-border), transparent);
+  transform: translateX(-50%);
 }
 
 .inner {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  width: 100%;
-  max-width: var(--content-max);
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 1200px;
   margin-inline: auto;
-  padding: var(--space-8) var(--gutter) calc(var(--space-8) + env(safe-area-inset-bottom));
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
-  color: var(--text-muted);
-}
-
-@media (min-width: 640px) {
-  .inner {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
+  padding: 4rem 1rem calc(3rem + env(safe-area-inset-bottom));
+  font-size: 0.9375rem;
+  color: var(--color-text-muted);
+  text-align: center;
 }
 
 .links {
   display: flex;
-  gap: var(--space-2);
+  gap: 0.4rem;
+  font-size: 0.875rem;
 }
 
 .links a {
-  color: var(--text-muted);
+  color: var(--color-text-muted);
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .links a:hover {
-    color: var(--text);
-  }
+.links a:hover {
+  color: var(--color-primary-500);
+  text-decoration: underline;
+}
+
+:root[data-theme="dark"] .links a:hover {
+  color: var(--accent-text);
 }

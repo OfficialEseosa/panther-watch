@@ -1,33 +1,28 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
-import type { FormEvent } from "react";
-import { Banner } from "@/components/ui/Banner";
-import { Button } from "@/components/ui/Button";
-import { ChipLink } from "@/components/ui/Chip";
-import { Field } from "@/components/ui/Field";
-import { ArrowRightIcon, SearchIcon } from "@/components/ui/icons";
-import { Input, Select } from "@/components/ui/Input";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { useId, useMemo, useRef, useState } from "react";
+import type { FormEvent, ReactNode } from "react";
 import type { Subject, TermInfo } from "@/lib/client/courses";
 import { courseNumberSchema, termCodeSchema } from "@/lib/courses/validation";
 import { cn } from "@/lib/ui/cn";
-import { resultsHref } from "./params";
-import { COURSE_STORAGE_KEYS, parseRecent, rememberSearch, useStoredValue, writeStored } from "./storage";
-import { SubjectAutocomplete } from "./SubjectAutocomplete";
-import styles from "./CourseSearchForm.module.css";
 import { termName } from "@/lib/format";
+import { resultsHref } from "./params";
+import { COURSE_STORAGE_KEYS, useStoredValue, writeStored } from "./storage";
+import { SubjectAutocomplete } from "./SubjectAutocomplete";
+import buttons from "./buttons.module.css";
+import styles from "./CourseSearchForm.module.css";
 
-export type Level = "US" | "GS" | "all";
-
-const LEVELS: Array<{ value: Level; label: string }> = [
-  { value: "US", label: "Undergraduate" },
-  { value: "GS", label: "Graduate" },
-  { value: "all", label: "All" },
+/** The original degree levels (GoSolar txt_level), plus "any level". */
+const LEVELS: Array<{ value: string; label: string }> = [
+  { value: "UA", label: "Associates (2-year undergraduate, Perimeter College students)" },
+  { value: "US", label: "Bachelors (4-year undergraduate students)" },
+  { value: "GS", label: "Graduate (Graduate level students)" },
+  { value: "LW", label: "Law (Graduate, College of Law students)" },
+  { value: "all", label: "Any level" },
 ];
 
-const isLevel = (value: unknown): value is Level => value === "US" || value === "GS" || value === "all";
+const isLevel = (value: unknown): value is string => typeof value === "string" && LEVELS.some((l) => l.value === value);
 
 export type SearchInitial = {
   term?: string | null;
@@ -39,22 +34,28 @@ export type SearchInitial = {
 export type CourseSearchFormProps = {
   /** Terms from the server, registrable first; null when they couldn't be loaded. */
   terms: TermInfo[] | null;
-  /** Prefill (Edit search on the results page). */
+  /** Prefill ("New search" from the results page). */
   initial?: SearchInitial;
-  /** Inline variant on the results page: no outer card chrome, shows Cancel. */
-  inline?: boolean;
-  onCancel?: () => void;
 };
 
 type Errors = { term?: string; subjects?: string; courseNumber?: string };
 
+function FieldError({ id, children }: { id: string; children: ReactNode }) {
+  return (
+    <p id={id} className={styles.error}>
+      {children}
+    </p>
+  );
+}
+
 /**
- * The course search form (pages.md §3). A real GET form to /course-results, so it works
- * before hydration; once hydrated it validates, remembers the term/level and the search, and
- * navigates with the router.
+ * The original course search form: term, degree, subjects and course number in one column, with
+ * the solid "Search Classes" button. A real GET form to /course-results, so it works before
+ * hydration; once hydrated it validates, remembers the term and level, and navigates.
  */
-export function CourseSearchForm({ terms, initial, inline = false, onCancel }: CourseSearchFormProps) {
+export function CourseSearchForm({ terms, initial }: CourseSearchFormProps) {
   const router = useRouter();
+  const id = useId();
   const storedTerm = useStoredValue(COURSE_STORAGE_KEYS.preferredTerm);
   const storedLevel = useStoredValue(COURSE_STORAGE_KEYS.preferredLevel);
 
@@ -63,19 +64,16 @@ export function CourseSearchForm({ terms, initial, inline = false, onCancel }: C
   const defaultTerm = openTerms[0]?.code ?? terms?.[0]?.code ?? "";
 
   const [termChoice, setTermChoice] = useState<string | null>(initial?.term ?? null);
-  const [levelChoice, setLevelChoice] = useState<Level | null>(
+  const [levelChoice, setLevelChoice] = useState<string | null>(
     initial?.level === undefined ? null : isLevel(initial.level) ? initial.level : initial.level ? null : "all",
   );
-  const [subjects, setSubjects] = useState<Subject[]>(
-    () => (initial?.subjects ?? []).map((code) => ({ code, description: "" })),
-  );
+  const [subjects, setSubjects] = useState<Subject[]>(() => (initial?.subjects ?? []).map((code) => ({ code, description: "" })));
   const [courseNumber, setCourseNumber] = useState(initial?.courseNumber ?? "");
   const [submitted, setSubmitted] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   const term = termChoice ?? preferred ?? defaultTerm;
-  const level: Level = levelChoice ?? (isLevel(storedLevel) ? storedLevel : "US");
-  const selectedTerm = terms?.find((t) => t.code === term);
+  const level = levelChoice ?? (isLevel(storedLevel) ? storedLevel : "US");
 
   const errors: Errors = {};
   if (!termCodeSchema.safeParse(term).success) errors.term = "Choose a term.";
@@ -96,17 +94,23 @@ export function CourseSearchForm({ terms, initial, inline = false, onCancel }: C
       return;
     }
     const number = courseNumber.trim() ? courseNumberSchema.parse(courseNumber) : null;
-    const search = {
-      term,
-      termLabel: termName(term, selectedTerm?.description),
-      subjects: subjects.map((s) => s.code),
-      courseNumber: number,
-      level: level === "all" ? null : level,
-    };
     if (openTerms.some((t) => t.code === term)) writeStored(COURSE_STORAGE_KEYS.preferredTerm, term);
     writeStored(COURSE_STORAGE_KEYS.preferredLevel, level);
-    rememberSearch(search);
-    router.push(resultsHref(search));
+    router.push(
+      resultsHref({
+        term,
+        subjects: subjects.map((s) => s.code),
+        courseNumber: number,
+        level: level === "all" ? null : level,
+      }),
+    );
+  };
+
+  const ids = {
+    term: `${id}-term`,
+    level: `${id}-level`,
+    subjects: `${id}-subjects`,
+    number: `${id}-number`,
   };
 
   return (
@@ -116,13 +120,24 @@ export function CourseSearchForm({ terms, initial, inline = false, onCancel }: C
       action="/course-results"
       noValidate
       onSubmit={onSubmit}
-      className={cn(styles.form, inline && styles.inline)}
+      className={styles.form}
       aria-label="Search classes"
     >
-      <div className={styles.row}>
+      <div className={styles.field}>
         {terms ? (
-          <Field label="Term" error={shown.term} required>
-            <Select name="term" value={term} onChange={(event) => setTermChoice(event.target.value)}>
+          <>
+            <label htmlFor={ids.term} className={styles.label}>
+              Choose a term
+            </label>
+            <select
+              id={ids.term}
+              name="term"
+              className={styles.control}
+              value={term}
+              aria-invalid={shown.term ? true : undefined}
+              aria-describedby={shown.term ? `${ids.term}-error` : undefined}
+              onChange={(event) => setTermChoice(event.target.value)}
+            >
               {terms.length === 0 ? <option value="">No terms available</option> : null}
               {terms.map((t) => (
                 <option key={t.code} value={t.code}>
@@ -130,97 +145,90 @@ export function CourseSearchForm({ terms, initial, inline = false, onCancel }: C
                   {t.viewOnly ? " (view only)" : ""}
                 </option>
               ))}
-            </Select>
-          </Field>
+            </select>
+          </>
         ) : (
-          <Field label="Term code" hint="Six digits, e.g. 202608 for Fall 2026." error={shown.term} required>
-            <Input
+          <>
+            <label htmlFor={ids.term} className={styles.label}>
+              Enter a term code
+            </label>
+            <input
+              id={ids.term}
               name="term"
+              className={styles.control}
               inputMode="numeric"
               autoComplete="off"
               maxLength={6}
               value={termChoice ?? ""}
-              placeholder="202608"
+              placeholder="e.g. 202608 for Fall 2026"
+              aria-invalid={shown.term ? true : undefined}
+              aria-describedby={shown.term ? `${ids.term}-error` : undefined}
               onChange={(event) => setTermChoice(event.target.value.replace(/\D/g, ""))}
             />
-          </Field>
+          </>
         )}
-        <div className={styles.group}>
-          <span className={styles.label} aria-hidden="true">
-            Level
-          </span>
-          <SegmentedControl<Level>
-            label="Level"
-            options={LEVELS}
-            value={level}
-            onChange={setLevelChoice}
-            fullWidth
-          />
-          {level !== "all" ? <input type="hidden" name="level" value={level} /> : null}
-        </div>
+        {shown.term ? <FieldError id={`${ids.term}-error`}>{shown.term}</FieldError> : null}
       </div>
 
-      {selectedTerm?.viewOnly ? (
-        <Banner tone="info">
-          Registration for {termName(selectedTerm.code, selectedTerm.description)} is closed. You can still view sections.
-        </Banner>
-      ) : null}
-
-      <Field label="Subjects" hint="Up to 5. Type a code or a name." error={shown.subjects} required>
-        <SubjectAutocomplete term={term} value={subjects} onChange={setSubjects} name="subjects" />
-      </Field>
-
-      <div className={styles.row}>
-        <Field label="Course number" hint="Optional. Leave blank to see every course in the subject." error={shown.courseNumber}>
-          <Input
-            name="courseNumber"
-            autoComplete="off"
-            autoCapitalize="characters"
-            spellCheck={false}
-            maxLength={8}
-            placeholder="e.g. 2720"
-            value={courseNumber}
-            onChange={(event) => setCourseNumber(event.target.value)}
-          />
-        </Field>
-        <div className={styles.actions}>
-          {onCancel ? (
-            <Button variant="ghost" onClick={onCancel}>
-              Cancel
-            </Button>
-          ) : null}
-          <Button type="submit" leadingIcon={<SearchIcon />} className={styles.submit}>
-            Search
-          </Button>
-        </div>
+      <div className={styles.field}>
+        <label htmlFor={ids.level} className={styles.label}>
+          Choose a degree
+        </label>
+        <select
+          id={ids.level}
+          className={styles.control}
+          value={level}
+          onChange={(event) => setLevelChoice(event.target.value)}
+        >
+          {LEVELS.map((l) => (
+            <option key={l.value} value={l.value}>
+              {l.label}
+            </option>
+          ))}
+        </select>
+        {level !== "all" ? <input type="hidden" name="level" value={level} /> : null}
       </div>
+
+      <div className={styles.field}>
+        <label htmlFor={ids.subjects} className={styles.label}>
+          Enter subjects
+        </label>
+        <SubjectAutocomplete
+          id={ids.subjects}
+          term={term}
+          value={subjects}
+          onChange={setSubjects}
+          name="subjects"
+          invalid={Boolean(shown.subjects)}
+          describedBy={shown.subjects ? `${ids.subjects}-error` : undefined}
+        />
+        {shown.subjects ? <FieldError id={`${ids.subjects}-error`}>{shown.subjects}</FieldError> : null}
+      </div>
+
+      <div className={styles.field}>
+        <label htmlFor={ids.number} className={styles.label}>
+          Enter a course number
+        </label>
+        <input
+          id={ids.number}
+          name="courseNumber"
+          className={styles.control}
+          autoComplete="off"
+          autoCapitalize="characters"
+          spellCheck={false}
+          maxLength={8}
+          placeholder="e.g. 2720 (optional)"
+          value={courseNumber}
+          aria-invalid={shown.courseNumber ? true : undefined}
+          aria-describedby={shown.courseNumber ? `${ids.number}-error` : undefined}
+          onChange={(event) => setCourseNumber(event.target.value)}
+        />
+        {shown.courseNumber ? <FieldError id={`${ids.number}-error`}>{shown.courseNumber}</FieldError> : null}
+      </div>
+
+      <button type="submit" className={cn(buttons.primary, buttons.large, styles.submit)}>
+        Search Classes
+      </button>
     </form>
-  );
-}
-
-/** The last 5 searches as links (pages.md §3). Absent until hydrated, so no layout shift. */
-export function RecentSearches() {
-  const raw = useStoredValue(COURSE_STORAGE_KEYS.recentSearches);
-  const recent = useMemo(() => parseRecent(raw), [raw]);
-  if (recent.length === 0) return null;
-  return (
-    <section className={styles.recent} aria-labelledby="recent-searches">
-      <h2 id="recent-searches" className={styles.recentTitle}>
-        Recent searches
-      </h2>
-      <ul className={styles.recentList}>
-        {recent.map((search) => {
-          const href = resultsHref(search);
-          const what = `${search.subjects.join(", ")}${search.courseNumber ? ` ${search.courseNumber}` : ""}`;
-          return (
-            <li key={href}>
-              <ChipLink href={href} icon={<ArrowRightIcon size={16} />}>
-                {what} · {search.termLabel}
-              </ChipLink>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
   );
 }

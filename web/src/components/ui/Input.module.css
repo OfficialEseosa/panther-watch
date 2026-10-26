@@ -1,58 +1,64 @@
+/* Original form fields (old App.css input base, CourseSearch.css / Settings.css): 1px border,
+   6px radius, surface fill; focus = primary-500 border + soft 3px ring. */
 .control {
   display: block;
   width: 100%;
   min-width: 0;
-  height: var(--control-h-md);
-  padding: 0 var(--space-3);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  color: var(--text);
-  /* 16 px below 640 so iOS doesn't zoom on focus */
-  font-size: var(--text-base);
-  line-height: var(--leading-base);
-  transition: border-color var(--dur-fast) var(--ease-standard);
+  height: 42px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  /* 16 px on phones so iOS doesn't zoom on focus */
+  font-size: 1rem;
+  line-height: 1.5;
+  transition:
+    border-color var(--transition-base),
+    box-shadow var(--transition-base),
+    background-color 0.3s ease;
 }
 
 .control::placeholder {
-  color: var(--text-subtle);
-  opacity: 1;
+  color: var(--color-text-muted);
+  opacity: 0.7;
 }
 
-@media (min-width: 640px) {
+@media (min-width: 769px) {
   .control {
-    font-size: var(--text-sm);
-    line-height: var(--leading-sm);
+    font-size: 0.95rem;
   }
 }
 
 @media (hover: hover) and (pointer: fine) {
   .control:hover:not(:disabled, :focus) {
-    border-color: var(--text-subtle);
+    border-color: var(--color-primary-400);
   }
 }
 
 .control:focus {
-  border-color: var(--accent);
-}
-
-.control:focus-visible {
-  outline-offset: 1px;
+  outline: none;
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
 
 .control[aria-invalid="true"] {
-  border-color: var(--danger);
+  border-color: var(--color-danger);
+}
+
+.control[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 3px var(--color-danger-bg);
 }
 
 .control:disabled {
-  background: var(--surface-2);
-  border-color: var(--border);
-  color: var(--text-subtle);
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
 .control:read-only:not(select) {
-  background: var(--surface-2);
+  background: var(--color-surface-muted);
 }
 
 .wrap {
@@ -71,13 +77,13 @@
   position: absolute;
   top: 50%;
   display: flex;
-  color: var(--text-muted);
+  color: var(--color-text-muted);
   transform: translateY(-50%);
   pointer-events: none;
 }
 
 .leading {
-  left: var(--space-3);
+  left: 12px;
 }
 
 .leading > svg {
@@ -86,7 +92,7 @@
 }
 
 .chevron {
-  right: var(--space-3);
+  right: 12px;
 }
 
 .select {
@@ -98,6 +104,6 @@
 .textarea {
   height: auto;
   min-height: 120px;
-  padding: var(--space-3);
+  padding: 0.65rem 0.75rem;
   resize: vertical;
 }

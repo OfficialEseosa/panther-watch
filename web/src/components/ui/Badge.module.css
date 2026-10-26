@@ -1,15 +1,14 @@
+/* Original pill badge (old .card-badge / .coming-soon-badge): tinted fill, no outline. */
 .badge {
   display: inline-flex;
   flex: none;
   align-items: center;
-  gap: var(--space-1);
-  height: 22px;
-  padding: 0 var(--space-2);
-  border: 1px solid transparent;
-  border-radius: var(--radius-full);
-  font-size: var(--text-xs);
-  line-height: var(--leading-xs);
-  font-weight: var(--weight-semibold);
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -20,31 +19,32 @@
 }
 
 .neutral {
-  background: var(--surface-2);
-  color: var(--text-muted);
-  border-color: var(--border);
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
 }
 
 .accent {
-  background: var(--accent-subtle);
+  background: var(--color-primary-100);
   color: var(--accent-subtle-text);
-  border-color: var(--accent-subtle-border);
 }
 
 .success {
-  background: var(--success-subtle);
-  color: var(--success);
-  border-color: var(--success-border);
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .warning {
-  background: var(--warning-subtle);
-  color: var(--warning);
-  border-color: var(--warning-border);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
 }
 
 .danger {
-  background: var(--danger-subtle);
-  color: var(--danger);
-  border-color: var(--danger-border);
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+@media (forced-colors: active) {
+  .badge {
+    border: 1px solid CanvasText;
+  }
 }

@@ -3,14 +3,9 @@
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useId, useRef, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
-import { Badge } from "@/components/ui/Badge";
-import { Banner } from "@/components/ui/Banner";
-import { Button, buttonClassName } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
-import { Field } from "@/components/ui/Field";
-import { ExternalIcon, RefreshIcon, TrashIcon } from "@/components/ui/icons";
-import { Input } from "@/components/ui/Input";
+import { ChartIcon, ExternalIcon, XIcon } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/Toast";
 import { adminApi, type GradeStatusDto } from "@/lib/client/admin";
 import { ApiError, errorMessage, onUnauthorized, reportApiError } from "@/lib/client/http";
@@ -25,9 +20,8 @@ import {
   type GradeSlot,
   type SlotCheck,
 } from "./gradeFiles";
-import { RUN_STATE_LABEL, RUN_STATE_TONE, runState, summaryErrors } from "./jobs";
+import { runState, summaryErrors } from "./jobs";
 import { RelativeTime } from "./RelativeTime";
-import { Stat } from "@/components/ui/Stat";
 import styles from "./Grades.module.css";
 import adminStyles from "./admin.module.css";
 import { termLabel } from "@/lib/format";
@@ -40,7 +34,8 @@ type Slots = Record<GradeSlot, { file: File | null; check: SlotCheck }>;
 const EMPTY_SLOTS: Slots = { summary: { file: null, check: { kind: null } }, detailed: { file: null, check: { kind: null } } };
 
 /**
- * Grade data tab (pages.md §8.4). Manual upload is the primary path: APEX sits behind a
+ * Grade data tab, laid out like the old GradeDataManager.jsx: title + Refresh now, the stat
+ * tiles, the stored terms as chips, then the upload form. Manual upload is the reliable path: APEX sits behind a
  * Cloudflare challenge, so the admin exports the two CSVs in a browser. Files are sniffed
  * client-side (swapped / not a grade CSV) before upload; the server re-validates. The
  * automatic refresh is kept as a de-emphasized fallback and polls status every 10 s while a
@@ -184,180 +179,181 @@ export function GradesPanel({ initial }: { initial: GradeStatusDto }) {
   const lastRun = status.lastRun;
   const lastState = lastRun ? runState(lastRun) : null;
   const lastErrors = lastRun ? summaryErrors(lastRun.summary) : [];
-  const dot = status.running ? styles.dotRunning : lastState === "failed" ? styles.dotFailed : styles.dotIdle;
+  const busy = status.running || refreshing;
+  const scraper = status.running ? "Refreshing" : lastState === "failed" ? "Last run failed" : "Idle";
 
   return (
-    <div className={adminStyles.stack}>
-      <div className={adminStyles.stats}>
-        <Stat label="Terms on file" value={status.terms.length} />
-        <div className={cn(adminStyles.wide, styles.statusCard)}>
-          <p className={adminStyles.capsLabel}>Automatic refresh</p>
-          <p className={styles.statusLine}>
-            <span className={cn(styles.dot, dot)} aria-hidden="true" />
-            {/* Only the state is live: the relative time ticks every minute and must not be announced. */}
-            <span aria-live="polite">{status.running ? "Running" : lastState === "failed" ? "Last run failed" : "Idle"}</span>
-            {lastRun ? (
-              <span className={adminStyles.muted}>
-                {" "}
-                · last run <RelativeTime value={lastRun.startedAt} />
-              </span>
-            ) : (
-              <span className={adminStyles.muted}> · never run</span>
-            )}
-          </p>
-          {lastRun && lastState ? (
-            <p className={adminStyles.muted}>
-              <Badge tone={RUN_STATE_TONE[lastState]}>{RUN_STATE_LABEL[lastState]}</Badge>{" "}
-              {lastErrors[0] ? <span className={styles.errorText}>{lastErrors[0]}</span> : null}
-            </p>
-          ) : null}
+    <section className={adminStyles.section} aria-labelledby="grade-data-title">
+      <div className={styles.head}>
+        <div className={styles.title}>
+          <ChartIcon size={22} />
+          <div>
+            <h2 id="grade-data-title">Grade data</h2>
+            <p>Historical course grade distributions from GSU APEX.</p>
+          </div>
+        </div>
+        <button type="button" className={styles.refresh} onClick={() => void onRefresh()} disabled={busy}>
+          {busy ? (
+            <>
+              <span className={styles.spinner} aria-hidden="true" /> Refreshing…
+            </>
+          ) : (
+            "Refresh now"
+          )}
+        </button>
+      </div>
+
+      <div className={styles.stats}>
+        <div className={styles.stat}>
+          <span className={styles.statValue}>{status.terms.length}</span>
+          <span className={styles.statLabel}>Terms on file</span>
+        </div>
+        <div className={styles.stat}>
+          {/* Only the state is live: the relative time ticks every minute and must not be announced. */}
+          <span className={styles.pill} data-state={status.running ? "running" : lastState === "failed" ? "failed" : "idle"} aria-live="polite">
+            {scraper}
+          </span>
+          <span className={styles.statLabel}>
+            Scraper · {lastRun ? <>last run <RelativeTime value={lastRun.startedAt} /></> : "never run"}
+          </span>
         </div>
       </div>
 
-      <Card title="Upload a term">
-        <form key={formKey} id={formId} className={styles.form} onSubmit={onUpload} noValidate>
-          <Field label="Term code" hint="e.g. 202605 (Summer 2026). Uploading a stored term replaces it." error={termError} required>
-            <Input
-              inputMode="numeric"
-              pattern="\d{6}"
-              maxLength={6}
-              autoComplete="off"
-              value={term}
-              onChange={(event) => {
-                setTerm(event.target.value.replace(/\D/g, ""));
-                if (termError) setTermError(null);
-              }}
-              className={styles.termInput}
-            />
-          </Field>
-
-          <div className={styles.files}>
-            <FilePicker
-              slot="summary"
-              label="Summary export"
-              hint="The region with Professor and CRS AVG."
-              file={slots.summary.file}
-              kind={slots.summary.check.kind}
-              onChange={onFile("summary")}
-            />
-            <FilePicker
-              slot="detailed"
-              label="Detailed export"
-              hint="The region with A+, A, A- … columns."
-              file={slots.detailed.file}
-              kind={slots.detailed.check.kind}
-              onChange={onFile("detailed")}
-            />
-          </div>
-
-          {messages.map((message) => (
-            <Banner
-              key={message.text}
-              tone={message.tone}
-              action={
-                swapped ? (
-                  <Button size="sm" variant="secondary" onClick={swap}>
-                    Swap files
-                  </Button>
-                ) : undefined
-              }
-            >
-              {message.text}
-            </Banner>
-          ))}
-          {uploadError ? (
-            <Banner tone="danger" role="alert">
-              {uploadError}
-            </Banner>
-          ) : null}
-
-          <div className={styles.formActions}>
-            <Button type="submit" loading={uploading}>
-              Upload
-            </Button>
-          </div>
-        </form>
-      </Card>
-
-      <details className={styles.instructions}>
-        <summary className={styles.instructionsSummary}>How to export the two CSVs from APEX</summary>
-        <ol className={styles.steps}>
-          <li>
-            In a normal browser, open GSU&rsquo;s grade distribution site:{" "}
-            <a href={APEX_URL} target="_blank" rel="noreferrer noopener" className={styles.link}>
-              dssapex.gsu.edu, app 140, page 184 <ExternalIcon size={16} />
-            </a>{" "}
-            (&ldquo;Grade Distributions By Course Sections&rdquo;). Pass the Cloudflare check if it asks.
-          </li>
-          <li>
-            Choose the <strong>term</strong> and leave the subject prefix as <strong>All</strong>, then apply it.
-          </li>
-          <li>
-            The page has two report regions. Click the <strong>Excel?</strong> link on each one to download its CSV:
-            the <strong>summary</strong> region (columns Course, Professor, A–F, CRS AVG) and the{" "}
-            <strong>detailed</strong> region (columns A+, A, A-, …).
-          </li>
-          <li>
-            Upload both here with the same term code. If no section has a CRS AVG yet, the grades haven&rsquo;t
-            posted and nothing is stored.
-          </li>
-        </ol>
-      </details>
-
-      <section className={adminStyles.section} aria-labelledby="grade-terms">
-        <h2 id="grade-terms" className={adminStyles.sectionTitle}>
+      <section className={styles.terms} aria-labelledby="grade-terms">
+        <h3 id="grade-terms" className={styles.termsLabel}>
           Terms on file
-        </h2>
+        </h3>
         {status.terms.length === 0 ? (
-          <p className={adminStyles.muted}>No terms stored yet.</p>
+          <p className={adminStyles.muted}>No terms stored yet. Upload one below.</p>
         ) : (
-          <ul className={adminStyles.list}>
+          <ul className={styles.chips}>
             {status.terms.map((code) => (
-              <li key={code} className={adminStyles.row}>
-                <div className={adminStyles.rowText}>
-                  <span className={adminStyles.rowTitle}>{termLabel(code)}</span>
-                  <span className={cn(adminStyles.rowSub, adminStyles.numeric)}>{code}</span>
-                </div>
-                <div className={styles.rowEnd}>
-                  <Button
-                    size="sm"
-                    variant="danger-ghost"
-                    leadingIcon={<TrashIcon />}
-                    onClick={() => {
-                      setDeleting(code);
-                      setDeleteOpen(true);
-                    }}
-                  >
-                    Delete
-                  </Button>
-                </div>
+              <li key={code} className={styles.chip}>
+                <span title={code}>{termLabel(code)}</span>
+                <button
+                  type="button"
+                  className={styles.chipRemove}
+                  aria-label={`Delete ${termLabel(code)}`}
+                  onClick={() => {
+                    setDeleting(code);
+                    setDeleteOpen(true);
+                  }}
+                >
+                  <XIcon size={14} />
+                </button>
               </li>
             ))}
           </ul>
         )}
       </section>
 
-      <section className={cn(adminStyles.section, styles.fallback)} aria-labelledby="grade-refresh">
-        <h2 id="grade-refresh" className={adminStyles.capsLabel}>
-          Automatic refresh (fallback)
-        </h2>
-        <p className={adminStyles.prose}>
-          Tries to scrape the next term from APEX on the server. APEX blocks non-browser clients with a Cloudflare
-          challenge, so this usually fails from production; use the upload above instead.
+      {status.running ? (
+        <p className={styles.note}>A refresh is in progress. Recent terms are scraped first; the status updates every 10 seconds.</p>
+      ) : null}
+      {!status.running && lastState === "failed" && lastErrors[0] ? (
+        <p className={adminStyles.notice} data-tone="danger">
+          The last automatic refresh failed: {lastErrors[0]} APEX usually blocks server requests, so upload the CSVs instead.
         </p>
-        <div>
-          <Button
-            variant="ghost"
-            size="sm"
-            leadingIcon={<RefreshIcon />}
-            loading={refreshing}
-            disabled={status.running}
-            onClick={() => void onRefresh()}
-          >
-            {status.running ? "Refresh running…" : "Try automatic refresh"}
-          </Button>
+      ) : null}
+
+      <form key={formKey} id={formId} className={styles.upload} onSubmit={onUpload} noValidate aria-labelledby={`${formId}-title`}>
+        <h3 id={`${formId}-title`} className={styles.uploadTitle}>
+          Upload a term
+        </h3>
+        <div className={cn(adminStyles.formGroup, styles.termField)}>
+          <label className={adminStyles.formLabel} htmlFor={`${formId}-term`}>
+            Term code <span aria-hidden="true">*</span>
+          </label>
+          <input
+            id={`${formId}-term`}
+            className={adminStyles.control}
+            inputMode="numeric"
+            pattern="\d{6}"
+            maxLength={6}
+            autoComplete="off"
+            value={term}
+            aria-invalid={termError ? true : undefined}
+            aria-describedby={`${formId}-term-hint`}
+            onChange={(event) => {
+              setTerm(event.target.value.replace(/\D/g, ""));
+              if (termError) setTermError(null);
+            }}
+          />
+          <p id={`${formId}-term-hint`} className={termError ? adminStyles.fieldError : adminStyles.hint}>
+            {termError ?? "e.g. 202605 (Summer 2026). Uploading a stored term replaces it."}
+          </p>
         </div>
-      </section>
+
+        <div className={styles.files}>
+          <FilePicker
+            slot="summary"
+            label="Summary export"
+            hint="The region with Professor and CRS AVG."
+            file={slots.summary.file}
+            kind={slots.summary.check.kind}
+            onChange={onFile("summary")}
+          />
+          <FilePicker
+            slot="detailed"
+            label="Detailed export"
+            hint="The region with A+, A, A- … columns."
+            file={slots.detailed.file}
+            kind={slots.detailed.check.kind}
+            onChange={onFile("detailed")}
+          />
+        </div>
+
+        {messages.map((message) => (
+          <div
+            key={message.text}
+            className={cn(adminStyles.notice, styles.fileMessage)}
+            data-tone={message.tone === "danger" ? "danger" : "warning"}
+          >
+            <span>{message.text}</span>
+            {swapped ? (
+              <button type="button" className={cn(adminStyles.btn, adminStyles.btnSecondary, adminStyles.btnSmall)} onClick={swap}>
+                Swap files
+              </button>
+            ) : null}
+          </div>
+        ))}
+        {uploadError ? (
+          <p className={adminStyles.notice} data-tone="danger" role="alert">
+            {uploadError}
+          </p>
+        ) : null}
+
+        <div className={styles.formActions}>
+          <button type="submit" className={cn(adminStyles.btn, adminStyles.btnPrimary)} disabled={uploading}>
+            {uploading ? "Uploading…" : "Upload"}
+          </button>
+        </div>
+
+        <details className={styles.instructions}>
+          <summary>How to export the two CSVs from APEX</summary>
+          <ol className={styles.steps}>
+            <li>
+              In a normal browser, open GSU&rsquo;s grade distribution site:{" "}
+              <a href={APEX_URL} target="_blank" rel="noreferrer noopener" className={styles.link}>
+                dssapex.gsu.edu, app 140, page 184 <ExternalIcon size={14} />
+              </a>{" "}
+              (&ldquo;Grade Distributions By Course Sections&rdquo;). Pass the Cloudflare check if it asks.
+            </li>
+            <li>
+              Choose the <strong>term</strong> and leave the subject prefix as <strong>All</strong>, then apply it.
+            </li>
+            <li>
+              The page has two report regions. Click the <strong>Excel?</strong> link on each one to download its CSV:
+              the <strong>summary</strong> region (columns Course, Professor, A–F, CRS AVG) and the{" "}
+              <strong>detailed</strong> region (columns A+, A, A-, …).
+            </li>
+            <li>
+              Upload both here with the same term code. If no section has a CRS AVG yet, the grades haven&rsquo;t posted
+              and nothing is stored.
+            </li>
+          </ol>
+        </details>
+      </form>
 
       <Dialog
         open={deleteOpen}
@@ -378,11 +374,11 @@ export function GradesPanel({ initial }: { initial: GradeStatusDto }) {
         }
       >
         <p className={styles.confirmText}>
-          Every section&rsquo;s grades for {deleting ? `${termLabel(deleting)} (${deleting})` : "this term"} are
-          removed. Course cards stop showing them until you upload the term again.
+          Every section&rsquo;s grades for {deleting ? `${termLabel(deleting)} (${deleting})` : "this term"} are removed.
+          Course cards stop showing them until you upload the term again.
         </p>
       </Dialog>
-    </div>
+    </section>
   );
 }
 
@@ -407,25 +403,31 @@ function FilePicker({
   const tone = !file || kind === null ? "neutral" : kind === slot ? "success" : kind === "unknown" ? "danger" : "warning";
   return (
     <div className={styles.picker}>
-      <span className={styles.pickerLabel} id={`${id}-label`}>
+      <span className={adminStyles.formLabel} id={`${id}-label`}>
         {label} <span aria-hidden="true">*</span>
       </span>
-      <input
-        id={id}
-        type="file"
-        accept=".csv,text/csv"
-        className={styles.fileInput}
-        aria-labelledby={`${id}-label`}
-        aria-describedby={`${id}-hint`}
-        required
-        onChange={onChange}
-      />
-      <label htmlFor={id} className={buttonClassName({ variant: "secondary", size: "sm", className: styles.fileButton })}>
-        {file ? "Change file" : "Choose CSV"}
-      </label>
-      <span className={styles.fileName}>{file ? file.name : "No file chosen"}</span>
-      {status ? <Badge tone={tone}>{status}</Badge> : null}
-      <span id={`${id}-hint`} className={styles.pickerHint}>
+      <div className={styles.pickerRow}>
+        <input
+          id={id}
+          type="file"
+          accept=".csv,text/csv"
+          className={styles.fileInput}
+          aria-labelledby={`${id}-label`}
+          aria-describedby={`${id}-hint`}
+          required
+          onChange={onChange}
+        />
+        <label htmlFor={id} className={cn(adminStyles.btn, adminStyles.btnSecondary, adminStyles.btnSmall, styles.fileButton)}>
+          {file ? "Change file" : "Choose CSV"}
+        </label>
+        <span className={styles.fileName}>{file ? file.name : "No file chosen"}</span>
+        {status ? (
+          <span className={styles.fileStatus} data-tone={tone}>
+            {status}
+          </span>
+        ) : null}
+      </div>
+      <span id={`${id}-hint`} className={adminStyles.hint}>
         {hint}
       </span>
     </div>

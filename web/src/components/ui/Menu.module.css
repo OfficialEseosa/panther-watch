@@ -5,17 +5,18 @@
   margin: 0;
   min-width: 200px;
   max-width: min(320px, 100vw - 16px);
-  padding: var(--space-1);
-  overflow: visible;
-  border: 1px solid var(--border);
+  padding: 0 0 8px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  background: var(--surface-elevated);
+  background: var(--color-surface);
   box-shadow: var(--shadow-md);
-  color: var(--text);
+  color: var(--color-text);
 }
 
+/* Original dropdown: fade + 4px slide, 0.16s. */
 .popover:popover-open {
-  animation: var(--kf-rise-in) var(--dur-fast) var(--ease-out) both;
+  animation: var(--kf-rise-in) 0.16s ease both;
 }
 
 /* Move away from the trigger when opening above it (motion.md §4.16). */
@@ -23,15 +24,19 @@
   --move-sm: calc(var(--move-xs) * -1);
 }
 
+/* Original .profile-info: a muted band at the top. */
 .header {
-  padding: var(--space-2) var(--space-3) var(--space-3);
-  margin-bottom: var(--space-1);
-  border-bottom: 1px solid var(--border);
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  background: var(--color-surface-muted);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .list {
   display: flex;
   flex-direction: column;
+  gap: 4px;
+  padding: 0 8px;
 }
 
 .item {
@@ -39,15 +44,19 @@
   align-items: center;
   gap: var(--space-2);
   width: 100%;
-  height: 36px;
-  padding: 0 var(--space-3);
+  min-height: 40px;
+  padding: 0 12px;
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--text);
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
+  color: var(--color-heading);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.3;
   text-align: left;
+  transition:
+    background var(--transition-base),
+    color var(--transition-base);
   text-decoration: none;
   cursor: pointer;
 }
@@ -58,7 +67,14 @@
 
 .item:focus,
 .item:hover {
-  background: var(--surface-2);
+  background: var(--color-surface-muted);
+  color: var(--accent-text);
+}
+
+.danger:focus,
+.danger:hover {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
 }
 
 .item[aria-disabled="true"] {
@@ -67,13 +83,13 @@
 }
 
 .danger {
-  color: var(--danger);
+  color: var(--color-danger);
 }
 
 .itemIcon {
   display: flex;
   flex: none;
-  color: var(--text-muted);
+  color: inherit;
 }
 
 .danger .itemIcon {
@@ -81,8 +97,8 @@
 }
 
 .itemIcon > svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
 }
 
 .itemLabel {
@@ -93,6 +109,6 @@
 
 .separator {
   height: 1px;
-  margin: var(--space-1) 0;
-  background: var(--border);
+  margin: 4px 0;
+  background: var(--color-border);
 }

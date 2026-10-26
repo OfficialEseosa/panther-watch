@@ -1,32 +1,31 @@
 "use client";
 
 import { useEffect } from "react";
+import buttons from "@/components/courses/buttons.module.css";
 import pageStyles from "@/components/courses/page.module.css";
-import { PageHeader } from "@/components/shell/PageHeader";
-import { Button } from "@/components/ui/Button";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { RefreshIcon } from "@/components/ui/icons";
+import { ErrorMessage } from "@/components/courses/SectionParts";
+import { TrackedHeader } from "@/components/tracked/TrackedClasses";
+import styles from "@/components/tracked/TrackedClasses.module.css";
+import { cn } from "@/lib/ui/cn";
 
-/** pages.md §5 error state. Never renders the Error object (audit bug #1). */
+/** The original error box. Never renders the Error object. */
 export default function TrackedClassesError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
     console.error(error);
   }, [error]);
   return (
-    <div className={pageStyles.default}>
-      <PageHeader title="Tracked classes" />
-      <EmptyState
-        variant="error"
-        title="Couldn&rsquo;t load your tracked classes."
-        details={error.digest ? `Error ID: ${error.digest}` : undefined}
-        actions={
-          <Button leadingIcon={<RefreshIcon />} onClick={reset}>
+    <div className={cn(pageStyles.default, styles.page)}>
+      <TrackedHeader count={0} loading />
+      <ErrorMessage
+        action={
+          <button type="button" className={buttons.secondary} onClick={reset}>
             Try again
-          </Button>
+          </button>
         }
       >
-        Your watches are safe. This usually clears up in a moment.
-      </EmptyState>
+        Failed to load tracked classes. Your watches are safe; please try again.
+        {error.digest ? ` (Error ID: ${error.digest})` : null}
+      </ErrorMessage>
     </div>
   );
 }

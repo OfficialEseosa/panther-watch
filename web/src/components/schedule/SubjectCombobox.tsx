@@ -2,9 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { Input } from "@/components/ui/Input";
 import { CheckIcon } from "@/components/ui/icons";
-import { Skeleton } from "@/components/ui/Skeleton";
 import type { Subject } from "@/lib/gosolar/types";
 import { fetchSubjects } from "@/lib/client/courses";
 import { isAbortError } from "@/lib/client/http";
@@ -23,6 +21,11 @@ export type SubjectComboboxProps = {
    */
   onSubmit?: (code: string) => void;
   invalid?: boolean;
+  /** Input id, for the parent's <label htmlFor>. */
+  id?: string;
+  /** Input class (the parent's form-control look). */
+  className?: string;
+  "aria-describedby"?: string;
   "data-autofocus"?: boolean;
 };
 
@@ -33,9 +36,9 @@ const CODE = /^[A-Za-z]{2,8}$/;
  * Single-subject autocomplete (ARIA 1.2 combobox + listbox, spec.md §2.4 keyboard model,
  * single-select). Options come from /api/courses/subjects?q, debounced, with stale responses
  * dropped. A typed code that matches the pattern is accepted even without picking an option.
- * Must be rendered inside a <Field> (the label comes from it).
+ * Label it with a <label htmlFor={id}>.
  */
-export function SubjectCombobox({ term, value, onChange, onSubmit, invalid, ...rest }: SubjectComboboxProps) {
+export function SubjectCombobox({ term, value, onChange, onSubmit, invalid, className, ...rest }: SubjectComboboxProps) {
   const listId = useId();
   const [text, setText] = useState(value);
   const [open, setOpen] = useState(false);
@@ -170,8 +173,9 @@ export function SubjectCombobox({ term, value, onChange, onSubmit, invalid, ...r
 
   return (
     <div className={styles.wrap}>
-      <Input
+      <input
         {...rest}
+        className={className}
         role="combobox"
         aria-expanded={open}
         aria-controls={listId}
@@ -181,7 +185,7 @@ export function SubjectCombobox({ term, value, onChange, onSubmit, invalid, ...r
         autoCapitalize="characters"
         spellCheck={false}
         placeholder="e.g. CSC"
-        invalid={invalid}
+        aria-invalid={invalid || undefined}
         value={text}
         onChange={(event) => {
           setText(event.target.value);
@@ -206,12 +210,9 @@ export function SubjectCombobox({ term, value, onChange, onSubmit, invalid, ...r
         onPointerDown={(event) => event.preventDefault()}
       >
         {options === null ? (
-          [0, 1, 2].map((i) => (
-            <li key={i} className={styles.skeleton} aria-hidden="true">
-              <Skeleton width={40} height={12} />
-              <Skeleton width="60%" height={12} />
-            </li>
-          ))
+          <li className={styles.empty} role="presentation">
+            Loading subjects…
+          </li>
         ) : options.length === 0 ? (
           <li className={styles.empty} role="presentation">
             {failed ? "Couldn't load subjects. You can still type a code." : `No subjects match “${text.trim()}”`}

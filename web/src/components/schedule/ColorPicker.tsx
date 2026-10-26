@@ -1,9 +1,9 @@
 "use client";
 
 import { useId } from "react";
-import type { CSSProperties } from "react";
 import { CheckIcon } from "@/components/ui/icons";
 import { SCHEDULE_COLORS } from "@/lib/schedule/colors";
+import { blockColors } from "./format";
 import styles from "./ColorPicker.module.css";
 
 export type ColorPickerProps = {
@@ -14,13 +14,19 @@ export type ColorPickerProps = {
   disabled?: boolean;
 };
 
-/** Schedule color: a radiogroup of the 8 palette swatches (native radios, arrow keys). */
+/**
+ * Calendar color: the old round swatches (ExpandedCourseCard .exp-color-swatch), built on
+ * native radios so arrow keys and screen readers work.
+ */
 export function ColorPicker({ label, value, onChange, disabled }: ColorPickerProps) {
   const name = useId();
   return (
-    <div role="radiogroup" aria-label={label} className={styles.group}>
+    <div role="radiogroup" aria-label={label} className={styles.row}>
+      <span className={styles.label} aria-hidden="true">
+        Calendar color
+      </span>
       {SCHEDULE_COLORS.map((color, index) => (
-        <label key={color.id} className={styles.option} style={{ "--_swatch": `var(--sched-${color.id})` } as CSSProperties}>
+        <label key={color.id} className={styles.option} title={color.label}>
           <input
             type="radio"
             name={name}
@@ -30,8 +36,8 @@ export function ColorPicker({ label, value, onChange, disabled }: ColorPickerPro
             onChange={() => onChange(index)}
             className={styles.input}
           />
-          <span className={styles.swatch} aria-hidden="true">
-            {index === value ? <CheckIcon size={16} strokeWidth={2.5} /> : null}
+          <span className={styles.swatch} style={blockColors(index)} aria-hidden="true">
+            {index === value ? <CheckIcon size={12} strokeWidth={3} /> : null}
           </span>
           <span className="sr-only">{color.label}</span>
         </label>

@@ -2,14 +2,13 @@ import type { Metadata } from "next";
 import { unstable_rethrow } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { CourseSearchForm, RecentSearches } from "@/components/courses/CourseSearchForm";
-import pageStyles from "@/components/courses/page.module.css";
+import { CourseSearchForm } from "@/components/courses/CourseSearchForm";
+import formStyles from "@/components/courses/CourseSearchForm.module.css";
+import { LoadingBar } from "@/components/courses/LoadingBar";
 import { parseSearch, type RawSearchParams } from "@/components/courses/params";
 import { RetryButton } from "@/components/courses/RetryButton";
-import { SearchFormSkeleton } from "@/components/courses/SearchFormSkeleton";
-import { PageHeader } from "@/components/shell/PageHeader";
-import { Banner } from "@/components/ui/Banner";
-import { Card } from "@/components/ui/Card";
+import { SearchPageFrame } from "@/components/courses/SearchPageFrame";
+import { ErrorMessage } from "@/components/courses/SectionParts";
 import { getTerms, type TermInfo } from "@/lib/courses";
 
 export const metadata: Metadata = {
@@ -27,14 +26,9 @@ async function SearchForm({ searchParams }: PageProps) {
   return (
     <>
       {terms ? null : (
-        <Banner
-          tone="warning"
-          className={pageStyles.bannerGap}
-          title="Couldn't load the term list."
-          action={<RetryButton size="sm" variant="secondary">Retry</RetryButton>}
-        >
-          You can still search by typing a term code.
-        </Banner>
+        <ErrorMessage role="status" className={formStyles.notice} action={<RetryButton variant="secondary" />}>
+          Couldn&rsquo;t load the term list. You can still search by typing a term code.
+        </ErrorMessage>
       )}
       <CourseSearchForm
         terms={terms}
@@ -65,14 +59,10 @@ async function loadTerms(): Promise<TermInfo[] | null> {
 
 export default function CourseSearchPage({ searchParams }: PageProps) {
   return (
-    <div className={pageStyles.narrow}>
-      <PageHeader title="Search classes" description="Live seat counts for Georgia State sections." />
-      <Card>
-        <Suspense fallback={<SearchFormSkeleton />}>
-          <SearchForm searchParams={searchParams} />
-        </Suspense>
-      </Card>
-      <RecentSearches />
-    </div>
+    <SearchPageFrame>
+      <Suspense fallback={<LoadingBar message="Loading terms..." />}>
+        <SearchForm searchParams={searchParams} />
+      </Suspense>
+    </SearchPageFrame>
   );
 }

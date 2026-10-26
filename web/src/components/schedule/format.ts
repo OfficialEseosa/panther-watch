@@ -1,19 +1,22 @@
 /** Small presentation helpers shared by the schedule components. Pure. */
-import type { Tone } from "@/components/ui/Badge";
-import { seatStatus } from "@/components/ui/Meter";
 import type { CourseData } from "@/lib/gosolar/types";
-import { SCHEDULE_COLORS } from "@/lib/schedule/colors";
-import { DAY_LABELS } from "@/lib/schedule/conflicts";
+import { SCHEDULE_COLORS, scheduleTextColor } from "@/lib/schedule/colors";
+import { DAY_LABELS, WEEK_DAYS, formatMinutes, meetingsOf, type Meeting } from "@/lib/schedule/conflicts";
 import type { PositionedBlock } from "./layout";
 
-/** Block background: the palette token (spec.md §2.17), never the stored hex. */
-export function colorVar(colorIndex: number): string {
-  const color = SCHEDULE_COLORS[colorIndex] ?? SCHEDULE_COLORS[0];
-  return `var(--sched-${color.id})`;
+/** Block fill: the original flat palette hex (old scheduleColors.js), dark enough for white text. */
+export function colorHex(colorIndex: number): string {
+  return (SCHEDULE_COLORS[colorIndex] ?? SCHEDULE_COLORS[0]).hex;
 }
 
-export function colorLabel(colorIndex: number): string {
-  return (SCHEDULE_COLORS[colorIndex] ?? SCHEDULE_COLORS[0]).label;
+/** Fill and readable text color for a block or swatch of palette color `colorIndex`. */
+export function blockColors(colorIndex: number): { backgroundColor: string; color: string } {
+  return { backgroundColor: colorHex(colorIndex), color: scheduleTextColor(colorIndex) };
+}
+
+/** "9:00 AM - 9:50 AM", the old calendar's time label. */
+export function timeLabel(start: number, end: number): string {
+  return `${formatMinutes(start)} - ${formatMinutes(end)}`;
 }
 
 /**
@@ -27,20 +30,15 @@ export function blockNameSuffix(block: PositionedBlock): string {
   return `, ${parts.join(", ")}`;
 }
 
-/** Seat status word and badge tone (status is never color alone). */
-export function seatSummary(section: Pick<CourseData, "seatsAvailable" | "maximumEnrollment">): {
-  text: string;
-  tone: Tone;
-} {
-  const status = seatStatus(section.seatsAvailable, section.maximumEnrollment);
-  switch (status) {
-    case "open":
-      return { text: `${section.seatsAvailable} open`, tone: "success" };
-    case "low":
-      return { text: `${section.seatsAvailable} open`, tone: "warning" };
-    case "full":
-      return { text: "Full", tone: "danger" };
-    default:
-      return { text: "Seats unknown", tone: "neutral" };
-  }
+/** "12 of 40 seats open", "Full", or null when GoSolar gives no counts. */
+export function seatText(section: Pick<CourseData, "seatsAvailable" | "maximumEnrollment">): string | null {
+  const { seatsAvailable: open, maximumEnrollment: max } = section;
+  if (typeof open !== "number" || typeof max !== "number" || max <= 0) return null;
+  return open <= 0 ? "Full" : `${open} of ${max} seats open`;
+}
+
+/** A section's timed meetings in week order (GoSolar lists them in arbitrary order). */
+export function weekOrderedMeetings(section: Pick<CourseData, "courseReferenceNumber" | "meetingsFaculty">): Meeting[] {
+  const firstDay = (meeting: Meeting) => WEEK_DAYS.indexOf(meeting.days[0]);
+  return [...meetingsOf(section)].sort((a, b) => firstDay(a) - firstDay(b) || a.start - b.start);
 }

@@ -1,3 +1,4 @@
+import type { Locator } from "@playwright/test";
 import { expect, hydrated, test } from "./support";
 
 test.use({ colorScheme: "light" });
@@ -44,4 +45,52 @@ test("unknown URLs get the 404 page", async ({ page }) => {
   expect(response?.status()).toBe(404);
   await expect(page.getByRole("heading", { level: 1, name: "Page not found" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Go to dashboard" })).toBeVisible();
+});
+
+test.describe("landing sample card", () => {
+  /** The rotation of the card's flipper (the 3D turn), as the first matrix3d/matrix entry. */
+  const flipperTurn = (flip: Locator) =>
+    flip.evaluate((el) => {
+      const flipper = el.querySelector<HTMLElement>("[class*=flipper]");
+      return flipper ? getComputedStyle(flipper).transform : "missing";
+    });
+
+  test("click flips it to the panther side; Enter flips it back", async ({ page }) => {
+    await page.goto("/");
+    const flip = await hydrated(page.getByRole("button", { name: "Flip sample card" }));
+    await expect(flip).toHaveAttribute("aria-pressed", "false");
+    await expect(page.getByText("Georgia State monitoring suite")).toBeAttached();
+
+    // The card floats continuously, so it never counts as "stable" for a normal click.
+    await flip.click({ force: true });
+    await expect(flip).toHaveAttribute("aria-pressed", "true");
+    // The flipper turns 180deg about Y: matrix3d(-1, 0, ...) once the transition settles.
+    await expect.poll(() => flipperTurn(flip)).toMatch(/^matrix3d\(-1, /);
+
+    await flip.focus();
+    await page.keyboard.press("Enter");
+    await expect(flip).toHaveAttribute("aria-pressed", "false");
+    await expect.poll(() => flipperTurn(flip)).toMatch(/^(none|matrix\(1, 0, 0, 1, 0, 0\)|matrix3d\(1, )/);
+  });
+
+  test("with reduced motion the flip is an instant swap of the two faces", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/");
+    const flip = await hydrated(page.getByRole("button", { name: "Flip sample card" }));
+    const back = page.getByText("Georgia State monitoring suite");
+    const front = flip.getByText("Alina Nemira");
+    await expect(front).toBeVisible();
+    await expect(back).toBeHidden();
+
+    await flip.click();
+    await expect(flip).toHaveAttribute("aria-pressed", "true");
+    await expect(back).toBeVisible();
+    await expect(front).toBeHidden();
+
+    await flip.focus();
+    await page.keyboard.press("Enter");
+    await expect(flip).toHaveAttribute("aria-pressed", "false");
+    await expect(front).toBeVisible();
+    await expect(back).toBeHidden();
+  });
 });

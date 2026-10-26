@@ -7,6 +7,8 @@
   },
   "scripts": {
     "dev": "next dev",
+    "dev:local": "node --import tsx scripts/dev-local.ts",
+    "seed:local": "node --import tsx scripts/seed-local.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

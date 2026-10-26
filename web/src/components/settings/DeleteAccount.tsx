@@ -63,9 +63,16 @@ export function DeleteAccount({ email }: { email: string }) {
 
   return (
     <>
-      <Button variant="danger" leadingIcon={<TrashIcon />} onClick={() => setOpen(true)}>
-        Delete account
-      </Button>
+      {/* The original Settings "action row": icon, label and a one-line description. */}
+      <button type="button" className={`${styles.action} ${styles.actionDelete}`} onClick={() => setOpen(true)}>
+        <TrashIcon className={styles.actionIcon} />
+        <span className={styles.actionInfo}>
+          <span className={styles.actionLabel}>Delete account</span>
+          <span className={styles.actionDescription}>
+            Permanently delete your account, tracked classes and schedule
+          </span>
+        </span>
+      </button>
       <Dialog
         open={open}
         onClose={close}

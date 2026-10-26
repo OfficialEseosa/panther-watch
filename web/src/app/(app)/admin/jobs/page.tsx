@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { JobsPanel } from "@/components/admin/JobsPanel";
-import { ListSkeleton } from "@/components/admin/ListSkeleton";
+import { AdminLoading } from "@/components/admin/AdminFrame";
 import { LoadError, settle } from "@/components/admin/LoadError";
 import { JOB_RUNS_N, loadRuns } from "@/components/admin/server";
 
@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Jobs · Admin" };
 
 export default function AdminJobsPage() {
   return (
-    <Suspense fallback={<ListSkeleton label="Loading job runs" rows={6} />}>
+    <Suspense fallback={<AdminLoading label="Loading job runs…" />}>
       <Jobs />
     </Suspense>
   );

@@ -2,15 +2,12 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { RemovableChip } from "@/components/ui/Chip";
 import { useFieldControl } from "@/components/ui/Field";
-import { CheckIcon } from "@/components/ui/icons";
-import { Skeleton } from "@/components/ui/Skeleton";
 import { fetchSubjects, type Subject } from "@/lib/client/courses";
 import { isAbortError } from "@/lib/client/http";
 import { subjectSchema } from "@/lib/courses/validation";
 import { cn } from "@/lib/ui/cn";
-import { foldText } from "./format";
+import { displayTitle, foldText } from "./format";
 import styles from "./SubjectAutocomplete.module.css";
 
 export const MAX_SUBJECTS = 5;
@@ -221,7 +218,7 @@ export function SubjectAutocomplete({
     >
       {name ? <input type="hidden" name={name} value={value.map((s) => s.code).join(",")} /> : null}
       <div
-        className={cn(styles.field, isInvalid && styles.invalid)}
+        className={cn(styles.field, isInvalid && styles.invalid, !term && styles.disabled)}
         onPointerDown={(event) => {
           if (event.target === event.currentTarget) {
             event.preventDefault();
@@ -233,14 +230,19 @@ export function SubjectAutocomplete({
         {value.length ? (
           <ul className={styles.chips} aria-label="Selected subjects">
             {value.map((subject) => (
-              <li key={subject.code}>
-                <RemovableChip
-                  removeLabel={`Remove ${subject.code}`}
-                  onRemove={() => remove(subject.code)}
-                  className={styles.chip}
+              <li key={subject.code} className={styles.tag} title={subject.description ? subject.code : undefined}>
+                <span>{displayTitle(subject.description) || subject.code}</span>
+                <button
+                  type="button"
+                  className={styles.remove}
+                  aria-label={`Remove ${subject.code}`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    remove(subject.code);
+                  }}
                 >
-                  <span title={subject.description || undefined}>{subject.code}</span>
-                </RemovableChip>
+                  {"×"}
+                </button>
               </li>
             ))}
           </ul>
@@ -259,7 +261,7 @@ export function SubjectAutocomplete({
           autoComplete="off"
           autoCapitalize="characters"
           spellCheck={false}
-          placeholder={value.length ? "" : "e.g. CSC or Computer Science"}
+          placeholder={!term ? "Select a term first" : value.length ? "Add another..." : "e.g. Computer Science"}
           className={styles.input}
           value={text}
           disabled={!term}
@@ -272,6 +274,7 @@ export function SubjectAutocomplete({
           onClick={() => setOpen(true)}
           onKeyDown={onKeyDown}
         />
+        {loading ? <span className={styles.spinner} aria-hidden="true" /> : null}
       </div>
       {limitHit ? (
         <p id={hintId} className={styles.hint} role="status">
@@ -288,10 +291,7 @@ export function SubjectAutocomplete({
       >
         {open && loading && options.length === 0 ? (
           <li className={styles.status} role="presentation">
-            <Skeleton width="60%" height={12} />
-            <Skeleton width="75%" height={12} />
-            <Skeleton width="50%" height={12} />
-            <span className="sr-only">Loading subjects…</span>
+            Loading subjects…
           </li>
         ) : null}
         {open && failed ? (
@@ -333,8 +333,7 @@ export function SubjectAutocomplete({
                   onClick={() => toggle(subject)}
                 >
                   <span className={styles.code}>{subject.code}</span>
-                  <span className={styles.desc}>{subject.description}</span>
-                  {selected ? <CheckIcon size={16} className={styles.check} /> : null}
+                  <span className={styles.desc}>{displayTitle(subject.description)}</span>
                 </li>
               );
             })

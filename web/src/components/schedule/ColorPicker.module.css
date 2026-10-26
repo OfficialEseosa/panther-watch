@@ -1,20 +1,27 @@
-.group {
+/* Old ExpandedCourseCard.css "Calendar color picker". */
+.row {
   display: flex;
+  align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
-  gap: var(--space-2);
+}
+
+.label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  margin-right: 4px;
 }
 
 .option {
   position: relative;
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--tap-min);
-  height: var(--tap-min);
-  border-radius: var(--radius-full);
   cursor: pointer;
 }
 
+/* The native radio stays focusable but invisible; the swatch is its face. */
 .input {
   position: absolute;
   inset: 0;
@@ -24,49 +31,46 @@
 }
 
 .swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-full);
-  background: var(--_swatch);
-  color: var(--sched-text);
-  box-shadow: var(--shadow-xs);
-  transition: transform var(--dur-fast) var(--ease-standard);
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
 }
 
-@media (min-width: 640px) {
-  .swatch {
-    width: 24px;
-    height: 24px;
-  }
+.option:hover .swatch {
+  transform: scale(1.12);
+}
+
+.option:active .swatch {
+  transform: scale(0.94);
 }
 
 .input:checked + .swatch {
-  outline: 2px solid var(--_swatch);
-  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-heading);
 }
 
 .input:focus-visible + .swatch {
-  outline: var(--ring-width) solid var(--focus-ring);
-  outline-offset: var(--ring-offset);
+  box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-primary-500);
 }
 
-.input:disabled,
 .input:disabled + .swatch {
-  cursor: not-allowed;
   opacity: 0.5;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .option:hover .swatch {
-    transform: scale(1.1);
-  }
+  cursor: not-allowed;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .option:hover .swatch {
+  .option:hover .swatch,
+  .option:active .swatch {
     transform: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .input:checked + .swatch {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
   }
 }

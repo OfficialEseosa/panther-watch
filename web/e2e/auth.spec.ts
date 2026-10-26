@@ -69,3 +69,35 @@ test("the test login route rejects a wrong secret", async ({ request }) => {
   const response = await request.post("/api/test/login", { data: { secret: `${E2E_TEST_SECRET}x`, email: STUDENT.email } });
   expect(response.status()).toBe(403);
 });
+
+test("GET test login link sets the session cookie and 303s to the dashboard", async ({ page, context }) => {
+  const query = new URLSearchParams({ secret: E2E_TEST_SECRET, email: "Linked@E2E.test", name: "Link Panther" });
+  const response = await page.request.get(`/api/test/login?${query}`, { maxRedirects: 0 });
+  expect(response.status()).toBe(303);
+  expect(response.headers()["location"]).toBe(`${APP_URL}/dashboard`);
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  const setCookie = response.headersArray().find((h) => h.name.toLowerCase() === "set-cookie" && h.value.startsWith("pw_session="));
+  expect(setCookie?.value).toMatch(/HttpOnly/i);
+
+  const cookie = await sessionCookie(context);
+  expect(cookie, "pw_session cookie").toBeDefined();
+  await page.goto("/dashboard");
+  await expect(page).toHaveURL(`${APP_URL}/dashboard`);
+  await expect(
+    page.getByRole("button", { name: "Account: Link Panther" }).filter({ visible: true }).first(),
+  ).toBeVisible();
+
+  // Following the link again signs in to the same account.
+  const again = await page.request.get(`/api/test/login?${query}`, { maxRedirects: 0 });
+  expect(again.status()).toBe(303);
+  expect((await sessionCookie(context))?.value).toBeTruthy();
+});
+
+test("GET test login link 404s without the right secret", async ({ request }) => {
+  const email = encodeURIComponent(STUDENT.email);
+  const missing = await request.get(`/api/test/login?email=${email}`, { maxRedirects: 0 });
+  expect(missing.status()).toBe(404);
+  const wrong = await request.get(`/api/test/login?secret=${E2E_TEST_SECRET}x&email=${email}`, { maxRedirects: 0 });
+  expect(wrong.status()).toBe(404);
+  expect(wrong.headersArray().some((h) => h.name.toLowerCase() === "set-cookie")).toBe(false);
+});

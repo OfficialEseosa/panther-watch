@@ -3,7 +3,6 @@
  * `searchParams`) and by the client (to mirror filters back into the URL).
  */
 import { courseNumberSchema, crnSchema, levelSchema, subjectSchema, termCodeSchema } from "@/lib/courses/validation";
-import { DAY_KEYS, type DayKey } from "./format";
 
 export const DIALOG_TABS = ["overview", "grades", "ratings", "syllabus"] as const;
 export type DialogTab = (typeof DIALOG_TABS)[number];
@@ -87,53 +86,24 @@ export function resultsHref(search: { term: string; subjects: string[]; courseNu
 
 // ------------------------------------------------------------------ filters
 
-export const TIME_FILTERS = ["any", "morning", "afternoon", "evening"] as const;
-export type TimeFilter = (typeof TIME_FILTERS)[number];
-export const SORTS = ["course", "seats", "title"] as const;
-export type SortKey = (typeof SORTS)[number];
-
+/** The results page's text filter and page number (the original app's only controls). */
 export type Filters = {
   q: string;
-  open: boolean;
-  days: DayKey[];
-  time: TimeFilter;
-  sort: SortKey;
   page: number;
 };
 
-export const DEFAULT_FILTERS: Filters = { q: "", open: false, days: [], time: "any", sort: "course", page: 1 };
-
-const LETTER_TO_DAY: Record<string, DayKey> = { M: "monday", T: "tuesday", W: "wednesday", R: "thursday", F: "friday", S: "saturday", U: "sunday" };
-const DAY_TO_LETTER = Object.fromEntries(Object.entries(LETTER_TO_DAY).map(([letter, day]) => [day, letter])) as Record<DayKey, string>;
+export const DEFAULT_FILTERS: Filters = { q: "", page: 1 };
 
 export function parseFilters(params: RawSearchParams): Filters {
   const q = (first(params.q) ?? "").slice(0, 100);
-  const open = first(params.open) === "1";
-  const days = [...new Set((first(params.days) ?? "").toUpperCase().split(""))]
-    .map((letter) => LETTER_TO_DAY[letter])
-    .filter((day): day is DayKey => Boolean(day))
-    .sort((a, b) => DAY_KEYS.indexOf(a) - DAY_KEYS.indexOf(b));
-  const time = first(params.time);
-  const sort = first(params.sort);
   const page = Number.parseInt(first(params.page) ?? "1", 10);
-  return {
-    q,
-    open,
-    days,
-    time: (TIME_FILTERS as readonly string[]).includes(time ?? "") ? (time as TimeFilter) : "any",
-    sort: (SORTS as readonly string[]).includes(sort ?? "") ? (sort as SortKey) : "course",
-    page: Number.isFinite(page) && page > 0 ? page : 1,
-  };
+  return { q, page: Number.isFinite(page) && page > 0 ? page : 1 };
 }
 
 /** Filter params for the URL (defaults omitted). */
 export function filterParams(filters: Filters): Record<string, string | null> {
   return {
     q: filters.q.trim() ? filters.q.trim() : null,
-    open: filters.open ? "1" : null,
-    days: filters.days.length ? filters.days.map((d) => DAY_TO_LETTER[d]).join("") : null,
-    time: filters.time === "any" ? null : filters.time,
-    sort: filters.sort === "course" ? null : filters.sort,
     page: filters.page > 1 ? String(filters.page) : null,
   };
 }

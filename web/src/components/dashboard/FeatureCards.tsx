@@ -1,119 +1,94 @@
 import type { ReactNode } from "react";
 import { SIGN_IN_HREF } from "@/components/shell/nav";
-import { plural } from "@/lib/format";
-import { Badge } from "@/components/ui/Badge";
-import { Card, CardLink, cardClasses } from "@/components/ui/Card";
-import { ArrowRightIcon, BookmarkIcon, CalendarIcon, LockIcon, SearchIcon } from "@/components/ui/icons";
+import { ButtonAnchor, ButtonLink } from "@/components/ui/Button";
+import { BookmarkIcon, CalendarIcon, LockIcon, SearchIcon } from "@/components/ui/icons";
 import { Skeleton, SkeletonGroup } from "@/components/ui/Skeleton";
+import { cn } from "@/lib/ui/cn";
 import styles from "./FeatureCards.module.css";
 
-export type FeatureCounts = {
-  tracked: number;
-  scheduled: number;
-  scheduledTermLabel: string | null;
-};
-
 export type FeatureCardsProps =
-  /** Signed in, with real counts. */
-  | { mode: "member"; counts: FeatureCounts }
-  /** Signed in, but the counts couldn't load: plain links, no counts. */
+  /** Signed in, with the tracked count. */
+  | { mode: "member"; tracked: number }
+  /** Signed in, but the count couldn't load: no badge. */
   | { mode: "member-unknown" }
-  /** Signed out: Tracked and Schedule point at sign-in. */
+  /** Signed out: Tracked and Schedule are locked and point at sign-in. */
   | { mode: "guest" };
 
 type Feature = {
   key: string;
   icon: ReactNode;
   title: string;
-  body: string;
+  description: string;
+  actionLabel: string;
   href: string;
-  /** A plain <a> (route handler, never prefetched) rather than a client-side Link. */
-  external?: boolean;
-  meta: ReactNode;
+  locked: boolean;
+  badge?: string;
 };
-
 
 function features(props: FeatureCardsProps): Feature[] {
   const guest = props.mode === "guest";
-  const counts = props.mode === "member" ? props.counts : null;
-  const locked = (label: string) => (
-    <Badge tone="neutral" icon={<LockIcon />}>
-      {label}
-    </Badge>
-  );
-  const go = (label: string) => (
-    <span className={styles.go}>
-      {label}
-      <ArrowRightIcon size={16} />
-    </span>
-  );
-
+  const tracked = props.mode === "member" ? props.tracked : null;
   return [
     {
       key: "search",
-      icon: <SearchIcon />,
+      icon: <SearchIcon size={28} />,
       title: "Course search",
-      body: "Live seat counts for every section, with grade history, professor ratings and syllabi.",
+      description:
+        "Real-time seat availability plus grade history, Rate My Professors ratings, and syllabi for every section.",
+      actionLabel: "Search courses",
       href: "/course-search",
-      meta: go("Search classes"),
+      locked: false,
     },
     {
       key: "tracked",
-      icon: <BookmarkIcon />,
+      icon: <BookmarkIcon size={28} />,
       title: "Tracked classes",
-      body: "Watch a full section and we’ll email you the moment a seat or waitlist spot opens.",
+      description: "Get an email the moment a seat opens in a full section you are watching.",
+      actionLabel: guest ? "Sign in to track" : tracked ? "Manage tracked list" : "Start tracking",
       href: guest ? SIGN_IN_HREF : "/tracked-classes",
-      external: guest,
-      meta: guest
-        ? locked("Sign in to track")
-        : counts
-          ? counts.tracked > 0
-            ? <Badge tone="accent">{plural(counts.tracked, "section", "sections")} watched</Badge>
-            : <Badge tone="neutral">Nothing watched yet</Badge>
-          : go("Open tracked classes"),
+      locked: guest,
+      badge: tracked === null ? undefined : `${tracked} active`,
     },
     {
       key: "schedule",
-      icon: <CalendarIcon />,
+      icon: <CalendarIcon size={28} />,
       title: "Schedule builder",
-      body: "Lay out your week, spot time conflicts early, and export to Google or Apple Calendar.",
+      description:
+        "Build your week from search results or tracked classes, spot conflicts on the calendar, and export to Google or Apple Calendar.",
+      actionLabel: guest ? "Sign in to plan" : "Open schedule builder",
       href: guest ? SIGN_IN_HREF : "/schedule-builder",
-      external: guest,
-      meta: guest
-        ? locked("Sign in to plan")
-        : counts
-          ? counts.scheduled > 0 && counts.scheduledTermLabel
-            ? <Badge tone="accent">{plural(counts.scheduled, "class", "classes")} · {counts.scheduledTermLabel}</Badge>
-            : <Badge tone="neutral">Nothing planned yet</Badge>
-          : go("Open schedule builder"),
+      locked: guest,
     },
   ];
 }
 
 /**
- * The three feature cards (pages.md §2). Each whole card is a link (stretched-link pattern,
- * spec.md §2.5); for guests the members-only cards go straight to Google sign-in.
+ * The three feature cards of the original dashboard (old Dashboard.jsx / .dashboard-card):
+ * icon tile, title, description, and a footer with the count badge and the action button.
+ * For guests the members-only cards show a lock and their button goes to Google sign-in
+ * (the original disabled it, a dead end).
  */
 export function FeatureCards(props: FeatureCardsProps) {
   return (
-    <ul className={styles.grid}>
-      {features(props).map((feature) => (
-        <Card key={feature.key} as="li" interactive className={styles.card} bodyClassName={styles.body}>
+    <ul className={styles.grid} aria-label="Features">
+      {features(props).map((card) => (
+        <li key={card.key} className={cn(styles.card, card.locked && styles.locked)} data-card={card.key}>
           <span className={styles.icon} aria-hidden="true">
-            {feature.icon}
+            {card.locked ? <LockIcon size={28} /> : card.icon}
           </span>
-          <h3 className={styles.title}>
-            {feature.external ? (
-              <a href={feature.href} className={cardClasses.stretchedLink}>
-                {feature.title}
-              </a>
+          <h2 className={styles.title}>{card.title}</h2>
+          <p className={styles.description}>{card.description}</p>
+          <div className={styles.footer}>
+            {card.badge ? <span className={styles.badge}>{card.badge}</span> : <span />}
+            {card.locked ? (
+              <ButtonAnchor href={card.href} variant="secondary" leadingIcon={<LockIcon size={16} />}>
+                {card.actionLabel}
+              </ButtonAnchor>
             ) : (
-              <CardLink href={feature.href}>{feature.title}</CardLink>
+              <ButtonLink href={card.href}>{card.actionLabel}</ButtonLink>
             )}
-          </h3>
-          <p className={styles.text}>{feature.body}</p>
-          <div className={styles.meta}>{feature.meta}</div>
-        </Card>
+          </div>
+        </li>
       ))}
     </ul>
   );
@@ -121,23 +96,22 @@ export function FeatureCards(props: FeatureCardsProps) {
 
 export function FeatureCardsSkeleton() {
   return (
-    <ul className={styles.grid}>
+    <ul className={styles.grid} aria-hidden="true">
       {[0, 1, 2].map((index) => (
-        <Card key={index} as="li" className={styles.card} bodyClassName={styles.body}>
+        <li key={index} className={styles.card}>
           <SkeletonGroup label="Loading">
-            <Skeleton width={40} height={40} radius="md" />
-            <div className={styles.title}>
-              <Skeleton width="55%" height={16} />
-            </div>
-            <div className={styles.text}>
-              <Skeleton width="100%" height={12} />
+            <Skeleton width={48} height={48} radius="md" />
+            <div className={styles.skeletonText}>
+              <Skeleton width="55%" height={18} />
+              <Skeleton width="100%" height={12} style={{ marginTop: "var(--space-3)" }} />
               <Skeleton width="80%" height={12} style={{ marginTop: "var(--space-2)" }} />
             </div>
-            <div className={styles.meta}>
-              <Skeleton width={110} height={22} radius="full" />
+            <div className={styles.footer}>
+              <span />
+              <Skeleton width={140} height={40} radius="sm" />
             </div>
           </SkeletonGroup>
-        </Card>
+        </li>
       ))}
     </ul>
   );

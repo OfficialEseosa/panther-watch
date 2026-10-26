@@ -15,9 +15,11 @@ import styles from "./ThemeToggle.module.css";
 export function ThemeToggle({
   size = "md",
   tooltipPlacement = "bottom",
+  className,
 }: {
   size?: "sm" | "md";
   tooltipPlacement?: "top" | "bottom" | "right";
+  className?: string;
 }) {
   const { resolved, setPreference } = useTheme();
   const next = resolved === "dark" ? "light" : "dark";
@@ -34,6 +36,7 @@ export function ThemeToggle({
       }
       onClick={() => setPreference(next)}
       tooltipPlacement={tooltipPlacement}
+      className={className}
     />
   );
 }

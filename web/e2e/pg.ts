@@ -21,7 +21,7 @@ const EXE = process.platform === "win32" ? ".exe" : "";
 const DATA_DIR = path.join(PG_DIR, "data");
 const LOG_FILE = path.join(PG_DIR, "postgres.log");
 
-function findBin(name: string): string {
+export function findBin(name: string): string {
   const candidates: string[] = [];
   if (process.env.PG_BIN) candidates.push(path.join(process.env.PG_BIN, name + EXE));
   for (const dir of (process.env.PATH ?? "").split(path.delimiter)) {
