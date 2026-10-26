@@ -20,9 +20,10 @@ vi.mock("@/lib/course-meta", async (importOriginal) => ({
 process.env.ADMIN_EMAILS = "admin@pantherwatch.test";
 
 import { setDbForTests } from "@/db";
-import { emailLog, jobRuns, scheduleEntries, type User } from "@/db/schema";
+import { emailLog, jobRuns, scheduleEntries, terms, watchedSections, type User } from "@/db/schema";
 import { gradeTerms, sectionGrades } from "@/db/schema/course-meta";
 import { POST as sendEmailRoute } from "@/app/api/admin/email/route";
+import { POST as testAlertRoute } from "@/app/api/admin/email/test-alert/route";
 import { DELETE as deleteTermRoute } from "@/app/api/admin/grades/[term]/route";
 import { POST as refreshRoute } from "@/app/api/admin/grades/refresh/route";
 import { GET as gradeStatusRoute } from "@/app/api/admin/grades/status/route";
@@ -33,9 +34,11 @@ import { GET as statsRoute } from "@/app/api/admin/stats/route";
 import { GET as usersRoute } from "@/app/api/admin/users/route";
 import { escapeLike } from "@/lib/admin";
 import { getCourseGrades, listIngestedTerms, parseTerm } from "@/lib/course-meta";
+import { setGoSolarOptionsForTests } from "@/lib/courses";
 import { createMemoryTransport, remainingBudget, setDefaultEmailTransport, type MemoryTransport } from "@/lib/email";
 import { apiRequest, call, flushAfter, params, afterTasks } from "../helpers/session";
 import { createTestDb, seedUser, seedWatchedSection, truncateAll, type TestDatabase } from "../helpers/db";
+import { makeSection, startFakeGoSolar, type FakeGoSolar } from "../helpers/fake-gosolar";
 
 const GRADE_DATA = fileURLToPath(new URL("../../data/grade-csv/", import.meta.url));
 const summaryCsv = readFileSync(`${GRADE_DATA}202601__summary.csv`, "utf8");
@@ -103,6 +106,11 @@ describe("access control", () => {
             body: { to: "x@example.test", subject: "Hi", htmlBody: "<p>Hi</p>" },
           }),
         ),
+    ],
+    [
+      "POST email/test-alert",
+      async (as, origin) =>
+        call(testAlertRoute, await apiRequest("/api/admin/email/test-alert", { method: "POST", as, origin, body: {} })),
     ],
     [
       "POST grades/refresh",
@@ -339,6 +347,112 @@ describe("POST /api/admin/email", () => {
     const response = await send({ to: "a@example.test", subject: "S", htmlBody: "B" });
     expect(response.status).toBe(502);
     expect((await response.json()).error.code).toBe("email_send_failed");
+    expect(await testDb.db.select().from(emailLog)).toHaveLength(0);
+  });
+});
+
+describe("POST /api/admin/email/test-alert", () => {
+  let gs: FakeGoSolar;
+  beforeAll(async () => {
+    gs = await startFakeGoSolar();
+    setGoSolarOptionsForTests({ baseUrl: gs.url });
+  });
+  afterAll(async () => {
+    setGoSolarOptionsForTests(undefined);
+    await gs.close();
+  });
+  beforeEach(() => gs.reset());
+
+  async function sendAlert(body: unknown, as: User = admin) {
+    return call(testAlertRoute, await apiRequest("/api/admin/email/test-alert", { method: "POST", as, body }));
+  }
+
+  it("sends the sample seat alert to the admin only, [TEST] subject, logged as custom", async () => {
+    const watch = await seedWatchedSection(testDb.db, student.id);
+    const response = await sendAlert({});
+    expect(response.status).toBe(200);
+    const { email } = await response.json();
+    expect(email).toMatchObject({ id: "memory-1", to: admin.email, live: false });
+
+    expect(transport.sent).toHaveLength(1);
+    const message = transport.sent[0];
+    expect(message.to).toBe(admin.email);
+    expect(message.subject.startsWith("[TEST] Class Spot Available")).toBe(true);
+    expect(message.subject).toContain("CSC 1301 (CRN 00000)");
+    expect(message.html).toContain("3 open");
+
+    const rows = await testDb.db.select().from(emailLog);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      id: email.logId,
+      userId: admin.id,
+      recipient: admin.email,
+      type: "custom",
+      subject: message.subject,
+    });
+    // No watch state touched.
+    const [after] = await testDb.db.select().from(watchedSections);
+    expect(after).toEqual(watch);
+    expect(gs.requests).toHaveLength(0);
+  });
+
+  it("uses a real section's live numbers when term, subject, number and CRN are given", async () => {
+    await testDb.db.insert(terms).values({ code: "202608", description: "Fall Semester 2026", viewOnly: false });
+    gs.setSections("202608", "CSC", "1301", [
+      makeSection({ term: "202608", courseReferenceNumber: "80001", seatsAvailable: 7, courseTitle: "Principles of CS I" }),
+      makeSection({ term: "202608", courseReferenceNumber: "80002", seatsAvailable: 0 }),
+    ]);
+    const response = await sendAlert({ term: "202608", subject: "csc", courseNumber: "1301", crn: "80001" });
+    expect(response.status).toBe(200);
+    expect((await response.json()).email.live).toBe(true);
+    const message = transport.sent[0];
+    expect(message.subject).toBe("[TEST] Class Spot Available: CSC 1301 (CRN 80001)");
+    expect(message.html).toContain("7 open");
+    expect(message.html).toContain("Fall Semester 2026");
+    expect((await testDb.db.select().from(emailLog))[0].type).toBe("custom");
+  });
+
+  it("404 when the CRN is not in that course, nothing sent", async () => {
+    gs.setSections("202608", "CSC", "1301", [makeSection({ term: "202608", courseReferenceNumber: "80001" })]);
+    const response = await sendAlert({ term: "202608", subject: "CSC", courseNumber: "1301", crn: "89999" });
+    expect(response.status).toBe(404);
+    expect((await response.json()).error.code).toBe("section_not_found");
+    expect(transport.sent).toHaveLength(0);
+    expect(await testDb.db.select().from(emailLog)).toHaveLength(0);
+  });
+
+  it.each([
+    ["a partial section", { term: "202608", crn: "80001" }],
+    ["a bad CRN", { term: "202608", subject: "CSC", courseNumber: "1301", crn: "8" }],
+    ["unknown fields", { to: "someone@example.test" }],
+  ])("400 for %s", async (_label, body) => {
+    const response = await sendAlert(body);
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.code).toBe("invalid_request");
+    expect(transport.sent).toHaveLength(0);
+  });
+
+  it("429 when the daily budget is used up", async () => {
+    const now = new Date();
+    await testDb.db.insert(emailLog).values(
+      Array.from({ length: remainingBudget({ sentTodayUtc: 0, sentThisMonthUtc: 0 }).dailyRemaining }, (_, i) => ({
+        userId: student.id,
+        recipient: student.email,
+        type: "custom" as const,
+        subject: `filler ${i}`,
+        sentAt: now,
+      })),
+    );
+    const response = await sendAlert({});
+    expect(response.status).toBe(429);
+    expect((await response.json()).error.code).toBe("email_quota_exceeded");
+    expect(transport.sent).toHaveLength(0);
+  });
+
+  it("404 for a non-admin, nothing sent", async () => {
+    const response = await sendAlert({}, student);
+    expect(response.status).toBe(404);
+    expect(transport.sent).toHaveLength(0);
     expect(await testDb.db.select().from(emailLog)).toHaveLength(0);
   });
 });

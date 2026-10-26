@@ -36,7 +36,7 @@ export const EMAIL_TEMPLATES: readonly EmailTemplate[] = [
       [
         `<p>Hi ${escapeHtml(name)},</p>`,
         "<p>Welcome to PantherWatch! We're excited to help you track your GSU classes and get notified when spots open up.</p>",
-        "<p>If you have any questions or need assistance, just reply to this email.</p>",
+        "<p>If you have any questions or need assistance, visit <a href=\"https://www.pantherwatch.app\">pantherwatch.app</a>.</p>",
       ].join("\n"),
   },
   {

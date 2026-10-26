@@ -2,20 +2,33 @@ import "server-only";
 import { asc, count, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { emailLog, scheduleEntries, users, watchedSections, type JobRun } from "@/db/schema";
+import { emailLog, scheduleEntries, terms, users, watchedSections, type JobRun } from "@/db/schema";
 import { listIngestedTerms } from "@/lib/course-meta";
 import {
+  blankToUndefined,
+  courseNumberSchema,
+  crnSchema,
+  isUpstreamError,
+  searchSections,
+  subjectSchema,
+  termCodeSchema,
+} from "@/lib/courses";
+import {
   remainingBudget,
+  sendClassAvailabilityEmail,
   sendCustomEmail,
   utcDayStart,
   utcMonthStart,
+  type AvailabilityCourse,
   type EmailTransport,
   type RemainingBudget,
 } from "@/lib/email";
 import { recentRuns } from "@/lib/jobs/runs";
-import { parseInput } from "./errors";
+import { termDisplayName } from "@/lib/jobs/terms";
+import { emailBudget } from "@/lib/watcher/budget";
+import { AdminRequestError, parseInput } from "./errors";
 
-export { InvalidInputError } from "./errors";
+export { AdminRequestError, InvalidInputError } from "./errors";
 
 // ---------------------------------------------------------------------------------------------
 // Stats
@@ -212,4 +225,114 @@ export async function sendAdminEmail(
     })
     .returning({ id: emailLog.id });
   return { id: sent.id, to: sent.to, subject: sent.subject, logId: log.id };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Sample seat alert
+// ---------------------------------------------------------------------------------------------
+
+const optional = <S extends z.ZodType>(schema: S) => z.preprocess(blankToUndefined, schema.optional());
+
+/** Either no section at all (the built-in sample) or all four fields of a real one. */
+export const sampleAlertSchema = z
+  .strictObject({
+    term: optional(termCodeSchema),
+    subject: optional(subjectSchema),
+    courseNumber: optional(courseNumberSchema),
+    crn: optional(crnSchema),
+  })
+  .refine(
+    ({ term, subject, courseNumber, crn }) =>
+      [term, subject, courseNumber, crn].every((v) => v === undefined) ||
+      [term, subject, courseNumber, crn].every((v) => v !== undefined),
+    { message: "give term, subject, courseNumber and crn together, or none of them" },
+  );
+export type SampleAlertInput = z.input<typeof sampleAlertSchema>;
+
+export const SAMPLE_ALERT_SUBJECT_PREFIX = "[TEST] ";
+
+/** The section used when no real one is named: clearly fake (CRN 00000). */
+export const SAMPLE_ALERT_COURSE: AvailabilityCourse = {
+  crn: "00000",
+  subject: "CSC",
+  courseNumber: "1301",
+  title: "Principles of Computer Science I (sample)",
+  instructor: "Sample Instructor",
+  term: "202608",
+  termName: "Sample term",
+  seatsAvailable: 3,
+  waitCount: 0,
+};
+
+export interface SampleAlertResult {
+  id: string;
+  to: string;
+  subject: string;
+  logId: number;
+  /** True when the email used live GoSolar numbers, false for the built-in sample. */
+  live: boolean;
+}
+
+/**
+ * Sends the seat-alert email to the admin themself, subject prefixed "[TEST] ", so they can see
+ * exactly what students get. With term+subject+courseNumber+crn the section is looked up live
+ * in GoSolar and its real numbers are used; otherwise a clearly fake sample section is used.
+ * Logged to `email_log` as `custom` (it counts against the provider budget but is not a seat
+ * alert); no watch state is read or changed.
+ */
+export async function sendSampleSeatAlert(
+  admin: { id: string; email: string; name: string | null },
+  input: unknown,
+  options: { transport?: EmailTransport; now?: Date } = {},
+): Promise<SampleAlertResult> {
+  const { term, subject, courseNumber, crn } = parseInput(sampleAlertSchema, input);
+  const db = getDb();
+
+  const budget = await emailBudget(db, options.now ?? new Date());
+  if (Math.min(budget.dailyRemaining, budget.monthlyRemaining) <= 0) {
+    throw new AdminRequestError(429, "email_quota_exceeded", "The email sending limit for today or this month is used up");
+  }
+
+  let course = SAMPLE_ALERT_COURSE;
+  const live = term !== undefined && subject !== undefined && courseNumber !== undefined && crn !== undefined;
+  if (live) {
+    let sections;
+    try {
+      sections = await searchSections({ term, subject, courseNumber });
+    } catch (error) {
+      if (isUpstreamError(error)) throw new AdminRequestError(502, "upstream_error", "GoSolar did not answer; try again");
+      throw error;
+    }
+    const section = sections.find((s) => s.courseReferenceNumber === crn);
+    if (!section) {
+      throw new AdminRequestError(404, "section_not_found", `CRN ${crn} is not a ${subject} ${courseNumber} section in ${term}`);
+    }
+    const [termRow] = await db.select().from(terms).where(eq(terms.code, term)).limit(1);
+    const faculty = section.faculty ?? [];
+    course = {
+      crn,
+      subject: section.subject ?? subject,
+      courseNumber: section.courseNumber ?? courseNumber,
+      title: section.courseTitle ?? `${subject} ${courseNumber}`,
+      instructor: (faculty.find((f) => f.primaryIndicator) ?? faculty[0])?.displayName ?? null,
+      term,
+      termName: termDisplayName(termRow, term),
+      seatsAvailable: section.seatsAvailable,
+      waitCount: section.waitCount,
+    };
+  }
+
+  const sent = await sendClassAvailabilityEmail({
+    to: admin.email,
+    name: admin.name,
+    course,
+    subjectPrefix: SAMPLE_ALERT_SUBJECT_PREFIX,
+    transport: options.transport,
+  });
+
+  const [log] = await db
+    .insert(emailLog)
+    .values({ userId: admin.id, recipient: sent.to, type: "custom", subject: sent.subject, providerMessageId: sent.id })
+    .returning({ id: emailLog.id });
+  return { id: sent.id, to: sent.to, subject: sent.subject, logId: log.id, live };
 }

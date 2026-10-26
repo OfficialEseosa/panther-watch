@@ -11,6 +11,22 @@ export class InvalidInputError extends Error {
   }
 }
 
+/**
+ * An admin request that is well-formed but cannot be served (section not found, email budget
+ * spent, GoSolar down). Routes answer `status { error: { code, message } }`.
+ */
+export class AdminRequestError extends Error {
+  readonly status: number;
+  readonly code: string;
+
+  constructor(status: number, code: string, message: string) {
+    super(message);
+    this.name = "AdminRequestError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
 /** One line per zod issue, prefixed with its path: `expiresAt: must be after startsAt`. */
 export function describeZodError(error: z.ZodError): string {
   return error.issues

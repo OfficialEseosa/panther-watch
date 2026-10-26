@@ -3,7 +3,7 @@ import { unstable_rethrow } from "next/navigation";
 import { getCurrentUser, isAdminEmail, type CurrentUser } from "@/lib/auth/session";
 import { EmailSendError } from "@/lib/email";
 import { assertSameOrigin } from "@/lib/http";
-import { InvalidInputError } from "./errors";
+import { AdminRequestError, InvalidInputError } from "./errors";
 
 /**
  * Shared plumbing for the announcements and admin route handlers: the error body shape,
@@ -65,7 +65,8 @@ export function parseId(raw: string): number | null {
 }
 
 /**
- * Runs a handler body and maps known failures: `InvalidInputError` -> 400, `EmailSendError`
+ * Runs a handler body and maps known failures: `InvalidInputError` -> 400, `AdminRequestError`
+ * -> its own status, `EmailSendError`
  * -> 429 (provider quota) or 502, anything else -> 500 (logged, message not leaked).
  */
 export async function handleErrors(fn: () => Promise<Response>): Promise<Response> {
@@ -75,6 +76,9 @@ export async function handleErrors(fn: () => Promise<Response>): Promise<Respons
     unstable_rethrow(error);
     if (error instanceof InvalidInputError) {
       return apiError(400, "invalid_request", error.message, { headers: NO_STORE });
+    }
+    if (error instanceof AdminRequestError) {
+      return apiError(error.status, error.code, error.message, { headers: NO_STORE });
     }
     if (error instanceof EmailSendError) {
       console.error("Admin email send failed", error.code, error.statusCode);

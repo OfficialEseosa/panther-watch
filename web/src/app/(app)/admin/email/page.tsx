@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { AdminLoading } from "@/components/admin/AdminFrame";
 import { EmailComposer } from "@/components/admin/EmailComposer";
 import { settle } from "@/components/admin/LoadError";
+import { SampleAlertCard } from "@/components/admin/SampleAlertCard";
 import { loadStats } from "@/components/admin/server";
 import { MailIcon } from "@/components/ui/icons";
 import styles from "@/components/admin/admin.module.css";
@@ -32,6 +33,7 @@ async function Composer() {
         limit, and is logged. To email a specific user, use Send email on their card in Users.
       </p>
       <EmailComposer dailyRemaining={stats?.emailBudget.dailyRemaining ?? null} />
+      <SampleAlertCard />
     </section>
   );
 }

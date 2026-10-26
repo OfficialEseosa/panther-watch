@@ -1,5 +1,5 @@
 import { escapeHtml } from "../escape";
-import { renderLayout, textFooter, type RenderedEmail } from "./layout";
+import { renderLayout, siteLabel, textFooter, type RenderedEmail } from "./layout";
 import { greetingName } from "@/lib/format";
 
 const CSS = `.content { padding: 40px 36px 12px; }
@@ -52,8 +52,9 @@ export function renderGoodbyeEmail({ appUrl, name }: GoodbyeTemplateInput): Rend
                             </p>
 
                             <div class="support">
-                                Changed your mind or have feedback? Just <strong>reply to this email</strong>
-                                and a real person will read it.
+                                Changed your mind or have feedback? Visit
+                                <strong><a href="${escapeHtml(appUrl)}" style="color: #0039a6; text-decoration: none;">${escapeHtml(siteLabel(appUrl))}</a></strong>
+                                anytime.
                             </div>`;
 
   const text = `Sorry to see you go, ${who}.
@@ -62,7 +63,7 @@ Your PantherWatch account and every class you were tracking have been permanentl
 
 If you ever need to chase down a seat again, you're always welcome back. Just sign in and pick up where you left off.
 
-Changed your mind or have feedback? Just reply to this email and a real person will read it.
+Changed your mind or have feedback? Visit ${siteLabel(appUrl)} anytime: ${appUrl}
 
 ${textFooter(appUrl, FOOTER_REASON)}
 `;

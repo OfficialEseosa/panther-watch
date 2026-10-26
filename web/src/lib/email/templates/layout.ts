@@ -71,6 +71,8 @@ export const GOSOLAR_REGISTRATION_URL =
 
 export const FOOTER_TAGLINE = "Real-time seat tracking for Georgia State students.";
 export const NOT_AFFILIATED = "Not affiliated with Georgia State University.";
+/** The sender is no-reply@, so the footer says replies go nowhere. */
+export const NO_REPLY = "This inbox isn't monitored, so please don't reply.";
 
 /** "https://www.pantherwatch.app" -> "pantherwatch.app"; the footer link text. */
 export function siteLabel(appUrl: string): string {
@@ -98,7 +100,8 @@ export interface LayoutParts {
 /**
  * The page shell every template shares. The CSS is inlined in a <style> block in place of
  * the Java templates' <link rel="stylesheet">, exactly as EmailService did. The logo is
- * email-logo.png (opaque white chip baked in) so it stays visible in dark-mode clients.
+ * email-logo.png: the panther on an opaque white rounded badge with a light-gray border
+ * (256 px, shown at 48), so it reads the same on light and dark-mode backgrounds.
  */
 export function renderLayout(parts: LayoutParts): string {
   const appUrl = escapeHtml(parts.appUrl);
@@ -141,6 +144,7 @@ ${parts.content}
                             <p class="f-fine">
                                 ${escapeHtml(parts.footerReason)}
                                 ${NOT_AFFILIATED}
+                                ${NO_REPLY}
                             </p>
                         </td>
                     </tr>
@@ -160,5 +164,5 @@ PantherWatch
 ${FOOTER_TAGLINE}
 ${appUrl}
 
-${footerReason} ${NOT_AFFILIATED}`;
+${footerReason} ${NOT_AFFILIATED} ${NO_REPLY}`;
 }

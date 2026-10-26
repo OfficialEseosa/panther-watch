@@ -136,6 +136,14 @@ describe("welcome and goodbye", () => {
       expect(message.text.length).toBeGreaterThan(0);
       expect(message.text).not.toMatch(/<[a-z]/i);
     }
+    for (const message of [welcome, goodbye]) {
+      // The sender is no-reply@: nothing may invite a reply, and the footer says so.
+      expect(message.html).not.toMatch(/reply to this email/i);
+      expect(message.text).not.toMatch(/reply to this email/i);
+      expect(message.html).toContain("This inbox isn't monitored");
+      expect(message.text).toContain("This inbox isn't monitored");
+    }
+    expect(goodbye.html).toContain(`<a href="${appUrl}"`);
     expect(welcome.html).toContain("You're in, Ada.");
     expect(goodbye.html).toContain("Sorry to see you go, Ada.");
     expect(welcome.tags).toEqual([{ name: "type", value: "WELCOME" }]);

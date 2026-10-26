@@ -9,12 +9,12 @@
  * Types are imported type-only from the server modules (erased at build time), except the job
  * run, whose server type holds `Date`s that travel as ISO strings.
  */
-import type { AdminEmailResult, AdminStats, AdminUser, UserPage } from "@/lib/admin";
+import type { AdminEmailResult, AdminStats, AdminUser, SampleAlertResult, UserPage } from "@/lib/admin";
 import type { GradeUploadResult } from "@/lib/admin/grades";
 import type { AdminAnnouncement } from "@/lib/announcements";
 import { del, getJson, patchJson, postJson, query } from "./http";
 
-export type { AdminEmailResult, AdminUser, UserPage, AdminAnnouncement, GradeUploadResult };
+export type { AdminEmailResult, AdminUser, UserPage, AdminAnnouncement, GradeUploadResult, SampleAlertResult };
 
 export type AnnouncementLevel = AdminAnnouncement["level"];
 
@@ -54,6 +54,14 @@ export interface UpdateAnnouncementPayload {
   active?: boolean;
 }
 
+/** All four for a live section, or none for the built-in sample. */
+export interface SampleAlertPayload {
+  term?: string;
+  subject?: string;
+  courseNumber?: string;
+  crn?: string;
+}
+
 export interface AdminEmailPayload {
   to: string;
   subject: string;
@@ -80,6 +88,8 @@ export const adminApi = {
   },
 
   sendEmail: (payload: AdminEmailPayload) => postJson<{ email: AdminEmailResult }>("/api/admin/email", payload),
+  sendSampleAlert: (payload: SampleAlertPayload) =>
+    postJson<{ email: SampleAlertResult }>("/api/admin/email/test-alert", payload),
 
   jobs: (job: string, n = 20, signal?: AbortSignal) =>
     getJson<{ job: string; runs: JobRunDto[] }>(`/api/admin/jobs?${query({ job, n })}`, signal),

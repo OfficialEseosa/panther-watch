@@ -76,10 +76,19 @@ export interface ClassAvailabilityEmailInput extends SendOptions {
   to: string;
   name?: string | null;
   course: AvailabilityCourse;
+  /** Prepended to the subject, e.g. "[TEST] " for the admin sample alert. */
+  subjectPrefix?: string;
 }
 
-export function sendClassAvailabilityEmail({ to, name, course, ...options }: ClassAvailabilityEmailInput): Promise<EmailSent> {
-  const rendered = renderClassAvailabilityEmail({ appUrl: appUrlOf(options), name, course });
+export function sendClassAvailabilityEmail({
+  to,
+  name,
+  course,
+  subjectPrefix = "",
+  ...options
+}: ClassAvailabilityEmailInput): Promise<EmailSent> {
+  const base = renderClassAvailabilityEmail({ appUrl: appUrlOf(options), name, course });
+  const rendered = { ...base, subject: `${subjectPrefix}${base.subject}` };
   return deliver("CLASS_AVAILABILITY", to, rendered, options, [
     { name: "crn", value: course.crn },
     { name: "term", value: course.term },
