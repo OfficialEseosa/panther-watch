@@ -104,9 +104,17 @@
   color: var(--color-text-muted);
 }
 
+/* Unselected days recede (opacity keeps the muted text >= 4.5:1 in both themes);
+   selected days are a solid fill so they read at a glance: GSU blue / white in
+   light (9.8:1), the light link blue / near-black in dark (7.6:1). */
+.day:not([data-active]) {
+  opacity: 0.85;
+}
+
 .day[data-active] {
-  background: var(--accent-subtle);
-  color: var(--accent-subtle-text);
+  background: var(--indicator);
+  color: var(--indicator-contrast);
+  font-weight: 700;
 }
 
 .location {

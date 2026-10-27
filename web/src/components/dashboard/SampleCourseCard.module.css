@@ -232,11 +232,15 @@
   color: var(--color-text-muted);
   font-size: 0.66rem;
   font-weight: 600;
+  opacity: 0.85;
 }
 
+/* Matches the real course card (SectionParts.module.css .day[data-active]). */
 .dayOn {
-  background: var(--accent-subtle);
-  color: var(--accent-subtle-text);
+  background: var(--indicator);
+  color: var(--indicator-contrast);
+  font-weight: 700;
+  opacity: 1;
 }
 
 .location {
