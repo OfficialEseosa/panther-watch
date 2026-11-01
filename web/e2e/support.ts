@@ -51,6 +51,9 @@ export const fake = {
   reset: () => fakeCall("/__control/reset", { method: "POST" }),
   setSeats: (section: { term?: string; subject: string; courseNumber: string; crn: string; seatsAvailable?: number; waitCount?: number }) =>
     fakeCall("/__control/sections", { method: "POST", body: { term: SEED.term, ...section } }),
+  /** Adds `count` generated sections of one course (e.g. enough for several result pages); reset removes them. */
+  bulkSections: (input: { subject: string; courseNumber: string; count: number; term?: string; firstCrn?: number }) =>
+    fakeCall("/__control/bulk-sections", { method: "POST", body: input }),
   emails: async () =>
     (await fakeCall<{ emails: { id: string; body: { to: string | string[]; subject: string; html: string } }[] }>("/__control/emails"))
       .emails,

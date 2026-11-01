@@ -2,12 +2,32 @@
 
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import type { SectionMeta } from "@/lib/client/courses";
+import {
+  activeFilterCount,
+  DEFAULT_SECTION_FILTERS,
+  matchesFilters,
+  needsMeta,
+  sortSections,
+  type SectionFilters,
+} from "@/lib/courses/filters";
 import { courseCode, instructorsOf, keyOf, plural } from "@/lib/format";
 import { ScheduleToggle, WatchToggle } from "./CourseActions";
 import { CourseCard } from "./CourseCard";
-import { foldText, sectionLabel, titleOf, type Section } from "./format";
+import { CourseFocusChips, type FocusCourse } from "./CourseFocusChips";
+import { FiltersPopover } from "./FiltersPopover";
+import { foldText, metaItemOf, sectionLabel, titleOf, type Section } from "./format";
 import { OldIcon } from "./icons";
-import { filterParams, resultsHref, resultsTitle, searchFormHref, type DialogTab, type Filters } from "./params";
+import {
+  displayCourseNumbers,
+  filterParams,
+  focusKey,
+  resultsHref,
+  resultsTitle,
+  searchFormHref,
+  type DialogTab,
+  type Filters,
+} from "./params";
+import { ResultsPagination } from "./ResultsPagination";
 import { ResultsToolbar } from "./ResultsToolbar";
 import { RetryButton } from "./RetryButton";
 import { SectionDialog } from "./SectionDialog";
@@ -15,8 +35,8 @@ import { ErrorMessage } from "./SectionParts";
 import { urlWith, useCourseDialog } from "./useCourseDialog";
 import { useSectionActions } from "./useSectionActions";
 import { useSectionMeta } from "./useSectionMeta";
-import buttons from "./buttons.module.css";
 import styles from "./CourseResults.module.css";
+import extra from "./ResultsControls.module.css";
 
 export const PAGE_SIZE = 12;
 /** The filtered count is announced this long after the last change. */
@@ -46,8 +66,8 @@ export type CourseResultsProps = {
   /** Registration closed for the term: the schedule button (and Watch, unless watching) are disabled. */
   viewOnly: boolean;
   sections: Section[];
-  /** Subjects whose GoSolar search failed (partial results). */
-  failedSubjects: string[];
+  /** Searches ("CSC 4352", or "CSC" for a whole subject) whose GoSolar request failed (partial results). */
+  failedSearches: string[];
   /** Meta the server fetched for the first page, keyed by (term, crn). */
   initialMeta: Record<string, SectionMeta>;
   /** (term, crn) keys the viewer watches / has scheduled. */
@@ -58,19 +78,23 @@ export type CourseResultsProps = {
   initialDialog: { crn: string | null; tab: DialogTab };
 };
 
-type Indexed = { section: Section; key: string; text: string };
+type Indexed = { section: Section; key: string; text: string; course: string };
+
+const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
- * The original results page body: toolbar, "Found N sections" with the one text filter, a
- * two-column card grid (12 per page) with the original pagination, and the URL-addressable
- * detail dialog. Filtering runs on the client and is mirrored to the URL (`?q=&page=`).
+ * The original results page body: toolbar, "Found N sections" with the one text filter (plus a
+ * Filters button whose popover holds days, seats, honors, rating, GPA and the sort), course
+ * focus chips when the results span several courses, a two-column card grid (12 per page) with
+ * the original pagination, and the URL-addressable detail dialog. Filtering runs on the client
+ * and is mirrored to the URL (`?q=&page=&focus=&days=&open=&honors=&minRating=&minGpa=&sort=`).
  */
 export function CourseResults({
   search,
   termName,
   viewOnly,
   sections,
-  failedSubjects,
+  failedSearches,
   initialMeta,
   watched,
   scheduled,
@@ -81,7 +105,7 @@ export function CourseResults({
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [filtersTouched, setFiltersTouched] = useState(false);
   const deferredQ = useDeferredValue(filters.q);
-  const sectionTopRef = useRef<HTMLDivElement>(null);
+  const gridTopRef = useRef<HTMLDivElement>(null);
 
   const { meta, failed: metaFailed, ensure, retry: retryMeta } = useSectionMeta(initialMeta);
   const actions = useSectionActions({ initialWatched: watched, initialScheduled: scheduled, isSignedIn });
@@ -94,6 +118,7 @@ export function CourseResults({
         text: foldText(
           [titleOf(section), sectionLabel(section), section.courseReferenceNumber ?? "", ...instructorsOf(section)].join(" "),
         ),
+        course: focusKey(section.subject, section.courseNumber),
       })),
     [sections],
   );
@@ -101,10 +126,50 @@ export function CourseResults({
 
   // One box that matches a CRN, an instructor, the title or the course code (the original
   // matched CRN or professor; the rest comes along for free).
-  const filtered = useMemo(() => {
+  const textFiltered = useMemo(() => {
     const q = foldText(deferredQ.trim());
     return q ? indexed.filter((item) => item.text.includes(q)) : indexed;
   }, [indexed, deferredQ]);
+
+  const { days, open, honors, minRating, minGpa, sort } = filters;
+  const sectionFilters = useMemo<SectionFilters>(
+    () => ({ days, open, honors, minRating, minGpa, sort }),
+    [days, open, honors, minRating, minGpa, sort],
+  );
+  const activeCount = activeFilterCount(sectionFilters);
+  const wantsMeta = needsMeta(sectionFilters);
+
+  // A rating/GPA minimum or sort reads every candidate's meta, not just the visible page's.
+  useEffect(() => {
+    if (wantsMeta) ensure(textFiltered.map((item) => item.section));
+  }, [wantsMeta, textFiltered, ensure]);
+  const metaPending = wantsMeta
+    ? textFiltered.filter((item) => !meta[item.key] && !metaFailed.has(item.key) && metaItemOf(item.section)).length
+    : 0;
+
+  const passed = useMemo(
+    () => textFiltered.filter((item) => matchesFilters({ section: item.section, meta: meta[item.key] }, sectionFilters)),
+    [textFiltered, sectionFilters, meta],
+  );
+
+  // Focus chips: every course in the results (course order), counting the sections that pass.
+  const courses = useMemo<FocusCourse[]>(() => {
+    const byCourse = new Map<string, FocusCourse>();
+    for (const item of indexed) {
+      if (!byCourse.has(item.course)) byCourse.set(item.course, { key: item.course, label: courseCode(item.section), count: 0 });
+    }
+    for (const item of passed) {
+      const course = byCourse.get(item.course);
+      if (course) course.count++;
+    }
+    return [...byCourse.values()];
+  }, [indexed, passed]);
+  const focus = filters.focus && courses.some((course) => course.key === filters.focus) ? filters.focus : null;
+
+  const filtered = useMemo(() => {
+    const focused = focus ? passed.filter((item) => item.course === focus) : passed;
+    return sortSections(focused, sectionFilters.sort, (item) => ({ section: item.section, meta: meta[item.key] }));
+  }, [passed, focus, sectionFilters.sort, meta]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const page = Math.min(filters.page, pageCount);
@@ -115,13 +180,13 @@ export function CourseResults({
     ensure(pageItems.map((item) => item.section));
   }, [pageItems, ensure]);
 
-  // Mirror the filter and page to the URL (shareable, survives reload) without a server round trip.
+  // Mirror the filters and page to the URL (shareable, survives reload) without a server round trip.
   useEffect(() => {
-    const next = urlWith(filterParams({ q: deferredQ, page }));
+    const next = urlWith(filterParams({ ...sectionFilters, q: deferredQ, page, focus }));
     if (next !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
       window.history.replaceState(null, "", next);
     }
-  }, [deferredQ, page]);
+  }, [deferredQ, page, focus, sectionFilters]);
 
   const resolve = useCallback(
     (crn: string) => indexed.find((item) => item.section.courseReferenceNumber === crn)?.key ?? null,
@@ -155,16 +220,28 @@ export function CourseResults({
 
   const setQuery = (q: string) => {
     setFiltersTouched(true);
-    setFilters({ q, page: 1 });
+    setFilters((prev) => ({ ...prev, q, page: 1 }));
   };
+  const updateFilters = (patch: Partial<SectionFilters>) => {
+    setFiltersTouched(true);
+    setFilters((prev) => ({ ...prev, ...patch, page: 1 }));
+  };
+  const clearFilters = () => updateFilters(DEFAULT_SECTION_FILTERS);
+  const setFocus = (next: string | null) => {
+    setFiltersTouched(true);
+    setFilters((prev) => ({ ...prev, focus: next, page: 1 }));
+  };
+  // Previous/Next/the page field: the new page starts at the top of the grid (clear of the
+  // sticky phone header: scroll-margin-top), not the top of the page.
   const goToPage = (next: number) => {
     setFilters((prev) => ({ ...prev, page: Math.min(Math.max(1, next), pageCount) }));
-    const top = sectionTopRef.current;
-    if (top && top.getBoundingClientRect().top < 0) top.scrollIntoView({ block: "start", behavior: "smooth" });
+    gridTopRef.current?.scrollIntoView({ block: "start", behavior: prefersReducedMotion() ? "auto" : "smooth" });
   };
 
-  const filtering = filters.q.trim() !== "";
-  const countText = filtering
+  // Sorting alone narrows nothing: the count line says "Found N" until something is filtered.
+  const filtersNarrow = activeCount - (sort !== "course" ? 1 : 0) > 0;
+  const narrowed = filters.q.trim() !== "" || filtersNarrow || focus !== null;
+  const countText = narrowed
     ? `Showing ${filtered.length} of ${plural(sections.length, "section")}`
     : `Found ${plural(sections.length, "section")}`;
   const announcedCount = useDebouncedValue(filtersTouched ? `${countText}.` : "", COUNT_ANNOUNCE_MS);
@@ -195,9 +272,9 @@ export function CourseResults({
     <div className={styles.page}>
       <ResultsToolbar title={resultsTitle(search, termName)} editHref={editHref} />
 
-      {failedSubjects.length ? (
+      {failedSearches.length ? (
         <ErrorMessage role="status" action={<RetryButton variant="secondary">Try again</RetryButton>}>
-          {failedSubjects.join(", ")} results couldn&rsquo;t be loaded. Georgia State&rsquo;s course system didn&rsquo;t
+          {failedSearches.join(", ")} results couldn&rsquo;t be loaded. Georgia State&rsquo;s course system didn&rsquo;t
           answer in time.
         </ErrorMessage>
       ) : null}
@@ -205,39 +282,65 @@ export function CourseResults({
       {sections.length === 0 ? (
         <div className={styles.empty}>
           No sections of {search.subjects.join(", ")}
-          {search.courseNumber ? ` ${search.courseNumber}` : ""} in {termName}. Check the course number or try another
-          level.
+          {search.courseNumber ? ` ${displayCourseNumbers(search.courseNumber)}` : ""} in {termName}. Check the course
+          number or try another level.
         </div>
       ) : (
-        <div ref={sectionTopRef} className={styles.results}>
+        <div className={styles.results}>
           <div className={styles.header}>
-            <p className={styles.count}>{countText}</p>
-            <label className={styles.filter}>
-              <OldIcon name="search" size={16} />
-              <input
-                type="search"
-                className={styles.filterInput}
-                placeholder="Filter by professor or CRN"
-                aria-label="Filter sections by professor, title or CRN"
-                value={filters.q}
-                onChange={(event) => setQuery(event.target.value)}
-              />
-              {filters.q ? (
-                <button type="button" className={styles.filterClear} onClick={() => setQuery("")} aria-label="Clear filter">
-                  <OldIcon name="x" size={14} />
-                </button>
+            <p className={styles.count}>
+              {countText}
+              {metaPending > 0 ? <span className={extra.pending}> &middot; loading ratings and grades&hellip;</span> : null}
+              {activeCount > 0 ? (
+                <>
+                  {" "}
+                  <button type="button" className={extra.clear} onClick={clearFilters}>
+                    Clear filters
+                  </button>
+                </>
               ) : null}
-            </label>
+            </p>
+            <div className={extra.controls}>
+              <label className={styles.filter}>
+                <OldIcon name="search" size={16} />
+                <input
+                  type="search"
+                  className={styles.filterInput}
+                  placeholder="Filter by professor or CRN"
+                  aria-label="Filter sections by professor, title or CRN"
+                  value={filters.q}
+                  onChange={(event) => setQuery(event.target.value)}
+                />
+                {filters.q ? (
+                  <button type="button" className={styles.filterClear} onClick={() => setQuery("")} aria-label="Clear filter">
+                    <OldIcon name="x" size={14} />
+                  </button>
+                ) : null}
+              </label>
+              <FiltersPopover filters={sectionFilters} onChange={updateFilters} onClear={clearFilters} activeCount={activeCount} />
+            </div>
             {/* Announced once typing pauses, not on every keystroke. */}
             <p className="sr-only" role="status">
               {announcedCount}
             </p>
           </div>
 
-          {filtered.length === 0 ? (
-            <div className={styles.empty}>No sections match &ldquo;{filters.q}&rdquo;.</div>
-          ) : (
-            <>
+          <div ref={gridTopRef} className={extra.gridTop}>
+            {courses.length > 1 ? <CourseFocusChips courses={courses} focus={focus} onChange={setFocus} /> : null}
+
+            {filtered.length === 0 ? (
+              <div className={styles.empty}>
+                {filters.q.trim() ? <>No sections match &ldquo;{filters.q}&rdquo;.</> : "No sections match these filters."}
+                {activeCount > 0 ? (
+                  <>
+                    {" "}
+                    <button type="button" className={extra.clear} onClick={clearFilters}>
+                      Clear filters
+                    </button>
+                  </>
+                ) : null}
+              </div>
+            ) : (
               <ul key={`page-${page}`} className={styles.grid} aria-label="Sections">
                 {pageItems.map((item) => (
                   <li key={item.key} className={styles.item}>
@@ -258,29 +361,10 @@ export function CourseResults({
                   </li>
                 ))}
               </ul>
+            )}
+          </div>
 
-              {pageCount > 1 ? (
-                <nav className={styles.pagination} aria-label="Pages">
-                  <button type="button" className={buttons.secondary} disabled={page <= 1} onClick={() => goToPage(page - 1)}>
-                    <OldIcon name="chevronLeft" size={16} />
-                    Previous
-                  </button>
-                  <p className={styles.pageInfo} aria-live="polite">
-                    Page {page} of {pageCount}
-                  </p>
-                  <button
-                    type="button"
-                    className={buttons.secondary}
-                    disabled={page >= pageCount}
-                    onClick={() => goToPage(page + 1)}
-                  >
-                    Next
-                    <OldIcon name="chevronRight" size={16} />
-                  </button>
-                </nav>
-              ) : null}
-            </>
-          )}
+          {filtered.length > 0 && pageCount > 1 ? <ResultsPagination page={page} pageCount={pageCount} onPage={goToPage} /> : null}
         </div>
       )}
 

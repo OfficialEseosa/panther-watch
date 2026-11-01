@@ -10,6 +10,9 @@
  *   POST /__control/reset         restore the seed data below; clear recorded emails/requests
  *   POST /__control/sections      { term, subject, courseNumber, crn, seatsAvailable?, waitCount? }
  *                                 change one seeded section's seats (e.g. close it)
+ *   POST /__control/bulk-sections { term?, subject, courseNumber, count, firstCrn? }
+ *                                 add `count` generated sections of one course (CRNs from 83001,
+ *                                 alternating MW/TR, 0-6 open seats) until the next reset
  *   GET  /__control/emails        emails "sent" through the fake Resend
  *   GET  /__control/requests      GoSolar requests received (method, path, query, status)
  *   POST /__control/fail-searches { kind: "affinity" | "http", status?, count? }
@@ -217,6 +220,50 @@ async function main(): Promise<void> {
           };
           apply();
           return sendJson(res, 200, { section: list[index] });
+        }
+        case "POST /__control/bulk-sections": {
+          const input = JSON.parse(body.toString("utf8") || "{}") as {
+            term?: string;
+            subject: string;
+            courseNumber: string;
+            count: number;
+            firstCrn?: number;
+          };
+          const term = input.term ?? SEED_TERM;
+          const first = input.firstCrn ?? 83001;
+          const count = Math.min(Math.max(1, input.count), 200);
+          const list = Array.from({ length: count }, (_, i) => {
+            const days = i % 2 === 0 ? (["monday", "wednesday"] as Day[]) : (["tuesday", "thursday"] as Day[]);
+            const hour = 8 + (i % 10);
+            const section = makeSection({
+              term,
+              termDesc: "Spring Semester 2027",
+              subject: input.subject,
+              courseNumber: input.courseNumber,
+              subjectCourse: `${input.subject}${input.courseNumber}`,
+              courseReferenceNumber: String(first + i),
+              sequenceNumber: String(i + 1).padStart(3, "0"),
+              // 0..6 open seats, varied so a seats sort reorders the list.
+              seatsAvailable: (i * 5) % 7,
+            });
+            return {
+              ...section,
+              meetingsFaculty: (section.meetingsFaculty ?? []).map((mf) => ({
+                ...mf,
+                meetingTime: mf.meetingTime && {
+                  ...mf.meetingTime,
+                  startDate: "01/11/2027",
+                  endDate: "05/03/2027",
+                  ...Object.fromEntries(DAYS.map((day) => [day, days.includes(day)])),
+                  beginTime: `${String(hour).padStart(2, "0")}00`,
+                  endTime: `${String(hour).padStart(2, "0")}50`,
+                },
+              })),
+            };
+          });
+          sections.set(keyOf(term, input.subject, input.courseNumber), list);
+          apply();
+          return sendJson(res, 200, { count: list.length });
         }
         case "POST /__control/fail-searches": {
           const input = JSON.parse(body.toString("utf8") || "{}") as { kind?: string; status?: number; count?: number };

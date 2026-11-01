@@ -74,3 +74,37 @@ test("submitting without a subject shows the field error", async ({ page }) => {
   await expect(page.getByRole("combobox", { name: "Enter subjects" })).toHaveAttribute("aria-invalid", "true");
   await expect(page).toHaveURL(/\/course-search$/);
 });
+
+test("several course numbers, comma separated, in one search", async ({ page }) => {
+  await page.goto("/course-search");
+  const form = page.getByRole("form", { name: "Search classes" });
+  const subjects = await hydrated(form.getByRole("combobox", { name: "Enter subjects" }));
+  await subjects.click();
+  await subjects.pressSequentially("CSC");
+  await page.getByRole("option", { name: /^CSC/ }).click();
+  const number = form.getByRole("textbox", { name: "Enter a course number" });
+  await expect(number).toHaveAccessibleDescription(/One or more, comma separated/);
+  await number.fill("1301, 1302 1301");
+  await form.getByRole("button", { name: "Search Classes", exact: true }).click();
+
+  await expect(page).toHaveURL(/\/course-results\?/);
+  expect(new URL(page.url()).searchParams.get("courseNumber")).toBe("1301,1302");
+  await expect(page.getByRole("heading", { level: 1, name: "CSC 1301, 1302 · Spring Semester 2027" })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Sections" }).getByRole("article")).toHaveCount(3);
+
+  // New search brings the list back into the field.
+  await page.getByRole("link", { name: "New search" }).click();
+  await expect(page.getByRole("form", { name: "Search classes" }).getByRole("textbox", { name: "Enter a course number" })).toHaveValue(
+    "1301, 1302",
+  );
+});
+
+test("too many course numbers is a field error", async ({ page }) => {
+  await page.goto("/course-search?term=202701&subjects=CSC");
+  const number = await hydrated(page.getByRole("textbox", { name: "Enter a course number" }));
+  await number.fill("1,2,3,4,5,6,7");
+  await page.getByRole("button", { name: "Search Classes", exact: true }).click();
+  await expect(page.getByText("Search up to 6 course numbers at a time.")).toBeVisible();
+  await expect(number).toHaveAttribute("aria-invalid", "true");
+  await expect(page).toHaveURL(/\/course-search\?/);
+});

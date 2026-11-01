@@ -14,10 +14,15 @@ export {
 } from "./meta";
 export {
   getTerms,
+  searchCourseList,
+  searchCourseListSchema,
   searchSections,
   searchSectionsSchema,
   searchSubjects,
   searchSubjectsSchema,
+  type SearchCourseListInput,
+  type SearchCourseListResult,
+  type SearchPair,
   type SearchSectionsInput,
   type SearchSubjectsInput,
 } from "./search";

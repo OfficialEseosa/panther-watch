@@ -1,0 +1,51 @@
+/* Additions to the original results header: the text filter + Filters button pair, the grid's
+   scroll target, the meta loading note and the "Clear filters" link. */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* Paging scrolls here (chips + grid), clear of the sticky phone header (60 px). */
+.gridTop {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  scroll-margin-top: 16px;
+}
+
+@media (max-width: 899px) {
+  .gridTop {
+    scroll-margin-top: 76px;
+  }
+}
+
+.pending {
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.clear {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.clear:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (max-width: 560px) {
+  .controls {
+    width: 100%;
+  }
+}

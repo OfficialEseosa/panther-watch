@@ -4,13 +4,14 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { fetchSubjects, type Subject, type TermInfo } from "@/lib/client/courses";
-import { courseNumberSchema, termCodeSchema } from "@/lib/courses/validation";
+import { courseNumberListSchema, MAX_COURSE_NUMBERS, MAX_SEARCH_PAIRS, termCodeSchema } from "@/lib/courses/validation";
 import { cn } from "@/lib/ui/cn";
 import { termName } from "@/lib/format";
-import { resultsHref, searchFormHref } from "./params";
+import { displayCourseNumbers, resultsHref, searchFormHref } from "./params";
 import { COURSE_STORAGE_KEYS, useStoredValue, writeStored } from "./storage";
 import { SubjectAutocomplete } from "./SubjectAutocomplete";
 import buttons from "./buttons.module.css";
+import hintStyles from "./CourseNumberHint.module.css";
 import styles from "./CourseSearchForm.module.css";
 
 /** The original degree levels (GoSolar txt_level), plus "any level". */
@@ -68,7 +69,7 @@ export function CourseSearchForm({ terms, initial }: CourseSearchFormProps) {
     initial?.level === undefined ? null : isLevel(initial.level) ? initial.level : initial.level ? null : "all",
   );
   const [subjects, setSubjects] = useState<Subject[]>(() => (initial?.subjects ?? []).map((code) => ({ code, description: "" })));
-  const [courseNumber, setCourseNumber] = useState(initial?.courseNumber ?? "");
+  const [courseNumber, setCourseNumber] = useState(() => displayCourseNumbers(initial?.courseNumber));
   const [submitted, setSubmitted] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -98,8 +99,14 @@ export function CourseSearchForm({ terms, initial }: CourseSearchFormProps) {
   const errors: Errors = {};
   if (!termCodeSchema.safeParse(term).success) errors.term = "Choose a term.";
   if (subjects.length === 0) errors.subjects = "Choose at least one subject.";
-  if (courseNumber.trim() && !courseNumberSchema.safeParse(courseNumber).success) {
-    errors.courseNumber = "Use letters and digits only, e.g. 2720 or 1301L.";
+  const numbers = courseNumber.trim() ? courseNumberListSchema.safeParse(courseNumber) : null;
+  if (numbers && !numbers.success) {
+    errors.courseNumber =
+      courseNumber.split(/[\s,]+/).filter(Boolean).length > MAX_COURSE_NUMBERS
+        ? `Search up to ${MAX_COURSE_NUMBERS} course numbers at a time.`
+        : "Use letters and digits only, e.g. 2720 or 1301L, separated by commas.";
+  } else if (numbers?.success && subjects.length * numbers.data.length > MAX_SEARCH_PAIRS) {
+    errors.courseNumber = `Search up to ${MAX_SEARCH_PAIRS} subject and course number combinations at a time.`;
   }
   const shown: Errors = submitted ? errors : {};
 
@@ -113,7 +120,8 @@ export function CourseSearchForm({ terms, initial }: CourseSearchFormProps) {
       });
       return;
     }
-    const number = courseNumber.trim() ? courseNumberSchema.parse(courseNumber) : null;
+    // Normalized: "4352, 4350 4110" -> "4352,4350,4110".
+    const number = numbers?.success ? numbers.data.join(",") : null;
     if (openTerms.some((t) => t.code === term)) writeStored(COURSE_STORAGE_KEYS.preferredTerm, term);
     writeStored(COURSE_STORAGE_KEYS.preferredLevel, level);
     const search = {
@@ -238,13 +246,16 @@ export function CourseSearchForm({ terms, initial }: CourseSearchFormProps) {
           autoComplete="off"
           autoCapitalize="characters"
           spellCheck={false}
-          maxLength={8}
+          maxLength={64}
           placeholder="e.g. 2720 (optional)"
           value={courseNumber}
           aria-invalid={shown.courseNumber ? true : undefined}
-          aria-describedby={shown.courseNumber ? `${ids.number}-error` : undefined}
+          aria-describedby={shown.courseNumber ? `${ids.number}-hint ${ids.number}-error` : `${ids.number}-hint`}
           onChange={(event) => setCourseNumber(event.target.value)}
         />
+        <p id={`${ids.number}-hint`} className={hintStyles.hint}>
+          One or more, comma separated (e.g. 4350, 4352)
+        </p>
         {shown.courseNumber ? <FieldError id={`${ids.number}-error`}>{shown.courseNumber}</FieldError> : null}
       </div>
 

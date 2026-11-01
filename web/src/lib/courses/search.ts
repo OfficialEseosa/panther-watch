@@ -8,12 +8,15 @@ import {
   type Subject,
 } from "@/lib/gosolar";
 import { decodeEntities } from "@/lib/email/escape";
+import { compareSections, keyOf } from "@/lib/format";
 import { gosolarOptions } from "./gosolar-options";
 import { currentTerms, type TermInfo } from "./terms";
 import {
   blankToUndefined,
   courseNumberSchema,
   levelSchema,
+  MAX_COURSE_NUMBERS,
+  MAX_SEARCH_PAIRS,
   subjectSchema,
   termCodeSchema,
 } from "./validation";
@@ -59,6 +62,71 @@ export async function searchSections(
   } finally {
     await session.close();
   }
+}
+
+export const searchCourseListSchema = z
+  .object({
+    term: termCodeSchema,
+    subjects: z.array(subjectSchema).min(1),
+    /** Empty: every course of each subject. */
+    courseNumbers: z.array(courseNumberSchema).max(MAX_COURSE_NUMBERS).default([]),
+    level: z.preprocess(blankToUndefined, levelSchema.optional()),
+  })
+  .superRefine((input, ctx) => {
+    const pairs = input.subjects.length * Math.max(1, input.courseNumbers.length);
+    if (pairs > MAX_SEARCH_PAIRS) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["courseNumbers"],
+        message: `Search up to ${MAX_SEARCH_PAIRS} subject and course number combinations at a time (this search has ${pairs}).`,
+      });
+    }
+  });
+export type SearchCourseListInput = z.input<typeof searchCourseListSchema>;
+
+/** One (subject, course number) search of a list search; `courseNumber` null = whole subject. */
+export type SearchPair = { subject: string; courseNumber: string | null };
+
+export interface SearchCourseListResult {
+  /** Every section, deduplicated by (term, CRN), in course order. */
+  sections: CourseData[];
+  /** Pairs whose GoSolar search failed (partial results), with the error. */
+  failed: Array<SearchPair & { error: unknown }>;
+}
+
+/**
+ * The results page's search: every subject x course number pair (at most MAX_SEARCH_PAIRS,
+ * else a ZodError) searched concurrently through `searchSections`, merged, deduplicated by
+ * (term, CRN) and sorted once. A failed pair is reported in `failed`, not thrown; when every
+ * pair fails the caller decides what to show.
+ */
+export async function searchCourseList(
+  input: SearchCourseListInput,
+  options: GoSolarOptions | undefined = gosolarOptions(),
+): Promise<SearchCourseListResult> {
+  const { term, subjects, courseNumbers, level } = searchCourseListSchema.parse(input);
+  const numbers: Array<string | null> = courseNumbers.length ? [...new Set(courseNumbers)] : [null];
+  const pairs: SearchPair[] = [...new Set(subjects)].flatMap((subject) => numbers.map((courseNumber) => ({ subject, courseNumber })));
+  const settled = await Promise.allSettled(
+    pairs.map((pair) => searchSections({ term, subject: pair.subject, courseNumber: pair.courseNumber ?? undefined, level }, options)),
+  );
+  const seen = new Set<string>();
+  const sections: CourseData[] = [];
+  const failed: SearchCourseListResult["failed"] = [];
+  settled.forEach((result, index) => {
+    if (result.status === "rejected") {
+      failed.push({ ...pairs[index], error: result.reason });
+      return;
+    }
+    for (const section of result.value) {
+      const key = keyOf(section);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      sections.push(section);
+    }
+  });
+  sections.sort(compareSections);
+  return { sections, failed };
 }
 
 /**

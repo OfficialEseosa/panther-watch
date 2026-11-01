@@ -1,0 +1,6 @@
+/* The course number field's hint ("One or more, comma separated"), under the input. */
+.hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}

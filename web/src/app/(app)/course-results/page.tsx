@@ -5,15 +5,31 @@ import { Suspense } from "react";
 import { CourseResults, ResultsUnavailable } from "@/components/courses/CourseResults";
 import { metaItemOf, type Section } from "@/components/courses/format";
 import pageStyles from "@/components/courses/page.module.css";
-import { parseDialog, parseFilters, parseSearch, resultsHref, resultsTitle, searchFormHref, type RawSearchParams } from "@/components/courses/params";
+import {
+  courseNumbersOf,
+  parseDialog,
+  parseFilters,
+  parseSearch,
+  resultsHref,
+  resultsTitle,
+  searchFormHref,
+  type RawSearchParams,
+} from "@/components/courses/params";
 import { ResultsSkeleton } from "@/components/courses/ResultsSkeleton";
 import { ResultsToolbar } from "@/components/courses/ResultsToolbar";
 import { ErrorMessage } from "@/components/courses/SectionParts";
 import { loadViewer } from "@/components/shell/viewer.server";
-import { getBatchMeta, getTerms, isUpstreamError, searchSections, type SectionMeta, type TermInfo } from "@/lib/courses";
+import {
+  getBatchMeta,
+  getTerms,
+  isUpstreamError,
+  searchCourseList,
+  type SectionMeta,
+  type TermInfo,
+} from "@/lib/courses";
 import { listSchedule } from "@/lib/schedule";
 import { listWatches } from "@/lib/watches";
-import { compareSections, keyOf, sectionKey, termName as describeTerm } from "@/lib/format";
+import { courseCode, keyOf, sectionKey, termName as describeTerm } from "@/lib/format";
 
 export const metadata: Metadata = {
   title: "Course results",
@@ -69,43 +85,33 @@ async function Results({ searchParams }: PageProps) {
   }
 
   const { term, subjects, courseNumber, level } = search;
-  const [viewer, terms, settled] = await Promise.all([
+  // Every subject x course number pair, concurrently (parseSearch caps the pairs).
+  const [viewer, terms, found] = await Promise.all([
     loadViewer(),
     safe<TermInfo[]>("terms", () => getTerms()),
-    Promise.allSettled(
-      subjects.map((subject) =>
-        searchSections({ term, subject, courseNumber: courseNumber ?? undefined, level: level ?? undefined }),
-      ),
-    ),
+    // Never rejects for GoSolar failures: those come back per pair in `failed`.
+    searchCourseList({ term, subjects, courseNumbers: courseNumbersOf(courseNumber), level: level ?? undefined }),
   ]);
 
-  const failedSubjects: string[] = [];
-  const seen = new Set<string>();
-  const sections: Section[] = [];
-  settled.forEach((result, index) => {
-    if (result.status === "rejected") {
-      unstable_rethrow(result.reason);
-      failedSubjects.push(subjects[index]);
-      console.error(
-        `course results: ${isUpstreamError(result.reason) ? "GoSolar" : "search"} failed for ${term} ${subjects[index]}`,
-        result.reason instanceof Error ? result.reason.message : result.reason,
-      );
-      return;
-    }
-    for (const section of result.value as Section[]) {
-      const key = keyOf(section);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      sections.push(section);
-    }
-  });
-  // Sorted once, here: the client keeps this order for its default (course) sort.
-  sections.sort(compareSections);
+  const failedSearches: string[] = [];
+  for (const failure of found.failed) {
+    unstable_rethrow(failure.error);
+    const label = failure.courseNumber ? courseCode(failure.subject, failure.courseNumber) : failure.subject;
+    failedSearches.push(label);
+    console.error(
+      `course results: ${isUpstreamError(failure.error) ? "GoSolar" : "search"} failed for ${term} ${label}`,
+      failure.error instanceof Error ? failure.error.message : failure.error,
+    );
+  }
+  // Merged, deduplicated by (term, CRN) and sorted once by the lib: the client keeps this
+  // order for its default (course) sort.
+  const sections = found.sections as Section[];
+  const pairCount = subjects.length * Math.max(1, courseNumbersOf(courseNumber).length);
 
   const termInfo = terms?.find((t) => t.code === term);
   const name = describeTerm(term, termInfo?.description ?? sections.find((s) => s.termDesc)?.termDesc);
 
-  if (failedSubjects.length === subjects.length) {
+  if (failedSearches.length === pairCount) {
     return (
       <ResultsUnavailable
         title={resultsTitle({ subjects, courseNumber }, name)}
@@ -147,7 +153,7 @@ async function Results({ searchParams }: PageProps) {
       termName={name}
       viewOnly={termInfo?.viewOnly ?? false}
       sections={sections}
-      failedSubjects={failedSubjects}
+      failedSearches={failedSearches}
       initialMeta={initialMeta}
       watched={(watches ?? []).map((w) => sectionKey(w.term, w.crn))}
       scheduled={Object.values(schedule ?? {}).flatMap((entries) => entries.map((e) => sectionKey(e.term, e.crn)))}

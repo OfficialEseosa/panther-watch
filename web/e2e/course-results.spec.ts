@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { SEED, expect, freshUser, hydrated, login, resetAll, test, toast } from "./support";
+import { SEED, expect, fake, freshUser, hydrated, login, resetAll, test, toast } from "./support";
 
 /** /course-results: the original cards, the text filter, the URL-addressable dialog, watch/schedule toggles. */
 
@@ -181,4 +181,122 @@ test("guests get a sign-in prompt instead of watching", async ({ page }) => {
   await expect(notice).toBeVisible();
   await expect(notice.getByRole("button", { name: "Sign in" })).toBeVisible();
   await expect(watch).toHaveAttribute("aria-pressed", "false");
+});
+
+// ------------------------------------------------------------------ several courses, filters, paging
+
+test("several course numbers: one search, focus chips that survive a reload", async ({ page }) => {
+  await page.goto(`/course-results?term=${term}&subjects=CSC&courseNumber=1301,1302`);
+  await expect(page.getByRole("heading", { level: 1, name: "CSC 1301, 1302 · Spring Semester 2027" })).toBeVisible();
+  await expect(cards(page)).toHaveCount(3);
+  await expect(page.getByText("Found 3 sections")).toBeVisible();
+
+  const chips = page.getByRole("group", { name: "Show course" });
+  await expect(chips.getByRole("button")).toHaveText(["All", "CSC 1301 (2)", "CSC 1302 (1)"]);
+  await expect(chips.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
+
+  await (await hydrated(chips.getByRole("button", { name: "CSC 1302 (1)" }))).click();
+  await expect(cards(page)).toHaveCount(1);
+  await expect(page.getByRole("article", { name: `CSC 1302 · 001, ${SEED.csc1302.title}` })).toBeVisible();
+  await expect(page.getByText("Showing 1 of 3 sections")).toBeVisible();
+  await expect(page).toHaveURL(/[?&]focus=CSC-1302/);
+
+  await page.reload();
+  await expect(cards(page)).toHaveCount(1);
+  await expect(chips.getByRole("button", { name: "CSC 1302 (1)" })).toHaveAttribute("aria-pressed", "true");
+
+  await (await hydrated(chips.getByRole("button", { name: "All" }))).click();
+  await expect(cards(page)).toHaveCount(3);
+  expect(new URL(page.url()).searchParams.get("focus")).toBeNull();
+
+  // One GoSolar search per course number.
+  const searched = (await fake.requests())
+    .filter((r) => r.path.endsWith("/searchResults/searchResults"))
+    .map((r) => r.query.txt_courseNumber);
+  expect([...new Set(searched)].sort()).toEqual(["1301", "1302"]);
+});
+
+test("a single course shows no focus chips", async ({ page }) => {
+  await page.goto(RESULTS);
+  await expect(cards(page)).toHaveCount(2);
+  await expect(page.getByRole("group", { name: "Show course" })).toHaveCount(0);
+});
+
+test("the Filters popover: open seats only, persisted in the URL, Esc and Clear", async ({ page }) => {
+  await page.goto(RESULTS);
+  await expect(cards(page)).toHaveCount(2);
+  // Nothing new shows until the button is pressed.
+  await expect(page.getByRole("dialog", { name: "Filters" })).toBeHidden();
+
+  const button = await hydrated(page.getByRole("button", { name: "Filters", exact: true }));
+  await button.click();
+  const panel = page.getByRole("dialog", { name: "Filters" });
+  await expect(panel).toBeVisible();
+  await panel.getByRole("checkbox", { name: "Open seats only" }).check();
+  await expect(cards(page)).toHaveCount(1);
+  await expect(card(page, OPEN)).toBeVisible();
+  await expect(page.getByText("Showing 1 of 2 sections")).toBeVisible();
+  await expect(page).toHaveURL(/[?&]open=1/);
+
+  await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
+  const active = page.getByRole("button", { name: "Filters, 1 active" });
+  await expect(active).toBeFocused();
+
+  await page.reload();
+  await expect(cards(page)).toHaveCount(1);
+  await (await hydrated(page.getByRole("button", { name: "Clear filters" }))).click();
+  await expect(cards(page)).toHaveCount(2);
+  expect(new URL(page.url()).searchParams.get("open")).toBeNull();
+  await expect(page.getByRole("button", { name: "Filters", exact: true })).toBeVisible();
+});
+
+test("sort by seats, the page field, and paging keeps the grid in view", async ({ page }) => {
+  await fake.bulkSections({ subject: "CSC", courseNumber: "2720", count: 30 });
+  const url = `/course-results?term=${term}&subjects=CSC&courseNumber=2720`;
+  await page.goto(url);
+  await expect(page.getByText("Found 30 sections")).toBeVisible();
+  await expect(cards(page)).toHaveCount(12);
+  const pages = page.getByRole("navigation", { name: "Pages" });
+  const field = await hydrated(pages.getByRole("textbox", { name: "Page number" }));
+  await expect(field).toHaveValue("1");
+  await expect(pages).toContainText("of 3");
+
+  // The page field jumps on Enter, clamped to the last page.
+  await field.fill("9");
+  await field.press("Enter");
+  await expect(field).toHaveValue("3");
+  await expect(page).toHaveURL(/[?&]page=3/);
+  await expect(cards(page)).toHaveCount(6);
+  await field.fill("2");
+  await field.blur();
+  await expect(page).toHaveURL(/[?&]page=2/);
+  await expect(cards(page)).toHaveCount(12);
+
+  // Next from the bottom of page 1 lands at the top of the grid, not the top of the page.
+  await page.goto(url);
+  const next = await hydrated(pages.getByRole("button", { name: "Next" }));
+  await next.scrollIntoViewIfNeeded();
+  await next.click();
+  await expect(page).toHaveURL(/[?&]page=2/);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  await expect
+    .poll(() =>
+      page.getByRole("list", { name: "Sections" }).evaluate((list) => {
+        const top = list.getBoundingClientRect().top;
+        return top >= 0 && top < window.innerHeight / 2;
+      }),
+    )
+    .toBe(true);
+
+  // Sort by most seats left: the 6-seat sections come first (course order among ties).
+  await page.goto(url);
+  await (await hydrated(page.getByRole("button", { name: "Filters", exact: true }))).click();
+  await page.getByRole("dialog", { name: "Filters" }).getByRole("combobox", { name: "Sort by" }).selectOption("seats");
+  await expect(page).toHaveURL(/[?&]sort=seats/);
+  await expect(cards(page).first()).toHaveAccessibleName(/^CSC 2720 · 005,/);
+  await expect(cards(page).first()).toContainText("6 Available");
+  await expect(cards(page).nth(1)).toHaveAccessibleName(/^CSC 2720 · 012,/);
+  // Sorting is not filtering: the count is unchanged.
+  await expect(page.getByText("Found 30 sections")).toBeVisible();
 });

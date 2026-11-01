@@ -1,0 +1,25 @@
+/* The course focus chips: one line, scrolling sideways when it overflows (phones). */
+.row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  /* Room for the focus ring inside the scroll box. */
+  margin: -3px;
+  padding: 3px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+
+.chip {
+  flex: none;
+}
+
+.count {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.chip[aria-pressed="true"] .count {
+  color: inherit;
+}
