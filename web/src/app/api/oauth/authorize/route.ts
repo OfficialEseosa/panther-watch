@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { connection, NextResponse, type NextRequest } from "next/server";
 import { AUTHORIZE_PATH } from "@/lib/auth/next";
 import { getCurrentUser } from "@/lib/auth/session";
 import { env } from "@/lib/env";
@@ -14,6 +14,7 @@ import { checkAuthorizeRequest } from "@/lib/oauth";
  * - Signed in: 302 to the consent page `/connect` with the same query.
  */
 export async function GET(request: NextRequest) {
+  await connection(); // request-time only: reads the session and APP_URL
   const canonical = new URL(AUTHORIZE_PATH, env.APP_URL);
   if (request.nextUrl.origin !== canonical.origin) {
     canonical.search = request.nextUrl.search;

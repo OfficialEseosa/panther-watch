@@ -10,6 +10,7 @@ uses Supabase Postgres through the transaction pooler.
 | Database client and schema | `src/db` (`index.ts`, `schema/`), migrations in `drizzle/` |
 | Google sign-in, sessions | `src/lib/auth`, `src/app/api/auth` |
 | Shared HTTP helpers (CSRF, cron auth) | `src/lib/http.ts` |
+| MCP connector: OAuth server, MCP tools | `src/lib/oauth`, `src/lib/mcp`, `src/app/api/oauth`, `src/app/api/mcp`, `src/app/.well-known` |
 | Signed-out gate for app pages | `src/proxy.ts` |
 
 ## Run
@@ -100,6 +101,46 @@ the Hibernate tables is a separate, hand-run procedure in `scripts/prod-migrate/
   revokes their sessions. `getSession()` only reads JWT claims and must not gate access.
 - Cookie-authenticated mutations call `assertSameOrigin(request)` from `src/lib/http.ts`
   (CSRF). Cron routes call `requireCronSecret(request)`.
+
+## MCP connector
+
+Students connect PantherWatch to Claude (or any MCP client) with the URL `${APP_URL}/api/mcp`
+(production: `https://www.pantherwatch.app/api/mcp`). Settings → Connected apps shows the URL,
+the steps, and every connected app with Disconnect. The account menu links there as
+"Connect to Claude".
+
+- **MCP server** (`src/app/api/mcp/route.ts`, `src/lib/mcp/`): `mcp-handler` 2 on the MCP SDK v2,
+  Streamable HTTP, stateless (2026-07-28 protocol, with the SDK's fallback for 2025-era
+  clients). `withMcpAuth` requires `Authorization: Bearer <access token>`; without a valid one
+  it answers 401 with `WWW-Authenticate: Bearer ... resource_metadata="${APP_URL}/.well-known/oauth-protected-resource/api/mcp"`.
+- **Tools** (`src/lib/mcp/tools.ts`): `list_terms`, `search_subjects`, `search_sections`,
+  `get_section_details`, `list_watches`, `list_schedule`, `check_conflicts` (scope `read`);
+  `add_watch`, `remove_watch` (`watches:write`); `add_to_schedule`, `remove_from_schedule`
+  (`schedule:write`). They call the same library functions as the routes (`addWatch` keeps the
+  track-while-open rule; `add_to_schedule` adds even on a clash and reports it). A missing
+  scope is a tool error, not a 403 step-up challenge, because students can untick write scopes
+  on purpose. Rate limit: an in-memory token bucket per user (30 calls, then one every 2 s),
+  best effort only (per serverless instance), plus GoSolar's own per-search concurrency.
+- **Authorization server** (`src/lib/oauth/`, `src/app/api/oauth/*`): OAuth 2.1 per the MCP
+  authorization spec. Metadata: `/.well-known/oauth-authorization-server` (RFC 8414) and
+  `/.well-known/oauth-protected-resource[/api/mcp]` (RFC 9728). Clients are either Client ID
+  Metadata Documents (an https `client_id` URL, fetched through an SSRF-guarded agent and cached
+  in `oauth_clients` per its `Cache-Control`, 5 min to 24 h) or registered at
+  `POST /api/oauth/register` (RFC 7591; public by default, redirect URIs https or loopback).
+  `GET /api/oauth/authorize` needs PKCE S256 and sends signed-in users to the consent page
+  `/connect` (signed out: `/?next=`, and Google sign-in returns to the authorize URL through the
+  `pw_auth_next` cookie). The form posts to `POST /api/oauth/authorize/decision` (same-origin),
+  which issues a 10-minute single-use code with `state` and `iss`. `POST /api/oauth/token`:
+  `authorization_code` (PKCE verified; a reused code revokes that app's tokens) and
+  `refresh_token` (rotation; a replayed refresh token revokes the grant). Access tokens last
+  1 hour, refresh tokens 30 days. `POST /api/oauth/revoke` (RFC 7009).
+- **Tokens** are random 32 bytes (`pwat_` / `pwrt_` / `pwac_` prefixes) stored only as SHA-256
+  in `oauth_codes` / `oauth_tokens` (migration `0003_oauth.sql`). `verifyAccessToken` is one
+  indexed SELECT plus a `last_used_at` write at most once a minute. Deleting a user cascades
+  their grants. The daily cleanup prunes expired codes and tokens and week-old clients with
+  nothing left.
+- **Scopes**: `read` (always granted), `watches:write`, `schedule:write`.
+- No new environment variables: issuer and resource URLs derive from `APP_URL`.
 
 ## Testing
 

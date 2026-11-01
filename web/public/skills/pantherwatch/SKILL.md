@@ -9,6 +9,9 @@ PantherWatch (https://www.pantherwatch.app) is a student-built GSU course browse
 
 PantherWatch is not affiliated with Georgia State University. GoSolar is the source of truth for registration.
 
+## Prefer the MCP connector
+If you can use MCP connectors, use PantherWatch's instead of this API: `https://www.pantherwatch.app/api/mcp` (Streamable HTTP, OAuth; the user signs in once and allows it). In Claude: Settings → Connectors → Add custom connector → paste the URL → Allow. It has the same data as tools (`list_terms`, `search_subjects`, `search_sections`, `get_section_details`, `check_conflicts`) and can act on the user's account: `list_watches`, `add_watch` / `remove_watch` (seat alerts), `list_schedule`, `add_to_schedule` / `remove_from_schedule`. The rest of this skill is for agents without connectors; the advice in sections 5 and 6 applies either way.
+
 ## Fair use
 - At most **1 request per second**. Searches hit GSU's GoSolar live; ratings hit RateMyProfessors.
 - Search each subject once and filter locally. Fetch meta only for sections you will actually show.

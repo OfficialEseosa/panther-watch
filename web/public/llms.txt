@@ -4,9 +4,11 @@
 
 Course data is available as a public JSON API (no key, CORS-enabled). Use it instead of scraping the results pages, and keep to at most 1 request per second.
 
+AI assistants that support MCP connectors should connect to https://www.pantherwatch.app/api/mcp (remote MCP server, OAuth): the student allows it once, and the assistant can search courses, check conflicts, track sections and edit the student's schedule.
+
 ## Docs
 
-- [Developers](https://www.pantherwatch.app/developers): the public API (terms, subjects, section search, grades/ratings/syllabus), with example responses, caching and fair use.
+- [Developers](https://www.pantherwatch.app/developers): the MCP connector (URL, scopes, tools) and the public API (terms, subjects, section search, grades/ratings/syllabus), with example responses, caching and fair use.
 - [Course search skill](https://www.pantherwatch.app/skills/pantherwatch/SKILL.md): an agent skill for searching GSU courses, checking schedule conflicts and recommending sections through the API.
 
 ## Pages

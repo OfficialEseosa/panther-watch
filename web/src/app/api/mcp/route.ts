@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { MCP_CORS_HEADERS, mcpHandler } from "@/lib/mcp/handler";
 
 /**
@@ -7,6 +8,7 @@ import { MCP_CORS_HEADERS, mcpHandler } from "@/lib/mcp/handler";
  * Tools: src/lib/mcp/tools.ts. GET and DELETE answer 405 (no sessions to stream or end).
  */
 async function handle(request: Request): Promise<Response> {
+  await connection(); // never prerendered (GET included): reads APP_URL and the bearer token
   return mcpHandler()(request);
 }
 
