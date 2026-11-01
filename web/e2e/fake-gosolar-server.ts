@@ -8,8 +8,10 @@
  *   POST /resend/emails           fake Resend "send email": records it, answers { id }
  *   GET  /__control/health        readiness probe
  *   POST /__control/reset         restore the seed data below; clear recorded emails/requests
- *   POST /__control/sections      { term, subject, courseNumber, crn, seatsAvailable?, waitCount? }
- *                                 change one seeded section's seats (e.g. close it)
+ *   POST /__control/sections      { term, subject, courseNumber, crn, seatsAvailable?, waitCount?,
+ *                                   crossList?, crossListAvailable? }
+ *                                 change one seeded section's seats (e.g. close it, or put it in a
+ *                                 cross-list seat pool)
  *   POST /__control/bulk-sections { term?, subject, courseNumber, count, firstCrn? }
  *                                 add `count` generated sections of one course (CRNs from 83001,
  *                                 alternating MW/TR, 0-6 open seats) until the next reset
@@ -204,6 +206,8 @@ async function main(): Promise<void> {
             crn: string;
             seatsAvailable?: number;
             waitCount?: number;
+            crossList?: string | null;
+            crossListAvailable?: number | null;
           };
           const list = sections.get(keyOf(input.term, input.subject, input.courseNumber));
           const index = list?.findIndex((s) => s.courseReferenceNumber === input.crn) ?? -1;
@@ -217,6 +221,8 @@ async function main(): Promise<void> {
             enrollment: current.maximumEnrollment - seatsAvailable,
             waitCount,
             waitAvailable: current.waitCapacity - waitCount,
+            ...(input.crossList !== undefined && { crossList: input.crossList }),
+            ...(input.crossListAvailable !== undefined && { crossListAvailable: input.crossListAvailable }),
           };
           apply();
           return sendJson(res, 200, { section: list[index] });

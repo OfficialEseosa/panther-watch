@@ -76,7 +76,7 @@ function RmpPill({ meta }: { meta: SectionMeta | undefined }) {
   if (!rating || rating.avgRating == null) return null;
   const score = rating.avgRating.toFixed(1);
   return (
-    <span className={styles.rmp} title={`${score}/5 on Rate My Professors`}>
+    <span className={styles.rmp} title={`${score}/5 on Rate My Professors`} data-rmp={score}>
       <Image src="/brand/rmp.svg" alt="Rate My Professors" width={35} height={20} className={styles.rmpLogo} unoptimized />
       <span className={styles.rmpScore}>{score}</span>
       <span className="sr-only"> out of 5</span>
@@ -91,7 +91,14 @@ function GradeLine({ meta }: { meta: SectionMeta | undefined }) {
   const tone = gpaTone(featured.aggregate.gpa) ?? "unknown";
   return (
     <div className={styles.gradeLine}>
-      <div className={styles.gpa} data-tone={tone} title="Average GPA (grade history)">
+      <div
+        className={styles.gpa}
+        data-tone={tone}
+        title="Average GPA (grade history)"
+        // Stable hooks (documented on /developers): the GPA shown, and whose history it is.
+        data-gpa={featured.aggregate.gpa == null ? undefined : featured.aggregate.gpa.toFixed(2)}
+        data-gpa-scope={featured.instructor ? "instructor" : "course"}
+      >
         <span className={styles.gpaNum}>{formatGpa(featured.aggregate.gpa)}</span>{" "}
         <span className={styles.gpaLabel}>{featured.instructor ? "prof GPA" : "avg GPA"}</span>
       </div>

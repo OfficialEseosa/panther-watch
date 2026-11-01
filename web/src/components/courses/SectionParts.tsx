@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { effectiveSeatsAvailable } from "@/lib/gosolar/seats";
 import { cn } from "@/lib/ui/cn";
 import { DAY_LETTER, DAY_SHORT, meetingRows, type DayKey, type Section } from "./format";
 import { OldIcon } from "./icons";
@@ -20,11 +21,12 @@ function waitlistTone(waitAvailable: number | null | undefined, waitCapacity: nu
   return styles.seatsAvailable;
 }
 
-function Stat({ value, label, tone }: { value: ReactNode; label: string; tone?: string | null }) {
+function Stat({ value, label, tone, note }: { value: ReactNode; label: string; tone?: string | null; note?: string }) {
   return (
     <div className={styles.enrollmentItem}>
       <span className={cn(styles.enrollmentNumber, tone)}>{value}</span>{" "}
       <span className={styles.enrollmentLabel}>{label}</span>
+      {note ? <span className="sr-only"> ({note})</span> : null}
       {/* Separates "3 Available" from the next number for screen readers. */}
       <span className="sr-only">. </span>
     </div>
@@ -48,21 +50,29 @@ function sectionData(section: Section) {
   };
 }
 
-/** The original enrollment panel: Available / Enrolled / Capacity, plus the waitlist when it has one. */
+/**
+ * The original enrollment panel: Available / Enrolled / Capacity, plus the waitlist when it has one.
+ * "Available" is the effective count (`effectiveSeatsAvailable`): a cross-listed section shows the
+ * smaller of its own seats and the shared pool's, the number the seat watcher alerts on.
+ * Enrolled and Capacity stay the section's own.
+ */
 export function EnrollmentStatus({ section, compact = false }: { section: Section; compact?: boolean }) {
   const wait = waitlistTone(section.waitAvailable, section.waitCapacity);
+  const available = section.seatsAvailable == null ? null : effectiveSeatsAvailable(section);
+  const crossListed = Boolean(section.crossList?.trim());
   return (
     <div
       className={cn(styles.enrollment, compact && styles.compact)}
       data-count={wait ? 5 : 3}
       {...sectionData(section)}
-      data-seats-available={section.seatsAvailable ?? undefined}
+      data-seats-available={available ?? undefined}
       data-wait-count={section.waitCount ?? undefined}
     >
       <Stat
-        value={Math.max(0, section.seatsAvailable)}
+        value={Math.max(0, available ?? 0)}
         label="Available"
-        tone={seatTone(section.seatsAvailable, section.maximumEnrollment)}
+        tone={seatTone(available, section.maximumEnrollment)}
+        note={crossListed ? "shared with cross-listed sections" : undefined}
       />
       <Stat value={section.enrollment} label="Enrolled" />
       <Stat value={section.maximumEnrollment} label="Capacity" />

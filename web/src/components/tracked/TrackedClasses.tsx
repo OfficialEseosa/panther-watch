@@ -13,6 +13,7 @@ import { useCourseDialog } from "@/components/courses/useCourseDialog";
 import { reportActionError, useSectionActions, watchAddedBody } from "@/components/courses/useSectionActions";
 import { useSectionMeta } from "@/components/courses/useSectionMeta";
 import { useToast } from "@/components/ui/Toast";
+import { sectionIsOpen } from "@/lib/gosolar/seats";
 import { addWatch, removeWatch, type WatchDetailsItem } from "@/lib/client/courses";
 import { playExit } from "@/lib/ui/motion";
 import { cn } from "@/lib/ui/cn";
@@ -74,7 +75,7 @@ const sectionOf = (item: WatchDetailsItem): Section => (item.section as Section 
 
 function statusOf(item: WatchDetailsItem): Status {
   if (!item.section || item.section.maximumEnrollment <= 0) return "unknown";
-  return item.section.seatsAvailable > 0 ? "open" : "full";
+  return sectionIsOpen(item.section) ? "open" : "full";
 }
 
 const itemKey = (item: WatchDetailsItem) => sectionKey(item.watch.term, item.watch.crn);

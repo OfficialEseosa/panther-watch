@@ -145,7 +145,9 @@ const HTML_EXAMPLE = `<div data-crn="19010" data-subject="CSC" data-course-numbe
      data-term="202701" data-seats-available="98" data-wait-count="0">…</div>
 <ul data-crn="19010" …>
   <li data-days="MW" data-start="1100" data-end="1215">…</li>
-</ul>`;
+</ul>
+<span data-rmp="3.7">…</span>
+<div data-gpa="2.65" data-gpa-scope="instructor">…</div>`;
 
 const SECTIONS = [
   { id: "overview", title: "Overview" },
@@ -352,7 +354,9 @@ export default function DevelopersPage() {
               </li>
               <li>
                 Each section is GoSolar&rsquo;s own record, passed through. Useful fields: <code>seatsAvailable</code>{" "}
-                (can be negative when over-enrolled), <code>waitCount</code>, <code>waitCapacity</code>,{" "}
+                (can be negative when over-enrolled; when <code>crossList</code> is set the section shares a seat pool,
+                and only <code>min(seatsAvailable, crossListAvailable)</code> seats are takeable),{" "}
+                <code>waitCount</code>, <code>waitCapacity</code>,{" "}
                 <code>creditHourLow</code>/<code>creditHourHigh</code> (a range for variable-credit courses, else{" "}
                 <code>creditHourLow</code> or <code>creditHours</code>), <code>faculty[].displayName</code> (&ldquo;Last,
                 First&rdquo;; <code>primaryIndicator</code> marks the main instructor), and{" "}
@@ -499,7 +503,12 @@ export default function DevelopersPage() {
               If you must read the rendered pages, don&rsquo;t parse the text or the styling. Each card&rsquo;s seat
               panel and meeting list carry stable data attributes: <code>data-days</code> lists meeting days in{" "}
               <code>M T W R F S U</code> order (Monday&ndash;Sunday, empty for no set days), and{" "}
-              <code>data-start</code>/<code>data-end</code> are 24-hour <code>HHMM</code> (absent when TBA).
+              <code>data-start</code>/<code>data-end</code> are 24-hour <code>HHMM</code> (absent when TBA).{" "}
+              <code>data-seats-available</code> is the takeable count: for a cross-listed section, the smaller of its
+              own seats and the shared pool&rsquo;s. The Rate My Professors pill has <code>data-rmp</code> (average out
+              of 5) and the grade line <code>data-gpa</code>, with <code>data-gpa-scope</code> saying whether it is the
+              professor&rsquo;s own history for the course (<code>instructor</code>) or course-wide (
+              <code>course</code>). Either is absent when there is no data.
             </p>
             <Code label="Rendered card (excerpt)">{HTML_EXAMPLE}</Code>
             <p>

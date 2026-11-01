@@ -300,6 +300,9 @@ describe("seat-alert edge cases (docs/audit-2026-10/06)", () => {
     expect(await run(6)).toMatchObject({ emailsSent: 1 });
     expect(mail.sent).toHaveLength(1);
     expect(mail.sent[0].subject).toContain("CRN 80001");
+    // The email quotes the takeable (pooled) count, not the section's own 5.
+    expect(mail.sent[0].html).toContain("2 open");
+    expect(mail.sent[0].html).not.toContain("5 open");
 
     // The pool drains again while own seats stay: counts as closed (two runs re-arm).
     gosolarLists(TERM, crossListed(0));

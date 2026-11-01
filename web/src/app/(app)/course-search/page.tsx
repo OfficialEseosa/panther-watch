@@ -23,6 +23,14 @@ async function SearchForm({ searchParams }: PageProps) {
   await connection();
   const [params, terms] = await Promise.all([searchParams, loadTerms()]);
   const prefill = parseSearch(params);
+  const initial = prefill.term || prefill.subjects.length
+    ? {
+        term: prefill.term,
+        subjects: prefill.subjects,
+        courseNumber: prefill.courseNumber,
+        ...(prefill.term ? { level: prefill.level } : {}),
+      }
+    : undefined;
   return (
     <>
       {terms ? null : (
@@ -31,17 +39,11 @@ async function SearchForm({ searchParams }: PageProps) {
         </ErrorMessage>
       )}
       <CourseSearchForm
+        // The router keeps this page's client state across visits (Back restores what was typed),
+        // so a different prefill ("New search" from other results) must start a fresh form.
+        key={JSON.stringify(initial ?? null)}
         terms={terms}
-        initial={
-          prefill.term || prefill.subjects.length
-            ? {
-                term: prefill.term,
-                subjects: prefill.subjects,
-                courseNumber: prefill.courseNumber,
-                ...(prefill.term ? { level: prefill.level } : {}),
-              }
-            : undefined
-        }
+        initial={initial}
       />
     </>
   );

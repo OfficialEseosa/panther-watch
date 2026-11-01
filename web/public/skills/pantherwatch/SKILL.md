@@ -33,6 +33,7 @@ Unsure of a subject code? `GET /api/courses/subjects?term=202701&q=psych` -> `{ 
 | `courseReferenceNumber` | CRN |
 | `subject`, `courseNumber`, `sequenceNumber`, `courseTitle` | `CSC`, `1301`, `002`, `PRINCIPLES OF COMPUTER SCI I` (titles are upper case) |
 | `seatsAvailable`, `maximumEnrollment`, `enrollment` | live seats (`seatsAvailable` can be negative: treat <= 0 as full) |
+| `crossList`, `crossListAvailable` | cross-listed sections share a seat pool: takeable seats = `min(seatsAvailable, crossListAvailable)` when `crossList` is set |
 | `waitCount`, `waitCapacity` | waitlist (capacity 0 = no waitlist) |
 | `creditHourLow`, `creditHourHigh`, `creditHours` | credits; Low-High is a range for variable-credit courses |
 | `faculty[].displayName`, `primaryIndicator` | `"Last, First (Nickname) "`; empty array = TBA |
@@ -73,7 +74,7 @@ const instructor = (s) => ([...(s.faculty ?? [])].sort((a, b) => b.primaryIndica
 - Meta is the same all term: cache it. (`POST /api/courses/meta/batch` is same-origin only; it refuses other callers.)
 
 ## 4. If you can only read HTML
-Each result card's seat panel has `data-crn`, `data-subject`, `data-course-number`, `data-term`, `data-seats-available`, `data-wait-count`; each meeting row (`li`) has `data-days="MW"` (M T W R F S U, empty for no set days) and `data-start="1100" data-end="1215"` (absent when TBA). Never infer days from chip styling.
+Each result card's seat panel has `data-crn`, `data-subject`, `data-course-number`, `data-term`, `data-seats-available` (takeable seats, cross-list pool applied), `data-wait-count`; the RMP pill has `data-rmp` (out of 5) and the grade line `data-gpa` with `data-gpa-scope` (`instructor` or `course`), absent when unknown; each meeting row (`li`) has `data-days="MW"` (M T W R F S U, empty for no set days) and `data-start="1100" data-end="1215"` (absent when TBA). Never infer days from chip styling.
 
 ## 5. Conflict checking
 For each candidate keep CRN, meeting rows, and mode (in person, online synchronous, asynchronous, TBA). Two sections conflict when any pair of their rows shares a day letter, their date ranges overlap, and `a.start < b.end && b.start < a.end`. Rows with `start == null` or no days never conflict but list them as "time TBA / asynchronous". Add a travel buffer (e.g. 10-15 min) between in-person classes if the user wants one. Check the user's fixed commitments too (work, other classes) and, if they care, count distinct in-person days.

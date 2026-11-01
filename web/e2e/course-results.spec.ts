@@ -59,6 +59,21 @@ test("sections, the filter, and the detail dialog", async ({ page }) => {
   await expect(cards(page)).toHaveCount(2);
 });
 
+test("a cross-listed section shows the pooled seats, the number seat alerts use", async ({ page }) => {
+  // Own seats 3, shared pool 1: one seat is actually takeable.
+  await fake.setSeats({ subject: "CSC", courseNumber: "1301", crn: csc1301.open, crossList: "XL01", crossListAvailable: 1 });
+  await page.goto(RESULTS);
+  const open = card(page, OPEN);
+  await expect(open).toContainText("1 Available");
+  await expect(open).toContainText("(shared with cross-listed sections)");
+  // Enrolled and Capacity stay the section's own.
+  await expect(open).toContainText("27 Enrolled");
+  await expect(open).toContainText("30 Capacity");
+  await expect(open.locator(`[data-crn="${csc1301.open}"][data-seats-available]`)).toHaveAttribute("data-seats-available", "1");
+  // The non-cross-listed section carries no note.
+  await expect(card(page, CLOSED)).not.toContainText("cross-listed");
+});
+
 test("New search keeps the search in the form; Back restores it; the next results start fresh", async ({ page }) => {
   await page.goto(`${RESULTS}&q=80001`);
   const search = await hydrated(page.getByRole("searchbox", { name: FILTER }));

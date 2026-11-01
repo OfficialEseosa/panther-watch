@@ -135,7 +135,8 @@ test("email: a one-off send reaches the fake Resend and is logged", async ({ pag
   await page.goto("/admin/email");
   const to = await hydrated(page.getByRole("textbox", { name: "To" }));
   await to.fill("someone@e2e.test");
-  await page.getByRole("textbox", { name: "Subject" }).fill("E2E hello");
+  // The sample-alert card on the same page has its own (course) "Subject" field.
+  await page.getByRole("textbox", { name: "Subject" }).and(page.getByPlaceholder("Enter email subject")).fill("E2E hello");
   await page.getByRole("textbox", { name: "Message (HTML)" }).fill("<p>Hello from the e2e suite.</p>");
   await page.getByRole("button", { name: "Send email" }).click();
   const confirm = page.getByRole("dialog", { name: "Send this email?" });

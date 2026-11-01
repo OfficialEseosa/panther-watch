@@ -3,6 +3,7 @@ import { getDb } from "@/db";
 import { emailLog, terms, users, watchedSections, type Term } from "@/db/schema";
 import { EMAIL_DEFAULT_RESERVE, sendClassAvailabilityEmail, type EmailSent, type EmailTransport } from "@/lib/email";
 import { findSectionsByCrn, type CourseData, type FetchLike } from "@/lib/gosolar";
+import { effectiveSeatsAvailable } from "@/lib/gosolar/seats";
 import { defaultJobsGoSolarOptions } from "@/lib/jobs/gosolar-options";
 import { errorMessage, finishJobRun, startJobRun } from "@/lib/jobs/runs";
 import { isTermExpired, termDisplayName } from "@/lib/jobs/terms";
@@ -405,7 +406,7 @@ async function notify(row: WatchRow, section: CourseData, ctx: GroupContext): Pr
         instructor: primaryInstructor(section) ?? row.instructor,
         term: row.term,
         termName: termDisplayName(ctx.termsByCode.get(row.term), row.term),
-        seatsAvailable: section.seatsAvailable,
+        seatsAvailable: effectiveSeatsAvailable(section),
         waitCount: section.waitCount,
       },
     });

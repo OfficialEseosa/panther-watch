@@ -49,7 +49,17 @@ async function fakeCall<T = unknown>(path: string, init?: { method?: string; bod
 /** The fake GoSolar/Resend process. */
 export const fake = {
   reset: () => fakeCall("/__control/reset", { method: "POST" }),
-  setSeats: (section: { term?: string; subject: string; courseNumber: string; crn: string; seatsAvailable?: number; waitCount?: number }) =>
+  setSeats: (section: {
+    term?: string;
+    subject: string;
+    courseNumber: string;
+    crn: string;
+    seatsAvailable?: number;
+    waitCount?: number;
+    /** Put the section in a cross-list seat pool (null takes it out). */
+    crossList?: string | null;
+    crossListAvailable?: number | null;
+  }) =>
     fakeCall("/__control/sections", { method: "POST", body: { term: SEED.term, ...section } }),
   /** Adds `count` generated sections of one course (e.g. enough for several result pages); reset removes them. */
   bulkSections: (input: { subject: string; courseNumber: string; count: number; term?: string; firstCrn?: number }) =>

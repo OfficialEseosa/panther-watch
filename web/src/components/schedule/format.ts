@@ -1,4 +1,5 @@
 /** Small presentation helpers shared by the schedule components. Pure. */
+import { effectiveSeatsAvailable, type SeatFields } from "@/lib/gosolar/seats";
 import type { CourseData } from "@/lib/gosolar/types";
 import { SCHEDULE_COLORS, scheduleTextColor } from "@/lib/schedule/colors";
 import { DAY_LABELS, WEEK_DAYS, formatMinutes, meetingsOf, type Meeting } from "@/lib/schedule/conflicts";
@@ -30,10 +31,14 @@ export function blockNameSuffix(block: PositionedBlock): string {
   return `, ${parts.join(", ")}`;
 }
 
-/** "12 of 40 seats open", "Full", or null when GoSolar gives no counts. */
-export function seatText(section: Pick<CourseData, "seatsAvailable" | "maximumEnrollment">): string | null {
-  const { seatsAvailable: open, maximumEnrollment: max } = section;
-  if (typeof open !== "number" || typeof max !== "number" || max <= 0) return null;
+/**
+ * "12 of 40 seats open", "Full", or null when GoSolar gives no counts. Open seats are the
+ * effective count (`effectiveSeatsAvailable`): a cross-listed section's shared pool caps them.
+ */
+export function seatText(section: SeatFields & Pick<CourseData, "maximumEnrollment">): string | null {
+  const max = section.maximumEnrollment;
+  if (typeof section.seatsAvailable !== "number" || typeof max !== "number" || max <= 0) return null;
+  const open = effectiveSeatsAvailable(section);
   return open <= 0 ? "Full" : `${open} of ${max} seats open`;
 }
 

@@ -23,6 +23,7 @@ import {
   type EmailTransport,
   type RemainingBudget,
 } from "@/lib/email";
+import { effectiveSeatsAvailable } from "@/lib/gosolar/seats";
 import { recentRuns } from "@/lib/jobs/runs";
 import { termDisplayName } from "@/lib/jobs/terms";
 import { emailBudget } from "@/lib/watcher/budget";
@@ -317,7 +318,7 @@ export async function sendSampleSeatAlert(
       instructor: (faculty.find((f) => f.primaryIndicator) ?? faculty[0])?.displayName ?? null,
       term,
       termName: termDisplayName(termRow, term),
-      seatsAvailable: section.seatsAvailable,
+      seatsAvailable: effectiveSeatsAvailable(section),
       waitCount: section.waitCount,
     };
   }
