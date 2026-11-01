@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { decide, isOpen, observe, REARM_AFTER_MS, type Observation, type WatchAction, type WatchState } from "@/lib/watcher/state";
+import { effectiveSeatsAvailable, sectionIsOpen } from "@/lib/gosolar/seats";
+import { decide, observe, REARM_AFTER_MS, type Observation, type WatchAction, type WatchState } from "@/lib/watcher/state";
 
 const now = new Date("2026-08-20T14:00:00Z");
 const ago = (ms: number) => new Date(now.getTime() - ms);
 
-describe("isOpen / observe", () => {
+describe("sectionIsOpen / observe", () => {
   it.each([
     [{ seatsAvailable: 3, waitCount: 0 }, true],
     [{ seatsAvailable: 1, waitCount: 0 }, true],
@@ -12,13 +13,38 @@ describe("isOpen / observe", () => {
     [{ seatsAvailable: 3, waitCount: 1 }, false],
     [{ seatsAvailable: 0, waitCount: 5 }, false],
     [{ seatsAvailable: -1, waitCount: 0 }, false],
+    // Not cross-listed: pool fields are ignored.
+    [{ seatsAvailable: 3, waitCount: 0, crossList: null, crossListAvailable: null }, true],
+    [{ seatsAvailable: 3, waitCount: 0, crossList: "", crossListAvailable: 0 }, true],
+    // Cross-listed: own seats AND pool seats.
+    [{ seatsAvailable: 5, waitCount: 0, crossList: "XL", crossListAvailable: 0 }, false],
+    [{ seatsAvailable: 5, waitCount: 0, crossList: "XL", crossListAvailable: 2 }, true],
+    [{ seatsAvailable: 0, waitCount: 0, crossList: "XL", crossListAvailable: 9 }, false],
+    [{ seatsAvailable: 5, waitCount: 1, crossList: "XL", crossListAvailable: 2 }, false],
+    [{ seatsAvailable: 5, waitCount: 0, crossList: "XL", crossListAvailable: -3 }, false],
+    // Cross-listed but the pool count is missing: falls back to own seats.
+    [{ seatsAvailable: 2, waitCount: 0, crossList: "XL", crossListAvailable: null }, true],
   ])("%o -> open=%s", (section, open) => {
-    expect(isOpen(section)).toBe(open);
+    expect(sectionIsOpen(section)).toBe(open);
     expect(observe(section)).toBe(open ? "open" : "closed");
   });
 
   it("treats a missing section as unknown", () => {
     expect(observe(undefined)).toBe("unknown");
+  });
+});
+
+describe("effectiveSeatsAvailable", () => {
+  it.each([
+    [{ seatsAvailable: 4, waitCount: 0 }, 4],
+    [{ seatsAvailable: 4, waitCount: 0, crossList: null, crossListAvailable: 1 }, 4],
+    [{ seatsAvailable: 4, waitCount: 0, crossList: "XL", crossListAvailable: 1 }, 1],
+    [{ seatsAvailable: 1, waitCount: 0, crossList: "XL", crossListAvailable: 6 }, 1],
+    [{ seatsAvailable: 4, waitCount: 0, crossList: "XL", crossListAvailable: 0 }, 0],
+    [{ seatsAvailable: 4, waitCount: 0, crossList: "XL", crossListAvailable: null }, 4],
+    [{ seatsAvailable: 4, waitCount: 0, crossList: "XL", crossListAvailable: Number.NaN }, 4],
+  ])("%o -> %i", (section, expected) => {
+    expect(effectiveSeatsAvailable(section)).toBe(expected);
   });
 });
 

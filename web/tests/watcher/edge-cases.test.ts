@@ -285,6 +285,44 @@ describe("seat-alert edge cases (docs/audit-2026-10/06)", () => {
     expect(mail.sent).toHaveLength(1);
   });
 
+  it("S6b: cross-listed, own seats but the shared pool is empty -> no email; the pool opens -> 1 email", async () => {
+    const user = await seedUser(testDb.db);
+    const crossListed = (crossListAvailable: number) =>
+      open("80001", TERM, { seatsAvailable: 5, crossList: "XL01", crossListAvailable });
+    gosolarLists(TERM, crossListed(0));
+    expect(await track(user, "80001")).toMatchObject({ created: true, openNow: false, watch: { notifiedAt: null } });
+
+    expect(await run(0)).toMatchObject({ emailsSent: 0, sectionsChecked: 1 });
+    expect(await run(3)).toMatchObject({ emailsSent: 0 });
+    expect((await watchRow(user, "80001"))?.notifiedAt).toBeNull();
+
+    gosolarLists(TERM, crossListed(2));
+    expect(await run(6)).toMatchObject({ emailsSent: 1 });
+    expect(mail.sent).toHaveLength(1);
+    expect(mail.sent[0].subject).toContain("CRN 80001");
+
+    // The pool drains again while own seats stay: counts as closed (two runs re-arm).
+    gosolarLists(TERM, crossListed(0));
+    expect(await run(9)).toMatchObject({ markedClosed: 1, emailsSent: 0 });
+    expect(await run(12)).toMatchObject({ rearmed: 1, emailsSent: 0 });
+  });
+
+  it("S6c: cross-listed with seats in the pool but none of its own -> no email", async () => {
+    const user = await seedUser(testDb.db);
+    gosolarLists(TERM, open("80001", TERM, { seatsAvailable: 0, crossList: "XL01", crossListAvailable: 7 }));
+    expect(await track(user, "80001")).toMatchObject({ openNow: false });
+    expect(await run(0)).toMatchObject({ emailsSent: 0 });
+    expect(mail.sent).toHaveLength(0);
+  });
+
+  it("S6d: a non-cross-listed section is judged on its own seats as before", async () => {
+    const user = await seedUser(testDb.db);
+    gosolarLists(TERM, closed("80001"));
+    await track(user, "80001");
+    gosolarLists(TERM, open("80001", TERM, { seatsAvailable: 1, crossList: null, crossListAvailable: null }));
+    expect(await run(0)).toMatchObject({ emailsSent: 1 });
+  });
+
   it("S7: the user's email changed between tracking and the alert -> sent to the new address", async () => {
     const user = await seedUser(testDb.db, { email: "old@student.gsu.test" });
     gosolarLists(TERM, closed("80001"));

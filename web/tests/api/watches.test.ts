@@ -215,6 +215,23 @@ describe("track-while-open: POST /api/watches checks live seats once", () => {
     expect(body).toMatchObject({ created: true, openNow: false, watch: { notifiedAt: null } });
   });
 
+  it("cross-listed with own seats but an empty shared pool is not open: armed", async () => {
+    gs.setSections(OPEN, "CSC", "1301", [
+      makeSection({ term: OPEN, courseReferenceNumber: "80001", seatsAvailable: 5, crossList: "XL", crossListAvailable: 0 }),
+    ]);
+    const { body } = await post(alice, watchBody("80001"));
+    expect(body).toMatchObject({ created: true, openNow: false, watch: { notifiedAt: null } });
+  });
+
+  it("cross-listed with own seats and pool seats is open: tracked already notified", async () => {
+    gs.setSections(OPEN, "CSC", "1301", [
+      makeSection({ term: OPEN, courseReferenceNumber: "80001", seatsAvailable: 5, crossList: "XL", crossListAvailable: 2 }),
+    ]);
+    const { body } = await post(alice, watchBody("80001"));
+    expect(body).toMatchObject({ created: true, openNow: true });
+    expect((body.watch as Watch).notifiedAt).not.toBeNull();
+  });
+
   it("unknown (GoSolar fails, or the CRN is not listed) is tracked armed and the add still succeeds", async () => {
     gs.setSections(OPEN, "CSC", "1301", [makeSection({ term: OPEN, courseReferenceNumber: "80001" })]);
     gs.failNextSearches({ kind: "http", status: 503 });

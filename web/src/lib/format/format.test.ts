@@ -133,9 +133,12 @@ describe("titleCase", () => {
 });
 
 describe("partOfTermName", () => {
-  it("maps only the full-term code; other codes are shown as-is", () => {
+  it("maps GoSolar's get_partOfTerm codes; unknown codes are shown as-is", () => {
     expect(partOfTermName("1")).toBe("Full term");
-    expect(partOfTermName(" E ")).toBe("E");
+    expect(partOfTermName("A")).toBe("Mini-mester 1");
+    expect(partOfTermName("B")).toBe("Mini-mester 2");
+    expect(partOfTermName(" E ")).toBe("Exception");
+    expect(partOfTermName("Q")).toBe("Q");
     expect(partOfTermName(" ")).toBeNull();
     expect(partOfTermName(null)).toBeNull();
   });

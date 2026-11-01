@@ -108,15 +108,25 @@ export function titleCase(text: string): string {
 }
 
 /**
- * GoSolar's `partOfTerm` code for the "Part of term" detail. Only "1" is mapped ("Full term"):
- * live 202701 CSC/ENGL data has it on every full-length section (Jan 11 – May 4). Other codes
- * ("E" was a one-week session) have no published meaning, so the code itself is shown
- * ("Part of term: E"). Null when there is no code.
+ * GoSolar's `partOfTerm` codes, as its `get_partOfTerm` lookup names them. "1" is every
+ * full-length section (live 202701 CSC/ENGL: Jan 11 – May 4); A/B are the half-term
+ * mini-mesters; E is GoSolar's "Exception" (non-standard dates, e.g. a one-week session).
+ */
+const PART_OF_TERM: Record<string, string> = {
+  "1": "Full term",
+  A: "Mini-mester 1",
+  B: "Mini-mester 2",
+  E: "Exception",
+};
+
+/**
+ * The "Part of term" detail for a GoSolar `partOfTerm` code. Unmapped codes are shown as-is
+ * ("Part of term: Q"). Null when there is no code.
  */
 export function partOfTermName(code: string | null | undefined): string | null {
   const clean = code?.trim();
   if (!clean) return null;
-  return clean === "1" ? "Full term" : clean;
+  return PART_OF_TERM[clean.toUpperCase()] ?? clean;
 }
 
 // ------------------------------------------------------------------ terms

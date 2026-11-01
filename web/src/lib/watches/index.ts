@@ -13,7 +13,8 @@ import {
   subjectSchema,
   termCodeSchema,
 } from "@/lib/courses/validation";
-import { isOpen, UNLISTED_AFTER_RUNS } from "@/lib/watcher/state";
+import { sectionIsOpen } from "@/lib/gosolar/seats";
+import { UNLISTED_AFTER_RUNS } from "@/lib/watcher/state";
 
 export type WatchErrorCode = "term_closed" | "term_unknown";
 
@@ -99,7 +100,8 @@ export interface AddWatchResult {
   watch: Watch;
   created: boolean;
   /**
-   * True when this call created the watch while the section was OPEN (seats, no waitlist):
+   * True when this call created the watch while the section was OPEN (`sectionIsOpen`: an
+   * effective seat, cross-list pool included, and no waitlist):
    * no alert is sent for that opening; the first one comes after it fills and reopens.
    * Always false for an existing watch (`created: false`).
    */
@@ -196,7 +198,7 @@ async function isSectionOpenNow(
       },
     );
     const section = sections.get(data.crn);
-    return section !== undefined && isOpen(section);
+    return section !== undefined && sectionIsOpen(section);
   } catch (error) {
     warn(error);
     return false;

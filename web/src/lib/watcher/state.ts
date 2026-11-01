@@ -21,6 +21,8 @@
  * section to fill (two closed runs, re-arm) and reopen.
  */
 
+import { sectionIsOpen, type SeatFields } from "@/lib/gosolar/seats";
+
 /**
  * Minimum gap between the first closed reading and the one that re-arms. The watcher runs
  * every 3 minutes, so the next run's reading of a row lands 180 s +/- the spread of
@@ -38,23 +40,19 @@ export const UNLISTED_AFTER_RUNS = 3;
 /** `missing_runs` stops counting here (smallint; only ">= UNLISTED_AFTER_RUNS" matters). */
 export const MISSING_RUNS_CAP = 1000;
 
-/** The fields of a GoSolar section the watcher reads. */
-export interface SeatCounts {
-  seatsAvailable: number;
-  waitCount: number;
-}
+/** The fields of a GoSolar section the watcher reads (own seats, waitlist, cross-list pool). */
+export type SeatCounts = SeatFields;
 
 export type Observation = "open" | "closed" | "unknown";
 
-/** Open = seats available and nobody on the waitlist (a waitlist gets the seat first). */
-export function isOpen(section: SeatCounts): boolean {
-  return section.waitCount === 0 && section.seatsAvailable > 0;
-}
-
-/** `undefined` (section absent from results, or its group's search failed) is unknown. */
+/**
+ * Open/closed by `sectionIsOpen`: an effective seat (own seats, and the shared pool's when
+ * cross-listed) and nobody on the waitlist. `undefined` (section absent from results, or its
+ * group's search failed) is unknown.
+ */
 export function observe(section: SeatCounts | undefined): Observation {
   if (!section) return "unknown";
-  return isOpen(section) ? "open" : "closed";
+  return sectionIsOpen(section) ? "open" : "closed";
 }
 
 export interface WatchState {

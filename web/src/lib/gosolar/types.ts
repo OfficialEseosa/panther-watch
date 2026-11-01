@@ -43,6 +43,18 @@ export interface MeetingsFaculty {
   meetingTime: MeetingTime | null;
 }
 
+/**
+ * One `sectionAttributes[]` entry. Live codes seen (2026-11): LF2F, SONL, LONL, HYB (delivery
+ * mode), HC (honors), ZNCM / ZLCM (no-/low-cost materials); `description` is the readable name.
+ */
+export interface SectionAttribute {
+  code: string | null;
+  description: string | null;
+  courseReferenceNumber?: string | null;
+  termCode?: string | null;
+  isZTCAttribute?: boolean;
+}
+
 export interface CourseData {
   term: string | null;
   termDesc: string | null;
@@ -55,7 +67,8 @@ export interface CourseData {
   campusDescription: string | null;
   scheduleTypeDescription: string | null;
   courseTitle: string | null;
-  creditHours: number;
+  /** Null in practice on live GoSolar; the credit value is `creditHourLow` (and `creditHourHigh`). */
+  creditHours: number | null;
   maximumEnrollment: number;
   enrollment: number;
   seatsAvailable: number;
@@ -69,6 +82,30 @@ export interface CourseData {
   subjectCourse: string | null;
   faculty: Faculty[] | null;
   meetingsFaculty: MeetingsFaculty[] | null;
+
+  // Fields below are sent by live GoSolar but absent from the old Java DTOs. Optional so
+  // hand-built CourseData stand-ins (tracked-page stubs, fixtures) stay valid without them.
+
+  /**
+   * Cross-list group id, or null when the section is not cross-listed. Cross-listed sections
+   * share one seat pool: a seat is only takeable when BOTH this section's `seatsAvailable` and
+   * the pool's `crossListAvailable` are positive. See `@/lib/gosolar/seats`.
+   */
+  crossList?: string | null;
+  /** Seat capacity of the whole cross-list group (null when not cross-listed). */
+  crossListCapacity?: number | null;
+  /** Enrollment across the whole cross-list group (null when not cross-listed). */
+  crossListCount?: number | null;
+  /** Seats left in the cross-list group's shared pool (null when not cross-listed). */
+  crossListAvailable?: number | null;
+  /** Section attributes (delivery mode, honors, materials cost), possibly empty. */
+  sectionAttributes?: SectionAttribute[] | null;
+  /** e.g. "Fully Online", "Hybrid", "Face-to-Face". */
+  instructionalMethodDescription?: string | null;
+  /** GoSolar's own open flag. Not used for alerts (it ignores the waitlist rule). */
+  openSection?: boolean;
+  /** Reserved-seat breakdown when the section has reserved seats; shape not relied on. */
+  reservedSeatSummary?: Record<string, unknown> | null;
 }
 
 /** `GET /classSearch/getTerms` item. Description ends in "(View only)" for closed terms. */

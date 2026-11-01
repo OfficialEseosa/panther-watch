@@ -229,7 +229,11 @@ let crnSeq = 80000;
  * A realistic GoSolar section: CSC 1301 lecture in term 202608 with a unique CRN, 3 of 30
  * seats open and an empty waitlist (so "open" by the watcher's rule), one MW meeting and one
  * primary instructor. Faculty/meeting CRNs follow `courseReferenceNumber`, and seat counts
- * stay consistent unless you override them individually.
+ * stay consistent unless you override them individually. Not cross-listed (`crossList: null`
+ * and null pool counts, like live GoSolar); `creditHours` is null as on live GoSolar.
+ *
+ * Cross-listed: pass `crossList` (group id) and `crossListAvailable`; capacity and count
+ * default to a 40-seat pool consistent with `crossListAvailable`.
  */
 export function makeSection(overrides: Partial<CourseData> = {}): CourseData {
   const crn = overrides.courseReferenceNumber ?? String(++crnSeq);
@@ -240,6 +244,13 @@ export function makeSection(overrides: Partial<CourseData> = {}): CourseData {
   const seatsAvailable = overrides.seatsAvailable ?? 3;
   const waitCapacity = overrides.waitCapacity ?? 10;
   const waitCount = overrides.waitCount ?? 0;
+  const crossList = overrides.crossList ?? null;
+  const crossListAvailable = crossList ? (overrides.crossListAvailable ?? seatsAvailable) : null;
+  const crossListCapacity = crossList ? (overrides.crossListCapacity ?? 40) : null;
+  const crossListCount =
+    crossList && crossListCapacity !== null && crossListAvailable !== null
+      ? (overrides.crossListCount ?? crossListCapacity - crossListAvailable)
+      : null;
 
   const faculty: Faculty = {
     bannerId: "900123456",
@@ -280,7 +291,7 @@ export function makeSection(overrides: Partial<CourseData> = {}): CourseData {
     campusDescription: "Atlanta Campus",
     scheduleTypeDescription: "Lecture",
     courseTitle: "Principles of Computer Science I",
-    creditHours: 4,
+    creditHours: null,
     maximumEnrollment,
     enrollment: maximumEnrollment - seatsAvailable,
     seatsAvailable,
@@ -294,6 +305,16 @@ export function makeSection(overrides: Partial<CourseData> = {}): CourseData {
     subjectCourse: `${subject}${courseNumber}`,
     faculty: [faculty],
     meetingsFaculty: [{ category: "01", meetingTime }],
+    crossList,
+    crossListCapacity,
+    crossListCount,
+    crossListAvailable,
+    sectionAttributes: [
+      { code: "LF2F", description: "Face-to-Face", courseReferenceNumber: crn, termCode: term, isZTCAttribute: false },
+    ],
+    instructionalMethodDescription: "Face-to-Face",
+    openSection: seatsAvailable > 0,
+    reservedSeatSummary: null,
     ...overrides,
   };
 }
