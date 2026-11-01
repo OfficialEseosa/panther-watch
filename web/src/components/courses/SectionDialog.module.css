@@ -182,7 +182,8 @@
   height: var(--_h, 0);
   transform: translate(var(--_x, 0), var(--_y, 0));
   background: var(--color-primary-50);
-  border: 1px solid var(--accent-subtle-border);
+  /* --indicator edge: the tint is ~1:1 on the sidebar and the old border 2.2:1 / 1.6:1. */
+  border: 1px solid var(--indicator);
   border-radius: var(--radius-sm);
   pointer-events: none;
 }
@@ -237,7 +238,7 @@
 }
 
 .pane:focus-visible {
-  outline: 2px solid var(--color-primary-500);
+  outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
 }
 

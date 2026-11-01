@@ -144,9 +144,11 @@ a:hover {
     color 0.3s ease;
 }
 
+/* 0.85 keeps placeholders visibly lighter than typed text and >= 4.5:1 (light 5.1 on white,
+   4.75 on muted; dark 6.4 / 5.3). 0.7 was 3.6:1 in light. */
 :where(input, textarea)::placeholder {
   color: var(--color-text-muted);
-  opacity: 0.7;
+  opacity: 0.85;
 }
 
 :where(input, select, textarea):focus {

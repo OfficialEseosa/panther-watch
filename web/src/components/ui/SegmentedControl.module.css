@@ -63,11 +63,13 @@
   }
 }
 
+/* The raised face alone was 1.1:1 (light) / 1.25:1 (dark) against the track; the 1px
+   --indicator edge makes the selected segment >= 3:1 in both themes (8.9 / 6.0). */
 .input:checked + .face {
   background: var(--surface);
-  color: var(--text);
+  color: var(--accent-text);
   font-weight: var(--weight-semibold);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-xs), inset 0 0 0 1px var(--indicator);
 }
 
 .input:focus-visible + .face {

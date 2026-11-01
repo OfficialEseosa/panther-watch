@@ -176,9 +176,11 @@
   transition: background var(--dur-fast) ease;
 }
 
+/* --focus-ring: primary-500 in light (unchanged, 5.5:1); in dark primary-500 was 2.4:1 on the
+   highlight, the light link blue is 6.0:1. */
 .option[data-active] {
   background: var(--color-primary-50);
-  border-left-color: var(--color-primary-500);
+  border-left-color: var(--focus-ring);
 }
 
 .code {

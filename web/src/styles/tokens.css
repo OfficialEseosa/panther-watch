@@ -70,7 +70,9 @@
   --color-gray-400: #9ca3af;
 
   /* Small additions so dark mode stays token-driven (no per-component rgba). */
-  --color-focus-ring: rgba(31, 95, 195, 0.18);
+  /* 3px focus halo (the original look). 0.75 alpha so it reads >= 3:1 on every surface it
+     sits on (white 3.6, page 3.4, muted 3.4); it is the only focus cue on many buttons/tabs. */
+  --color-focus-ring: rgba(31, 95, 195, 0.75);
   --color-success-bg: rgba(29, 129, 76, 0.1);
   --color-warning-bg: rgba(179, 107, 9, 0.1);
   --color-danger-bg: rgba(180, 35, 24, 0.08);
@@ -380,7 +382,7 @@
   --color-warning: #f2b84b;
   --color-danger: #ff8a7f;
   --color-gray-400: #6b7f9e;
-  --color-focus-ring: rgba(127, 169, 230, 0.3);
+  --color-focus-ring: rgba(127, 169, 230, 0.75); /* >= 4:1 on surface / muted / page */
   --color-success-bg: rgba(92, 201, 138, 0.12);
   --color-warning-bg: rgba(242, 184, 75, 0.12);
   --color-danger-bg: rgba(255, 138, 127, 0.12);

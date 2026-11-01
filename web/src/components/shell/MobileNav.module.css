@@ -78,9 +78,12 @@
   color: var(--accent-subtle-text);
 }
 
+/* Solid pill, like the course card's selected days: the old tint was 1.17:1 (light) /
+   1.37:1 (dark) against the bar. --indicator is 9.8:1 / 7.6:1, icon on it 9.8:1 / 7.6:1. */
 .item[aria-current="page"] .pill,
 .itemActive .pill {
-  background: var(--accent-subtle);
+  background: var(--indicator);
+  color: var(--indicator-contrast);
 }
 
 .item[aria-current="page"] .label,
@@ -117,9 +120,12 @@
   text-decoration: none;
 }
 
+/* The tint alone is 1.17:1 (light) / 1.37:1 (dark) against the sheet and the text color barely
+   differs from the other rows: the sidebar's --indicator "you are here" bar marks it (9.8 / 7.6). */
 .row[aria-current="page"] {
   background: var(--accent-subtle);
   color: var(--accent-subtle-text);
+  box-shadow: inset 4px 0 0 var(--indicator);
 }
 
 @media (hover: hover) and (pointer: fine) {

@@ -187,7 +187,7 @@
 }
 
 .chipRemove:focus-visible {
-  outline: 2px solid var(--color-primary-500);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 

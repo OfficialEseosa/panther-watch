@@ -52,7 +52,9 @@
 .tabs {
   display: flex;
   gap: 8px;
-  padding: 0 4px 4px;
+  /* Top padding (offset by the margin) so the scroller doesn't clip the focus halo. */
+  margin-top: -4px;
+  padding: 4px;
   overflow-x: auto;
 }
 
@@ -95,12 +97,21 @@
   box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
 
+/* --indicator: GSU blue / white in light (unchanged); in dark the light link blue with
+   near-black text, because #0039a6 on the dark page was 1.55:1 (1.85:1 vs the other tabs). */
 .tab[aria-current="page"],
 .tab[aria-current="page"]:hover {
-  background: var(--color-primary-600);
-  border-color: var(--color-primary-600);
-  color: var(--color-on-primary);
+  background: var(--indicator);
+  border-color: var(--indicator);
+  color: var(--indicator-contrast);
   box-shadow: var(--shadow-sm);
+}
+
+/* The active tab's shadow used to replace the focus halo, and a halo would blend into its
+   --indicator fill: an inset ring in the fill's text color instead (9.8:1 / 7.6:1). */
+.tab[aria-current="page"]:focus-visible {
+  outline: var(--ring-width) solid var(--indicator-contrast);
+  outline-offset: -5px;
 }
 
 .content {

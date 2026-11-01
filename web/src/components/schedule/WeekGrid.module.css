@@ -106,15 +106,15 @@
   text-align: left;
   font: inherit;
   box-shadow: var(--shadow-xs);
-  transition: transform var(--transition-base), box-shadow var(--transition-base), filter var(--transition-base);
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
   view-transition-class: sched-block;
 }
 
-/* Polish: a subtle lift on hover and a press-in on click (both off under reduced motion). */
+/* Polish: a subtle lift on hover and a press-in on click (both off under reduced motion). No
+   saturate() on hover: it pushed white on pink to 4.3:1 (the fills are tuned to >= 4.5:1). */
 .classBlock:hover {
   z-index: 10;
   transform: translateY(-1px);
-  filter: saturate(1.08);
   box-shadow: var(--shadow-sm);
 }
 
@@ -132,7 +132,7 @@
 .classBlock:focus-visible {
   outline: 2px solid var(--color-surface);
   outline-offset: 0;
-  box-shadow: 0 0 0 4px var(--color-primary-500);
+  box-shadow: 0 0 0 4px var(--focus-ring);
   z-index: 10;
 }
 
