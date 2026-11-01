@@ -6,6 +6,7 @@ import { SampleCardFlip } from "@/components/dashboard/SampleCardFlip";
 import { SIGN_IN_HREF } from "@/components/shell/nav";
 import { SiteFooter } from "@/components/shell/SiteFooter";
 import { SkipLink } from "@/components/shell/SkipLink";
+import { isSafeNext, signInHref } from "@/lib/auth/next";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { Banner } from "@/components/ui/Banner";
 import { ButtonAnchor, ButtonLink } from "@/components/ui/Button";
@@ -67,7 +68,26 @@ async function Notices({ searchParams }: { searchParams: PageProps<"/">["searchP
       </div>
     );
   }
-  const page = memberPageName(first(params.next));
+  const next = first(params.next);
+  if (isSafeNext(next)) {
+    // An app (Claude, another assistant) asked to connect while the visitor was signed out.
+    return (
+      <div className={styles.notice}>
+        <Banner
+          tone="info"
+          title="Sign in to connect your app."
+          action={
+            <ButtonAnchor href={signInHref(next)} size="sm" variant="secondary">
+              Sign in
+            </ButtonAnchor>
+          }
+        >
+          An app asked to connect to your PantherWatch account. Sign in, then choose whether to allow it.
+        </Banner>
+      </div>
+    );
+  }
+  const page = memberPageName(next);
   if (!page) return null;
   return (
     <div className={styles.notice}>

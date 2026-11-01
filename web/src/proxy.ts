@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE_NAMES } from "@/lib/auth/constants";
+import { isSafeNext } from "@/lib/auth/next";
 
 /**
  * Cheap routing on cookie presence only: checks that a session cookie exists (under either
@@ -19,8 +20,9 @@ export function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
   if (pathname === "/") {
-    // Keep the OAuth error banner visible even if an old cookie is still around.
-    if (hasSession && !searchParams.has("auth_error")) {
+    // Keep the OAuth error banner visible even if an old cookie is still around, and keep a
+    // stale-cookie visitor who was sent here to sign in before connecting an app.
+    if (hasSession && !searchParams.has("auth_error") && !isSafeNext(searchParams.get("next"))) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
     return NextResponse.next();

@@ -7,6 +7,7 @@ import { GET as callback } from "@/app/api/auth/google/callback/route";
 import { GET as login } from "@/app/api/auth/google/login/route";
 import { POST as logout } from "@/app/api/auth/logout/route";
 import { OAUTH_STATE_COOKIE, sessionCookieName } from "@/lib/auth/constants";
+import { AUTH_NEXT_COOKIE } from "@/lib/auth/next";
 import { createMemoryTransport, setDefaultEmailTransport } from "@/lib/email";
 import { createTestDb, seedUser, truncateAll, type TestDatabase } from "../helpers/db";
 import { callbackRequest as googleCallback, mockGoogle, type MockGoogle } from "../helpers/google";
@@ -173,6 +174,22 @@ describe("welcome email: once per user, on first sign-in only (scenario 9)", () 
     expect(second.headers.get("location")).toBe(`${APP}/dashboard`);
     expect(mail.sent).toHaveLength(1);
     expect(await welcomeLogs()).toHaveLength(1);
+  });
+
+  it("returns to an interrupted app connection (pw_auth_next) instead of the dashboard; ignores unsafe values", async () => {
+    google.as({ sub: "g-next", email: "next@student.gsu.test" });
+    const next = "/api/oauth/authorize?response_type=code&client_id=pwc_x&state=s";
+    const withNext = (value: string) => {
+      const request = googleCallback();
+      return new NextRequest(request.url, {
+        headers: { cookie: `${request.headers.get("cookie")}; ${AUTH_NEXT_COOKIE}=${encodeURIComponent(value)}` },
+      });
+    };
+    const back = await callback(withNext(next));
+    expect(back.headers.get("location")).toBe(`${APP}${next}`);
+    expect(back.cookies.get(AUTH_NEXT_COOKIE)).toMatchObject({ value: "", maxAge: 0 });
+    const unsafe = await callback(withNext("https://evil.test/"));
+    expect(unsafe.headers.get("location")).toBe(`${APP}/dashboard`);
   });
 
   it("linking an existing (legacy, no google_sub) row by email sends 0", async () => {
