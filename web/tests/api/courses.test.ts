@@ -40,11 +40,11 @@ vi.mock("@/lib/course-meta", async (importOriginal) => {
 });
 
 import { setDbForTests } from "@/db";
-import { GET as metaGet } from "@/app/api/courses/meta/route";
+import { GET as metaGet, OPTIONS as metaOptions } from "@/app/api/courses/meta/route";
 import { POST as metaBatch } from "@/app/api/courses/meta/batch/route";
-import { GET as searchGet } from "@/app/api/courses/search/route";
-import { GET as subjectsGet } from "@/app/api/courses/subjects/route";
-import { GET as termsGet } from "@/app/api/courses/terms/route";
+import { GET as searchGet, OPTIONS as searchOptions } from "@/app/api/courses/search/route";
+import { GET as subjectsGet, OPTIONS as subjectsOptions } from "@/app/api/courses/subjects/route";
+import { GET as termsGet, OPTIONS as termsOptions } from "@/app/api/courses/terms/route";
 import { setGoSolarOptionsForTests } from "@/lib/courses";
 import { createTestDb, truncateAll, type TestDatabase } from "../helpers/db";
 import { makeSection, makeTerm, startFakeGoSolar, type FakeGoSolar } from "../helpers/fake-gosolar";
@@ -249,5 +249,48 @@ describe("course meta", () => {
     expect(crossOrigin.status).toBe(403);
     const notJson = await call(metaBatch, await apiRequest("/api/courses/meta/batch", { method: "POST", body: "{nope" }));
     expect(notJson.status).toBe(400);
+  });
+});
+
+describe("CORS on the public read endpoints", () => {
+  const foreign = { origin: "https://example.com" };
+
+  it("GET responses (success and error) allow any origin; batch stays same-origin", async () => {
+    gs.setTerms([makeTerm("202701", "Spring Semester 2027")]);
+    gs.setSections("202701", "CSC", "1301", [makeSection({ term: "202701" })]);
+    gs.setSubjects("202701", [{ code: "CSC", description: "Computer Science" }]);
+    const cases: Array<[Parameters<typeof call>[0], string, number]> = [
+      [termsGet, "/api/courses/terms", 200],
+      [subjectsGet, "/api/courses/subjects?term=202701&q=comp", 200],
+      [searchGet, "/api/courses/search?term=202701&subject=CSC&courseNumber=1301", 200],
+      [metaGet, "/api/courses/meta?term=202701&subject=CSC&courseNumber=1301&crn=80001", 200],
+      [searchGet, "/api/courses/search?term=2027&subject=CSC", 400],
+    ];
+    for (const [handler, path, status] of cases) {
+      const response = await call(handler, await apiRequest(path, foreign));
+      expect(response.status, path).toBe(status);
+      expect(response.headers.get("access-control-allow-origin"), path).toBe("*");
+      expect(response.headers.get("vary"), path).toContain("Origin");
+      expect(response.headers.get("cache-control"), path).toBeTruthy();
+    }
+
+    const item = { term: "202701", subject: "CSC", courseNumber: "1301", crn: "80001" };
+    const batch = await call(metaBatch, await apiRequest("/api/courses/meta/batch", { method: "POST", body: { items: [item] } }));
+    expect(batch.status).toBe(200);
+    expect(batch.headers.get("access-control-allow-origin")).toBeNull();
+  });
+
+  it.each([
+    ["terms", termsOptions],
+    ["subjects", subjectsOptions],
+    ["search", searchOptions],
+    ["meta", metaOptions],
+  ])("OPTIONS /api/courses/%s answers the preflight", (_name, options) => {
+    const response = options();
+    expect(response.status).toBe(204);
+    expect(response.headers.get("access-control-allow-origin")).toBe("*");
+    expect(response.headers.get("access-control-allow-methods")).toBe("GET, OPTIONS");
+    expect(response.headers.get("access-control-allow-headers")).toContain("Content-Type");
+    expect(response.headers.get("vary")).toContain("Origin");
   });
 });

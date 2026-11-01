@@ -1,0 +1,16 @@
+# PantherWatch
+
+> PantherWatch (https://www.pantherwatch.app) is a free, student-built course browser for Georgia State University (GSU). It shows live seats and waitlists from GSU's registration system (GoSolar), meeting times, GSU grade history per course and professor, RateMyProfessors ratings and syllabi, and emails signed-in students when a seat opens in a class they track. Not affiliated with Georgia State University.
+
+Course data is available as a public JSON API (no key, CORS-enabled). Use it instead of scraping the results pages, and keep to at most 1 request per second.
+
+## Docs
+
+- [Developers](https://www.pantherwatch.app/developers): the public API (terms, subjects, section search, grades/ratings/syllabus), with example responses, caching and fair use.
+- [Course search skill](https://www.pantherwatch.app/skills/pantherwatch/SKILL.md): an agent skill for searching GSU courses, checking schedule conflicts and recommending sections through the API.
+
+## Pages
+
+- [Course search](https://www.pantherwatch.app/course-search): search GSU sections by term, subject and course number.
+- [Privacy Policy](https://www.pantherwatch.app/privacy)
+- [Terms of Service](https://www.pantherwatch.app/terms)

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/ui/cn";
-import { DAY_SHORT, meetingRows, type DayKey, type Section } from "./format";
+import { DAY_LETTER, DAY_SHORT, meetingRows, type DayKey, type Section } from "./format";
 import { OldIcon } from "./icons";
 import styles from "./SectionParts.module.css";
 
@@ -31,11 +31,34 @@ function Stat({ value, label, tone }: { value: ReactNode; label: string; tone?: 
   );
 }
 
+/** Minutes after midnight -> "1100" (24-hour HHMM, GoSolar's own format). */
+const hhmm = (minutes: number) =>
+  `${String(Math.floor(minutes / 60)).padStart(2, "0")}${String(minutes % 60).padStart(2, "0")}`;
+
+/**
+ * Stable hooks for scripts and assistive tools reading the rendered page (documented on
+ * /developers): the section's identity and live counts. No visual effect.
+ */
+function sectionData(section: Section) {
+  return {
+    "data-crn": section.courseReferenceNumber ?? undefined,
+    "data-subject": section.subject ?? undefined,
+    "data-course-number": section.courseNumber ?? undefined,
+    "data-term": section.term ?? undefined,
+  };
+}
+
 /** The original enrollment panel: Available / Enrolled / Capacity, plus the waitlist when it has one. */
 export function EnrollmentStatus({ section, compact = false }: { section: Section; compact?: boolean }) {
   const wait = waitlistTone(section.waitAvailable, section.waitCapacity);
   return (
-    <div className={cn(styles.enrollment, compact && styles.compact)} data-count={wait ? 5 : 3}>
+    <div
+      className={cn(styles.enrollment, compact && styles.compact)}
+      data-count={wait ? 5 : 3}
+      {...sectionData(section)}
+      data-seats-available={section.seatsAvailable ?? undefined}
+      data-wait-count={section.waitCount ?? undefined}
+    >
       <Stat
         value={Math.max(0, section.seatsAvailable)}
         label="Available"
@@ -61,9 +84,17 @@ export function MeetingTimes({ section, compact = false }: { section: Section; c
   const rows = meetingRows(section);
   if (rows.length === 0) return null;
   return (
-    <ul className={cn(styles.meetings, compact && styles.compact)}>
+    <ul className={cn(styles.meetings, compact && styles.compact)} {...sectionData(section)}>
       {rows.map((row, i) => (
-        <li key={i} className={styles.meeting}>
+        <li
+          key={i}
+          className={styles.meeting}
+          // "MW" in M T W R F S U order ("" for no set days); HHMM times, absent when TBA.
+          data-days={row.days.map((d) => DAY_LETTER[d]).join("")}
+          data-start={row.start == null ? undefined : hhmm(row.start)}
+          data-end={row.end == null ? undefined : hhmm(row.end)}
+          data-online={row.online || undefined}
+        >
           <div className={styles.timeRow}>
             <span className={styles.time}>{row.time ?? (row.online ? "Online · asynchronous" : "Time TBA")}</span>
             <span className={styles.days}>

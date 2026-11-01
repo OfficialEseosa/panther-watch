@@ -1,0 +1,239 @@
+/* /developers: the legal pages' chrome (LegalLayout.module.css: opaque surface, slim header,
+   one reading column, 1rem/1.7 copy) plus code blocks and parameter tables. */
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.header {
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.headerInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 12px 24px;
+}
+
+.main {
+  flex: 1;
+  width: 100%;
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 32px 24px 56px;
+}
+
+.main:focus {
+  outline: none;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 24px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  transition:
+    color var(--transition-base),
+    border-color var(--transition-base),
+    background var(--transition-base);
+}
+
+.back:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+}
+
+.article {
+  min-width: 0;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--color-text);
+}
+
+.title {
+  margin: 0 0 8px;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-heading);
+}
+
+.lede {
+  margin: 0 0 20px;
+  font-size: 1.05rem;
+  color: var(--color-text-muted);
+}
+
+.toc {
+  margin-bottom: 8px;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+  font-size: 0.9rem;
+}
+
+.toc ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.toc li {
+  margin: 0;
+}
+
+.section {
+  margin-top: 32px;
+  scroll-margin-top: 24px;
+}
+
+.h2 {
+  margin: 0 0 10px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-heading);
+}
+
+.article p {
+  margin: 0 0 12px;
+}
+
+.article ul {
+  margin: 0 0 12px;
+  padding-left: 22px;
+}
+
+.article li {
+  margin-bottom: 8px;
+}
+
+.article a {
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.article strong {
+  font-weight: 600;
+  color: var(--color-heading);
+}
+
+.article code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  overflow-wrap: anywhere;
+}
+
+.endpoint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.endpoint code {
+  font-weight: 600;
+  color: var(--color-heading);
+}
+
+.figure {
+  margin: 0 0 16px;
+}
+
+.caption {
+  margin-bottom: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.pre {
+  margin: 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+.pre code {
+  font-size: inherit;
+  overflow-wrap: normal;
+  white-space: pre;
+}
+
+.tableWrap {
+  margin: 0 0 16px;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.table th,
+.table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.table th {
+  font-weight: 600;
+  color: var(--color-heading);
+}
+
+.table td:first-child {
+  white-space: nowrap;
+}
+
+/* The old .legal-footer: a plain top rule, centered small text. */
+.footer.footer {
+  margin-top: 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.footer.footer::before {
+  display: none;
+}
+
+.footer.footer > div {
+  padding: 20px 24px calc(20px + env(safe-area-inset-bottom));
+  font-size: 0.85rem;
+}
+
+@media (max-width: 600px) {
+  .headerInner,
+  .main {
+    padding-inline: 16px;
+  }
+
+  .title {
+    font-size: 1.6rem;
+  }
+}

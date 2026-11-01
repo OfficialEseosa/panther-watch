@@ -21,10 +21,12 @@ export function SiteFooter({ className }: { className?: string }) {
           </Suspense>{" "}
           PantherWatch. Not affiliated with Georgia State University.
         </p>
-        <nav aria-label="Legal" className={styles.links}>
+        <nav aria-label="Site links" className={styles.links}>
           <Link href="/privacy">Privacy Policy</Link>
           <span aria-hidden="true">·</span>
           <Link href="/terms">Terms of Service</Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/developers">Developers</Link>
         </nav>
       </div>
     </footer>
