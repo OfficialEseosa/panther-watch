@@ -2,6 +2,9 @@ import type {
   announcements,
   emailLog,
   jobRuns,
+  oauthClients,
+  oauthCodes,
+  oauthTokens,
   scheduleEntries,
   terms,
   users,
@@ -25,3 +28,7 @@ export type Announcement = typeof announcements.$inferSelect;
 export type NewAnnouncement = typeof announcements.$inferInsert;
 export type JobRun = typeof jobRuns.$inferSelect;
 export type NewJobRun = typeof jobRuns.$inferInsert;
+export type OAuthClient = typeof oauthClients.$inferSelect;
+export type NewOAuthClient = typeof oauthClients.$inferInsert;
+export type OAuthCode = typeof oauthCodes.$inferSelect;
+export type OAuthToken = typeof oauthTokens.$inferSelect;

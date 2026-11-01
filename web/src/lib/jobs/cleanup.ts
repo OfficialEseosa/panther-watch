@@ -1,6 +1,6 @@
-import { and, eq, inArray, lt, ne } from "drizzle-orm";
+import { and, eq, inArray, lt, ne, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { emailLog, jobRuns, scheduleEntries, terms, watchedSections } from "@/db/schema";
+import { emailLog, jobRuns, oauthClients, oauthCodes, oauthTokens, scheduleEntries, terms, watchedSections } from "@/db/schema";
 import type { GoSolarOptions } from "@/lib/gosolar";
 import { errorMessage, withJobRun, type JobOutcome } from "./runs";
 import { isTermExpired, refreshTerms } from "./terms";
@@ -25,6 +25,9 @@ export interface CleanupSummary extends Record<string, unknown> {
   scheduleEntriesDeleted: number;
   emailLogDeleted: number;
   jobRunsDeleted: number;
+  oauthCodesDeleted: number;
+  oauthTokensDeleted: number;
+  oauthClientsDeleted: number;
   termsRefresh?: CleanupOptions["termsRefresh"];
 }
 
@@ -34,7 +37,8 @@ export interface CleanupSummary extends Record<string, unknown> {
  *   2 months; seat alerts are pointless after add/drop),
  * - schedule entries only for view-only terms (never by the 2-month rule: students use the
  *   schedule for the semester in progress),
- * - `email_log` rows older than 90 days and `job_runs` older than 30 days.
+ * - `email_log` rows older than 90 days and `job_runs` older than 30 days,
+ * - expired OAuth codes and tokens, and idle OAuth clients (`pruneOAuth`).
  * Idempotent, so the Vercel backup cron running it a second time each day is harmless.
  */
 export async function runCleanup({ now = new Date(), termsRefresh }: CleanupOptions = {}): Promise<
@@ -89,6 +93,8 @@ export async function runCleanup({ now = new Date(), termsRefresh }: CleanupOpti
       )
       .returning({ id: jobRuns.id });
 
+    const oauth = await pruneOAuth(now);
+
     const summary: CleanupSummary = {
       purgedTerms,
       purgedScheduleTerms,
@@ -96,10 +102,43 @@ export async function runCleanup({ now = new Date(), termsRefresh }: CleanupOpti
       scheduleEntriesDeleted,
       emailLogDeleted: emails.length,
       jobRunsDeleted: runs.length,
+      ...oauth,
       ...(termsRefresh ? { termsRefresh } : {}),
     };
     return { ok: termsRefresh?.ok !== false, summary };
   });
+}
+
+/** Unused registered clients are dropped after this long (an abandoned or spam registration). */
+export const OAUTH_IDLE_CLIENT_DAYS = 7;
+
+/**
+ * OAuth housekeeping: authorization codes a day past expiry, token rows whose refresh token
+ * expired (revoked rows are kept until then so a replayed refresh token is still recognised),
+ * and clients with no codes or tokens left that were registered (or their metadata document
+ * fetched) more than a week ago. A client that is still connected always has a live row.
+ */
+async function pruneOAuth(now: Date) {
+  const db = getDb();
+  const codes = await db
+    .delete(oauthCodes)
+    .where(lt(oauthCodes.expiresAt, new Date(now.getTime() - DAY_MS)))
+    .returning({ codeHash: oauthCodes.codeHash });
+  const tokens = await db
+    .delete(oauthTokens)
+    .where(lt(oauthTokens.refreshExpiresAt, now))
+    .returning({ id: oauthTokens.id });
+  const clients = await db
+    .delete(oauthClients)
+    .where(
+      and(
+        lt(oauthClients.createdAt, new Date(now.getTime() - OAUTH_IDLE_CLIENT_DAYS * DAY_MS)),
+        sql`NOT EXISTS (SELECT 1 FROM ${oauthTokens} WHERE ${oauthTokens.clientId} = ${oauthClients.id})`,
+        sql`NOT EXISTS (SELECT 1 FROM ${oauthCodes} WHERE ${oauthCodes.clientId} = ${oauthClients.id})`,
+      ),
+    )
+    .returning({ id: oauthClients.id });
+  return { oauthCodesDeleted: codes.length, oauthTokensDeleted: tokens.length, oauthClientsDeleted: clients.length };
 }
 
 /** GoSolar's term list must answer well inside pg_net's 10 s wait for the route. */

@@ -289,3 +289,101 @@ export const jobRuns = pgTable(
   },
   (t) => [index("job_runs_job_started_at_idx").on(t.job, t.startedAt.desc())],
 );
+
+// ---------------------------------------------------------------------------------------------
+// OAuth (the MCP connector: src/lib/oauth, src/app/api/oauth, src/app/api/mcp)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * An OAuth client: an AI assistant or other app a student can connect to their account. Two
+ * kinds share the table:
+ * - Dynamically registered (RFC 7591, `POST /api/oauth/register`): `id` is a random client id
+ *   and `metadata_expires_at` is null.
+ * - Client ID Metadata Document clients (the MCP 2026-07-28 default): `id` is the HTTPS URL of
+ *   the client's own metadata document; the row caches that document until
+ *   `metadata_expires_at`, then the authorize endpoint fetches it again.
+ * `client_secret_hash` is null for public clients (PKCE only, the default); it is set when a
+ * client registered with `client_secret_post` / `client_secret_basic`.
+ */
+export const oauthClients = pgTable(
+  "oauth_clients",
+  {
+    id: text("id").primaryKey(),
+    clientSecretHash: text("client_secret_hash"),
+    name: text("name").notNull(),
+    /** Exact redirect URIs (loopback ones match on any port, RFC 8252 §7.3). */
+    redirectUris: jsonb("redirect_uris").$type<string[]>().notNull(),
+    metadataExpiresAt: timestamptz("metadata_expires_at"),
+    createdAt: timestamptz("created_at").notNull().defaultNow(),
+  },
+  (t) => [check("oauth_clients_name_not_blank", sql`btrim(${t.name}) <> ''`)],
+);
+
+/**
+ * A one-time authorization code (10 minutes). Only its SHA-256 is stored. `used_at` is set by
+ * an atomic claim at the token endpoint; presenting a used code again revokes the tokens of
+ * that user and client (RFC 6749 §4.1.2).
+ */
+export const oauthCodes = pgTable(
+  "oauth_codes",
+  {
+    codeHash: text("code_hash").primaryKey(),
+    clientId: text("client_id")
+      .notNull()
+      .references(() => oauthClients.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    redirectUri: text("redirect_uri").notNull(),
+    /** Granted scopes, space-separated. */
+    scope: text("scope").notNull(),
+    codeChallenge: text("code_challenge").notNull(),
+    codeChallengeMethod: text("code_challenge_method").notNull(),
+    expiresAt: timestamptz("expires_at").notNull(),
+    usedAt: timestamptz("used_at"),
+    createdAt: timestamptz("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("oauth_codes_expires_at_idx").on(t.expiresAt),
+    index("oauth_codes_user_id_idx").on(t.userId),
+    index("oauth_codes_client_id_idx").on(t.clientId),
+    check("oauth_codes_pkce_s256", sql`${t.codeChallengeMethod} = 'S256'`),
+  ],
+);
+
+/**
+ * One access + refresh token pair (only SHA-256 hashes are stored). Refreshing revokes this
+ * row and inserts a new one (rotation); a revoked refresh token presented again is a replay
+ * and revokes every token of that user and client. Rows are kept until the refresh token
+ * would have expired, so replays stay detectable; then the daily cleanup deletes them.
+ * A "connected app" in Settings is a client with at least one live row.
+ */
+export const oauthTokens = pgTable(
+  "oauth_tokens",
+  {
+    id: identityId(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    clientId: text("client_id")
+      .notNull()
+      .references(() => oauthClients.id, { onDelete: "cascade" }),
+    accessTokenHash: text("access_token_hash").notNull().unique("oauth_tokens_access_token_hash_key"),
+    refreshTokenHash: text("refresh_token_hash").notNull().unique("oauth_tokens_refresh_token_hash_key"),
+    /** Granted scopes, space-separated. */
+    scope: text("scope").notNull(),
+    expiresAt: timestamptz("expires_at").notNull(),
+    refreshExpiresAt: timestamptz("refresh_expires_at").notNull(),
+    /** When the user approved this connection; carried over on every refresh. */
+    grantedAt: timestamptz("granted_at").notNull().defaultNow(),
+    createdAt: timestamptz("created_at").notNull().defaultNow(),
+    /** Last MCP request with this access token (written at most once a minute). */
+    lastUsedAt: timestamptz("last_used_at"),
+    revokedAt: timestamptz("revoked_at"),
+  },
+  (t) => [
+    index("oauth_tokens_user_client_idx").on(t.userId, t.clientId),
+    index("oauth_tokens_client_id_idx").on(t.clientId),
+    index("oauth_tokens_refresh_expires_at_idx").on(t.refreshExpiresAt),
+  ],
+);

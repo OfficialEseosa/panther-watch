@@ -50,6 +50,8 @@ vercel env update APP_URL production                      # change a value later
 
 Env changes apply only to **new** deployments. Redeploy after editing (Deployments → ⋯ → Redeploy).
 
+The MCP connector (`/api/mcp`, OAuth under `/api/oauth/*` and `/.well-known/*`) needs **no new variables**: its issuer and resource URLs come from `APP_URL`, so `APP_URL` must be the exact origin users paste (`https://www.pantherwatch.app/api/mcp` in production). It needs migration `0003_oauth.sql` (`npm run db:migrate`) before the deploy that ships it. Deployment Protection doesn't affect it on the production domain; on preview URLs Claude can't reach it (Vercel's login page answers first), so test the connector on production or with a local client.
+
 ## 3. `web/vercel.json`
 
 `vercel.json` lives in the Root Directory (`web/`).
@@ -126,7 +128,7 @@ Check weekly, and daily during the first week after cutover, under the **Usage**
 |---|---|---|
 | Provisioned Memory (GB-hrs) | ≤ (day of month ÷ 30) × 360 | Above that pace: lower the watcher's per-run time budget, or drop to `*/5` in `supabase-cron.sql` |
 | Active CPU | ≤ (day ÷ 30) × 4 h | Above pace: look for server-rendered pages or CPU-heavy parsing (grades CSV, syllabi JSON) |
-| Function Invocations | ≪ 1M (the watcher uses ~14.4k) | Unexpected growth: check for a client polling loop |
+| Function Invocations | ≪ 1M (the watcher uses ~14.4k) | Unexpected growth: check for a client polling loop, or an MCP client hammering `/api/mcp` (the per-user tool limit is in memory per instance, so it only slows one loop down; revoke the app from the user's Connected apps or block it in the firewall) |
 | Fast Data Transfer | ≪ 100 GB | |
 
 Also open the project's **Observability** tab and filter by route: `/api/cron/watch` duration should stay well under 38 s, and errors under 5xx.

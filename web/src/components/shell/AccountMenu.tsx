@@ -3,7 +3,7 @@
 import { ThemeSegmented } from "@/components/theme/ThemeToggle";
 import { Avatar } from "@/components/ui/Avatar";
 import { ButtonAnchor } from "@/components/ui/Button";
-import { AdminIcon, ChevronUpIcon, LogoutIcon, SettingsIcon, UserIcon } from "@/components/ui/icons";
+import { AdminIcon, ChevronUpIcon, LogoutIcon, PlugIcon, SettingsIcon, UserIcon } from "@/components/ui/icons";
 import { Menu, MenuItem, MenuSeparator } from "@/components/ui/Menu";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/ui/cn";
@@ -86,6 +86,9 @@ export function AccountMenu({ placement }: AccountMenuProps) {
     >
       <MenuItem href="/settings" icon={<SettingsIcon />}>
         Settings
+      </MenuItem>
+      <MenuItem href="/settings#settings-connected-apps" icon={<PlugIcon />}>
+        Connect to Claude
       </MenuItem>
       {isAdmin ? (
         <MenuItem href="/admin" icon={<AdminIcon />}>

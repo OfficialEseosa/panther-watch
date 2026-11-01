@@ -12,7 +12,7 @@ import styles from "./page.module.css";
 export const metadata: Metadata = {
   title: "Developers",
   description:
-    "PantherWatch's public JSON API for Georgia State University course data: terms, subjects, live section search, grade history and professor ratings.",
+    "Connect Claude to PantherWatch over MCP, or use the public JSON API for Georgia State University course data: terms, subjects, live section search, grade history and professor ratings.",
   alternates: { canonical: "/developers" },
 };
 
@@ -21,7 +21,7 @@ const BASE = "https://www.pantherwatch.app";
 /*
  * Examples are real responses from production (Spring 2027, captured 2026-11-01), trimmed with
  * "…" where arrays or objects were cut. Keep them in sync with the route handlers under
- * src/app/api/courses and public/skills/pantherwatch/SKILL.md.
+ * src/app/api/courses.
  */
 
 const TERMS_RESPONSE = `{
@@ -149,7 +149,22 @@ const HTML_EXAMPLE = `<div data-crn="19010" data-subject="CSC" data-course-numbe
 <span data-rmp="3.7">…</span>
 <div data-gpa="2.65" data-gpa-scope="instructor">…</div>`;
 
+const MCP_URL = `${BASE}/api/mcp`;
+
+const MCP_TOOLS: Array<[name: string, scope: string, description: string]> = [
+  ["list_terms", "read", "Terms in GoSolar, registrable ones first."],
+  ["search_subjects", "read", "Subject codes matching a word (\"psych\" → PSYC)."],
+  ["search_sections", "read", "Live sections of a subject or course: seats, waitlist, meetings, delivery mode."],
+  ["get_section_details", "read", "Grade history, RateMyProfessors rating and syllabus for one section."],
+  ["list_watches", "read", "The student's tracked sections, optionally with live seats."],
+  ["list_schedule", "read", "The student's PantherWatch schedule, by term."],
+  ["check_conflicts", "read", "Time clashes between CRNs, from live meeting times."],
+  ["add_watch / remove_watch", "watches:write", "Start or stop a seat alert (email when a seat opens)."],
+  ["add_to_schedule / remove_from_schedule", "schedule:write", "Edit the schedule; adding reports any clashes."],
+];
+
 const SECTIONS = [
+  { id: "mcp", title: "Connect an AI assistant (MCP)" },
   { id: "overview", title: "Overview" },
   { id: "fair-use", title: "Fair use" },
   { id: "terms", title: "List terms" },
@@ -246,8 +261,8 @@ export default function DevelopersPage() {
           <h1 className={styles.title}>Developers</h1>
           <p className={styles.lede}>
             Everything PantherWatch shows about Georgia State courses comes from a small JSON API. It&rsquo;s public: no
-            key, no sign-in. If you&rsquo;re building a script, a browser extension or an AI assistant skill, use it
-            instead of scraping the results pages.
+            key, no sign-in. If you&rsquo;re building a script or a browser extension, use it instead of scraping the
+            results pages. To connect an AI assistant, use the <a href="#mcp">MCP connector</a>.
           </p>
 
           <nav aria-label="On this page" className={styles.toc}>
@@ -259,6 +274,86 @@ export default function DevelopersPage() {
               ))}
             </ul>
           </nav>
+
+          <Section id="mcp" title="Connect an AI assistant (MCP)">
+            <p>
+              PantherWatch is a remote MCP server. Connected to Claude (or any assistant that supports MCP connectors), it
+              searches classes and reads a student&rsquo;s tracked classes and schedule, and, if the student allows it,
+              tracks sections and edits the schedule for them. This is the preferred way for an assistant to use
+              PantherWatch.
+            </p>
+            <Code label="Connector URL">{MCP_URL}</Code>
+            <ol>
+              <li>
+                In Claude, open <strong>Settings → Connectors</strong>, choose <strong>Add custom connector</strong>{" "}
+                and paste the URL.
+              </li>
+              <li>
+                Sign in to PantherWatch if asked, then select <strong>Allow</strong>. Students can untick the write
+                permissions there.
+              </li>
+              <li>
+                Manage or disconnect it anytime in <Link href="/settings#settings-connected-apps">Settings → Connected
+                apps</Link>.
+              </li>
+            </ol>
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th scope="col">Scope</th>
+                    <th scope="col">Allows</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ["read", "Search courses; read tracked classes and schedule. Always granted."],
+                    ["watches:write", "Start and stop seat alerts. The student can leave it off."],
+                    ["schedule:write", "Add and remove schedule entries. The student can leave it off."],
+                  ].map(([scope, allows]) => (
+                    <tr key={scope}>
+                      <td>
+                        <code>{scope}</code>
+                      </td>
+                      <td>{allows}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th scope="col">Tool</th>
+                    <th scope="col">Scope</th>
+                    <th scope="col">What it does</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {MCP_TOOLS.map(([name, scope, description]) => (
+                    <tr key={name}>
+                      <td>
+                        <code>{name}</code>
+                      </td>
+                      <td>
+                        <code>{scope}</code>
+                      </td>
+                      <td>{description}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p>
+              For client developers: Streamable HTTP, OAuth 2.1 per the MCP authorization spec. Discovery starts at{" "}
+              <code>/.well-known/oauth-protected-resource/api/mcp</code> (also at the root location) and{" "}
+              <code>/.well-known/oauth-authorization-server</code>. Clients identify themselves with a Client ID
+              Metadata Document URL or register at <code>/api/oauth/register</code>; PKCE (S256) is required,
+              redirect URIs must be https or localhost, access tokens last an hour and refresh tokens rotate. The
+              server allows about 30 tool calls a minute per student.
+            </p>
+          </Section>
 
           <Section id="overview" title="Overview">
             <ul>
@@ -519,14 +614,11 @@ export default function DevelopersPage() {
 
           <Section id="assistants" title="AI assistants">
             <p>
-              There&rsquo;s an official skill for Claude and other agents that uses this API: course search, meeting
-              days, conflict checks and recommendations, with the caveats students need.
+              The <a href="#mcp">MCP connector</a> is the way to connect an assistant: it works from Claude without any
+              setup beyond pasting the URL, and it can act on the student&rsquo;s account. Agents that can&rsquo;t use
+              connectors can call the public API above directly.
             </p>
             <ul>
-              <li>
-                <a href="/skills/pantherwatch/SKILL.md">/skills/pantherwatch/SKILL.md</a> (Markdown, drop it into your
-                skills folder)
-              </li>
               <li>
                 <a href="/llms.txt">/llms.txt</a> (a short site summary for language models)
               </li>

@@ -2,6 +2,7 @@ import { after, NextResponse, type NextRequest } from "next/server";
 import { sendWelcomeEmailOnce } from "@/lib/account";
 import { OAUTH_STATE_COOKIE, secureCookies } from "@/lib/auth/constants";
 import { exchangeCode, fetchUserInfo } from "@/lib/auth/google";
+import { AUTH_NEXT_COOKIE, isSafeNext } from "@/lib/auth/next";
 import { signSession } from "@/lib/auth/jwt";
 import { setSessionCookie } from "@/lib/auth/session";
 import { AccountConflictError, UnverifiedEmailError, upsertGoogleUser } from "@/lib/auth/users";
@@ -10,13 +11,15 @@ import { constantTimeEqual } from "@/lib/http";
 
 function redirectTo(path: string): NextResponse {
   const response = NextResponse.redirect(new URL(path, env.APP_URL), 302);
-  response.cookies.set(OAUTH_STATE_COOKIE, "", {
+  const expired = {
     httpOnly: true,
     secure: secureCookies(),
     sameSite: "lax",
     path: "/api/auth/google",
     maxAge: 0,
-  });
+  } as const;
+  response.cookies.set(OAUTH_STATE_COOKIE, "", expired);
+  response.cookies.set(AUTH_NEXT_COOKIE, "", expired);
   return response;
 }
 
@@ -62,7 +65,9 @@ export async function GET(request: NextRequest) {
       picture: user.pictureUrl,
     });
 
-    const response = redirectTo("/dashboard");
+    // Back to an interrupted app connection (pw_auth_next, set by the login route), else the dashboard.
+    const next = request.cookies.get(AUTH_NEXT_COOKIE)?.value;
+    const response = redirectTo(isSafeNext(next) ? next : "/dashboard");
     setSessionCookie(response, token);
     return response;
   } catch (cause) {
