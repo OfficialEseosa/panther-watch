@@ -6,6 +6,7 @@ import { addWatch, removeWatch, type CourseData } from "@/lib/client/courses";
 import { ApiError, isAbortError, onUnauthorized } from "@/lib/client/http";
 import { addScheduleEntry, removeScheduleEntry } from "@/lib/client/schedule";
 import { courseCode, instructorOf, keyOf } from "@/lib/format";
+import { watchAddedBody } from "@/lib/watches/messages";
 import { sectionLabel, titleOf } from "./format";
 
 /** Toast for a guest trying a member action. */
@@ -32,12 +33,8 @@ export function reportActionError(toast: Pick<ToastApi, "info" | "error">, error
   toast.error(fallback, { body: "Check your connection and try again." });
 }
 
-/** Toast body after tracking; `openNow` mirrors POST /api/watches (track-while-open rule). */
-export function watchAddedBody(openNow: boolean): string {
-  return openNow
-    ? "This section has open seats right now; we'll alert you when it fills and reopens."
-    : "We'll email you when a seat opens.";
-}
+/** Toast body after tracking (shared with the MCP add_watch tool). */
+export { watchAddedBody };
 
 const watchInput = (section: CourseData, term: string, crn: string) => ({
   term,
