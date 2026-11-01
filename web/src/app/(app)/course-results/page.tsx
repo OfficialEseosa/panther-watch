@@ -34,6 +34,8 @@ import { courseCode, keyOf, sectionKey, termName as describeTerm } from "@/lib/f
 export const metadata: Metadata = {
   title: "Course results",
   description: "Live seat counts, grades and ratings for Georgia State sections.",
+  // Every hit is a live GoSolar search; robots.ts also disallows it.
+  robots: { index: false },
 };
 
 type PageProps = { searchParams: Promise<RawSearchParams> };

@@ -16,6 +16,7 @@ import { sectionKey, termName } from "@/lib/format";
 export const metadata: Metadata = {
   title: "Tracked classes",
   description: "The sections you watch, with live seat counts. We email you when a seat opens.",
+  robots: { index: false },
 };
 
 /** Up to 35 s on a cold GoSolar (20 s details deadline plus DB and render). */

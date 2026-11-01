@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { LEGAL_CONTACT_EMAIL, LegalLayout, LegalSection } from "@/components/shell/LegalLayout";
+import { canonicalUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
-  description: "The terms that govern your use of PantherWatch.",
+  description: "The terms that govern your use of PantherWatch, the Georgia State class seat tracker.",
+  alternates: { canonical: canonicalUrl("/terms") },
 };
 
 const SECTIONS = [

@@ -10,10 +10,13 @@ import { RetryButton } from "@/components/courses/RetryButton";
 import { SearchPageFrame } from "@/components/courses/SearchPageFrame";
 import { ErrorMessage } from "@/components/courses/SectionParts";
 import { getTerms, type TermInfo } from "@/lib/courses";
+import { canonicalUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Search classes",
-  description: "Search Georgia State sections by term, subject and course number, with live seat counts.",
+  title: "Search Georgia State classes",
+  description:
+    "Search Georgia State University (GSU) classes by term, subject and course number, with live seat counts, grade history and professor ratings.",
+  alternates: { canonical: canonicalUrl("/course-search") },
 };
 
 type PageProps = { searchParams: Promise<RawSearchParams> };

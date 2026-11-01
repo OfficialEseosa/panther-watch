@@ -11,11 +11,55 @@ import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { Banner } from "@/components/ui/Banner";
 import { ButtonAnchor, ButtonLink } from "@/components/ui/Button";
 import { BookmarkIcon, CalendarIcon, ChartIcon, SearchIcon, UsersIcon } from "@/components/ui/icons";
+import { SITE_URL } from "@/lib/site";
 import styles from "./page.module.css";
 
+const HOME_DESCRIPTION =
+  "Get an email the moment a Georgia State University class seat opens. Grade history, RateMyProfessors ratings and a schedule builder, free for GSU students.";
+
 export const metadata: Metadata = {
-  title: { absolute: "PantherWatch · Track Georgia State class seats" },
+  title: { absolute: "PantherWatch – Seat alerts, grade history and a schedule builder for Georgia State classes" },
+  description: HOME_DESCRIPTION,
+  alternates: { canonical: SITE_URL },
 };
+
+/**
+ * schema.org JSON-LD for search engines. No WebSite SearchAction: the search form has no
+ * free-text query parameter to point one at.
+ */
+const STRUCTURED_DATA = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      "@id": `${SITE_URL}/#app`,
+      name: "PantherWatch",
+      url: SITE_URL,
+      description: HOME_DESCRIPTION,
+      applicationCategory: "EducationalApplication",
+      operatingSystem: "Web",
+      offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+      publisher: { "@id": `${SITE_URL}/#organization` },
+    },
+    {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
+      name: "PantherWatch",
+      url: SITE_URL,
+      logo: `${SITE_URL}/brand/panther.png`,
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      name: "PantherWatch",
+      url: SITE_URL,
+      publisher: { "@id": `${SITE_URL}/#organization` },
+    },
+  ],
+};
+
+/** `<` escaped so no string in the data can close the script element. */
+const STRUCTURED_DATA_JSON = JSON.stringify(STRUCTURED_DATA).replace(/</g, "\\u003c");
 
 const AUTH_ERRORS: Record<string, string> = {
   invalid_state: "Your sign-in took too long or was started in another tab. Please try again.",
@@ -139,6 +183,7 @@ const FEATURES = [
 export default function Home({ searchParams }: PageProps<"/">) {
   return (
     <div className={styles.home}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: STRUCTURED_DATA_JSON }} />
       <SkipLink />
 
       <header className={styles.header}>
@@ -173,10 +218,13 @@ export default function Home({ searchParams }: PageProps<"/">) {
         <section className={styles.heroSection} aria-labelledby="hero-title">
           <div className={`${styles.container} ${styles.hero}`}>
             <div className={styles.heroCopy}>
-              <h1 id="hero-title">Track seats. Enroll faster.</h1>
+              <h1 id="hero-title">
+                <span className="sr-only">PantherWatch: </span>Track seats. Enroll faster.
+              </h1>
               <p>
-                PantherWatch monitors Georgia State course availability in real time — search by term and subject,
-                track specific CRNs, and get ready to grab seats the moment they open.
+                PantherWatch is free course seat tracking for Georgia State University (GSU) students — search by
+                term and subject, track specific CRNs, and get an email the moment a seat opens. Grade history,
+                professor ratings and a schedule builder are built in.
               </p>
               <div className={styles.heroActions}>
                 <ButtonAnchor href={SIGN_IN_HREF} size="lg">

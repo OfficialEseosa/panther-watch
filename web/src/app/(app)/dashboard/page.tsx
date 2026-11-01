@@ -15,7 +15,7 @@ import { getCurrentUser, type CurrentUser } from "@/lib/auth/session";
 import layout from "@/components/dashboard/Dashboard.module.css";
 import styles from "./page.module.css";
 
-export const metadata: Metadata = { title: "Dashboard" };
+export const metadata: Metadata = { title: "Dashboard", robots: { index: false } };
 
 const SUBTITLE = "Keep an eye on enrollment and act quickly when seats open across Georgia State courses.";
 

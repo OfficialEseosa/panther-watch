@@ -17,7 +17,7 @@ import { listConnectedApps, mcpResourceUrl } from "@/lib/oauth";
 import ui from "@/components/settings/Settings.module.css";
 import styles from "./page.module.css";
 
-export const metadata: Metadata = { title: "Settings" };
+export const metadata: Metadata = { title: "Settings", robots: { index: false } };
 
 /**
  * /settings: the original Settings page (old Settings.jsx): one card per section (Profile,

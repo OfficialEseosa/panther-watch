@@ -4,6 +4,7 @@ import type { Metadata, Viewport } from "next";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { THEME_INIT_SCRIPT } from "@/components/theme/themeScript";
 import { ToastProvider } from "@/components/ui/Toast";
+import { SITE_URL } from "@/lib/site";
 import { inter } from "@/styles/fonts";
 import "./globals.css";
 
@@ -12,7 +13,7 @@ const SITE_DESCRIPTION =
 
 export const metadata: Metadata = {
   // Resolves the relative og:image / twitter:image URLs from opengraph-image.tsx.
-  metadataBase: new URL(process.env.APP_URL ?? "https://pantherwatch.app"),
+  metadataBase: new URL(process.env.APP_URL || SITE_URL),
   title: { default: "PantherWatch", template: "%s · PantherWatch" },
   description: SITE_DESCRIPTION,
   applicationName: "PantherWatch",

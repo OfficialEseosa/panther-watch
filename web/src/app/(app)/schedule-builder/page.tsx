@@ -14,6 +14,7 @@ export const maxDuration = 30;
 export const metadata: Metadata = {
   title: "Schedule builder",
   description: "Plan your week, catch overlapping classes, and export your schedule to a calendar.",
+  robots: { index: false },
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
