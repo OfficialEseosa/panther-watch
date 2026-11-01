@@ -142,6 +142,21 @@
   to { opacity: 0; transform: scale(1.5); }
 }
 
+/* AI Assistant nav pill (motion.md 4.20): soft blobs drifting inside the pill. Transform only. */
+@keyframes liquid-drift-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(60%, 15%) scale(1.25); }
+}
+@keyframes liquid-drift-2 {
+  0%, 100% { transform: translate(0, 0) scale(1.1); }
+  50% { transform: translate(-55%, -20%) scale(0.9); }
+}
+@keyframes liquid-drift-3 {
+  0%, 100% { transform: translate(0, 0) scale(0.95); }
+  33% { transform: translate(35%, -25%) scale(1.15); }
+  66% { transform: translate(-30%, 20%) scale(1); }
+}
+
 /* ---------- keyframe aliases for CSS Modules (see the header comment) ---------- */
 /* ::backdrop is listed for engines where it doesn't inherit from its dialog. */
 :root,
@@ -180,6 +195,9 @@
   --kf-icon-pulse-h: icon-pulse-h;
   --kf-icon-ring: icon-ring;
   --kf-icon-ring-h: icon-ring-h;
+  --kf-liquid-drift-1: liquid-drift-1;
+  --kf-liquid-drift-2: liquid-drift-2;
+  --kf-liquid-drift-3: liquid-drift-3;
 }
 
 /* ---------- theme switch: suppress component transitions for the swap ---------- */

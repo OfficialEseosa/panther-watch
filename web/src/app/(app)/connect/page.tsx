@@ -88,9 +88,8 @@ async function Consent({ searchParams }: PageProps) {
       <Card icon={<PlugIcon />} title="Connect an app">
         <p className={styles.lead}>Nothing is waiting to connect.</p>
         <p className={ui.description}>
-          To use PantherWatch from Claude, add the connector URL from{" "}
-          <Link href="/settings#settings-connected-apps">Settings → Connected apps</Link> in Claude. Claude then opens
-          this page so you can allow it.
+          To use PantherWatch from an AI assistant, follow the steps on the{" "}
+          <Link href="/assistant">AI Assistant</Link> page. Your assistant then opens this page so you can allow it.
         </p>
       </Card>
     );

@@ -204,6 +204,15 @@
   --indicator: var(--color-primary-600);
   --indicator-contrast: #ffffff;
 
+  /* "AI Assistant" nav pill (Sidebar / More sheet): the light theme's brand blues in BOTH themes,
+     so white text keeps its contrast (dark mode lightens --color-primary-400). Worst case, both
+     blobs at their peak over the base: 5.3:1 for white; 4.8:1 with the hover brightness(1.06). */
+  --liquid-base: #0039a6;
+  --liquid-a: #1f5fc3;
+  --liquid-b: #4a80e3;
+  --liquid-c: #0f2f61;
+  --liquid-text: #ffffff;
+
   --focus-ring: var(--color-primary-500);
 
   --success: var(--color-success);
@@ -333,6 +342,10 @@
   --dur: 200ms;
   --dur-slow: 300ms;
   --dur-slower: 400ms;
+  /* AI Assistant nav pill drift (motion.md 4.20): three slow, unequal loops so it never repeats visibly. */
+  --dur-liquid-1: 9s;
+  --dur-liquid-2: 11s;
+  --dur-liquid-3: 12s;
   --stagger: 0ms;
 
   --ease-standard: ease;

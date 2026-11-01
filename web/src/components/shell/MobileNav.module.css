@@ -174,3 +174,27 @@
 .legal a {
   color: inherit;
 }
+
+/* AI Assistant row: the sidebar pill's colors as a static gradient (no drifting blobs in the
+   sheet). White on it: 6.0:1 at the lightest stop. Current page: a white 4 px bar (the blue --indicator would vanish on it). */
+.row.liquidRow {
+  margin-bottom: var(--space-1);
+  background: linear-gradient(120deg, var(--liquid-base) 30%, var(--liquid-a));
+  color: var(--liquid-text);
+  font-weight: var(--weight-semibold);
+}
+
+.row.liquidRow .rowIcon,
+.row.liquidRow .rowChevron {
+  color: var(--liquid-text);
+}
+
+.row.liquidRow[aria-current="page"] {
+  box-shadow: inset 4px 0 0 var(--liquid-text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .row.liquidRow:hover {
+    background: linear-gradient(120deg, var(--liquid-base) 20%, var(--liquid-a));
+  }
+}

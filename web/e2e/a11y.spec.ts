@@ -8,7 +8,7 @@ import { SEED, addToSchedule, addWatch, expect, freshUser, login, resetAll, skip
  * Fails on serious or critical WCAG 2.x A/AA violations; minor/moderate ones are printed but
  * tolerated. Add new pages to GUEST_PAGES or MEMBER_PAGES.
  */
-const GUEST_PAGES = ["/", "/privacy", "/terms", "/dashboard"];
+const GUEST_PAGES = ["/", "/privacy", "/terms", "/dashboard", "/assistant"];
 
 const { term, csc1301, math2211 } = SEED;
 
@@ -46,6 +46,10 @@ const MEMBER_PAGES: { path: string; ready: (page: Page) => Promise<void> }[] = [
   {
     path: "/settings",
     ready: (page) => expect(page.getByRole("button", { name: "Delete account" })).toBeVisible(),
+  },
+  {
+    path: "/assistant",
+    ready: (page) => expect(page.getByText("No apps are connected.")).toBeVisible(),
   },
 ];
 

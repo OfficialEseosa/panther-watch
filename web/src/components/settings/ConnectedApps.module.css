@@ -1,11 +1,5 @@
-/* Settings → Connected apps: same card as the other sections (Settings.module.css); these are
-   only the pieces unique to it (the URL row, the numbered steps and the app list). */
-.intro {
-  display: flex;
-  flex-direction: column;
-  max-width: 600px;
-}
-
+/* Connected apps (Settings card and /assistant): same card as the other sections
+   (Settings.module.css); these are only the pieces unique to it (the URL row and the app list). */
 .urlRow {
   display: flex;
   align-items: center;
@@ -16,6 +10,17 @@
   border-radius: var(--radius-sm);
 }
 
+.urlRowLarge {
+  padding: 12px 12px 12px 18px;
+  border-width: 2px;
+  border-color: var(--color-border-strong);
+}
+
+.urlRowLarge .url {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
 .url {
   flex: 1;
   min-width: 0;
@@ -23,19 +28,6 @@
   font-size: 0.9rem;
   color: var(--color-heading);
   overflow-wrap: anywhere;
-}
-
-.steps {
-  margin: 0;
-  padding-left: 22px;
-  font-size: 0.9rem;
-  line-height: 1.6;
-  color: var(--color-text);
-}
-
-.steps strong {
-  font-weight: 600;
-  color: var(--color-heading);
 }
 
 .appsBlock {
@@ -89,5 +81,13 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
+  }
+}
+
+@media (max-width: 640px) {
+  .urlRowLarge {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px;
   }
 }

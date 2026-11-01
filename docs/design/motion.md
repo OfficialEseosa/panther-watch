@@ -199,6 +199,7 @@ Summary first, details below. "Initial load" means the first document render (SS
 | 4.16 | Menus, listbox, tooltip | Open popover | `rise-in` (`--move-xs`, direction away from trigger) | `--dur-fast` / `--ease-out`; close instant | Fade only |
 | 4.17 | Sticky filter bar shadow | Bar becomes stuck | `transition: box-shadow, border-color` | `--dur-fast` / `--ease-standard` | Same (no movement) |
 | 4.18 | Buttons / IconButtons / Chips | Hover, press, pressed-state change | `transition` on background-color, border-color, color; `:active` scale | `--dur-fast`; press `--dur-instant` | No scale |
+| 4.20 | AI Assistant nav pill | Always (the sidebar item) | Three blurred blobs, `liquid-drift-1/2/3` on `transform`, `will-change: transform` | `--dur-liquid-1/2/3` (9 / 11 / 12 s) ease-in-out loops | Static gradient, no blobs |
 
 ### 4.1 Page enter
 
@@ -517,6 +518,17 @@ Used by the `Stat` component (spec.md §2.19) on the Dashboard and Admin › Sta
 - Buttons, IconButtons, Chips, nav items and inputs: `transition: background-color, border-color, color` at `--dur-fast` `--ease-standard`.
 - `:active { transform: scale(var(--scale-press)); transition-duration: var(--dur-instant); }` on Button and IconButton only, not nav items or chips.
 - Focus rings never animate.
+
+### 4.20 AI Assistant nav pill
+
+The sidebar's "AI Assistant" item is a rounded pill in the brand blues (`--liquid-*`, the same in
+both themes) with three soft blurred blobs drifting inside it: `primary-500` at 0.7, `primary-400`
+at 0.45 and `primary-700` at 0.6 over `primary-600`. Each blob loops on `transform` only
+(translate + scale) at 9, 11 and 12 s, so the pattern never visibly repeats; hover is
+`filter: brightness(1.06)` on the blob layer. White label: 5.3:1 at the brightest point (4.8:1
+hovered). The 4 px "you are here" bar sits outside the pill, at the sidebar's edge. The More sheet
+row is the static gradient. Under reduced motion the blobs are removed and the pill is a static
+gradient.
 
 ### 4.19 Deliberately not animated
 

@@ -348,6 +348,107 @@
   }
 }
 
+/* ---- AI Assistant pill (motion.md 4.20) ----
+   A rounded pill in the brand blues (--liquid-*, the same in both themes) with three blurred
+   blobs drifting behind a white label. The blobs live in their own clipped layer so the 4 px
+   "you are here" bar can sit outside the pill, at the sidebar's edge (12 px left of the pill in
+   every layout). White on the brightest blob mix: 5.3:1; hovered (brightness 1.06): 4.8:1. */
+.link.liquid {
+  isolation: isolate;
+  background: var(--liquid-base);
+  color: var(--liquid-text);
+  font-weight: 600;
+}
+
+.liquidBg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  border-radius: inherit;
+  background: var(--liquid-base);
+  transition: filter var(--transition-base);
+}
+
+.blob {
+  position: absolute;
+  width: 70%;
+  height: 170%;
+  border-radius: 50%;
+  filter: blur(12px);
+  will-change: transform;
+}
+
+.blob:nth-child(1) {
+  top: -45%;
+  left: -20%;
+  background: var(--liquid-a);
+  opacity: 0.7;
+  animation: var(--kf-liquid-drift-1) var(--dur-liquid-1) ease-in-out infinite;
+}
+
+.blob:nth-child(2) {
+  top: -60%;
+  right: -25%;
+  background: var(--liquid-b);
+  opacity: 0.45;
+  animation: var(--kf-liquid-drift-2) var(--dur-liquid-2) ease-in-out infinite;
+}
+
+.blob:nth-child(3) {
+  bottom: -90%;
+  left: 25%;
+  background: var(--liquid-c);
+  opacity: 0.6;
+  animation: var(--kf-liquid-drift-3) var(--dur-liquid-3) ease-in-out infinite;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .link.liquid:hover {
+    background: var(--liquid-base);
+    color: var(--liquid-text);
+  }
+
+  .link.liquid:hover .liquidBg {
+    filter: brightness(1.06);
+  }
+}
+
+.link.liquid[aria-current="page"] {
+  background: var(--liquid-base);
+  color: var(--liquid-text);
+}
+
+.link.liquid[aria-current="page"]::before {
+  left: -12px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* Full sidebar and drawer: an inset pill (12 px each side) instead of a full-bleed row; the
+   8 px padding keeps the icon on the same 20 px column as the other items. */
+.sidebar .link.liquid,
+.drawer .link.liquid {
+  width: calc(100% - 24px);
+  margin-inline: 12px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+}
+
+.sidebar .link.liquid[aria-current="page"]::before,
+.drawer .link.liquid[aria-current="page"]::before {
+  border-radius: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blob {
+    display: none;
+  }
+
+  .liquidBg {
+    background: linear-gradient(120deg, var(--liquid-base) 30%, var(--liquid-a));
+  }
+}
+
 /* The animated icon wrapper takes the size; its SVG fills it. */
 .icon > svg {
   width: 100%;

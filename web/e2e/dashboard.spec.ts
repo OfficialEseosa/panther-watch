@@ -169,6 +169,45 @@ test("the active nav item's icon plays its animation after Dashboard → Course 
   await expect(link.locator("[data-playing]")).toHaveCount(0);
 });
 
+test("the AI Assistant tab opens /assistant with the connector URL and Copy", async ({ page, context }, testInfo) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await login(page.request, freshUser("assistant", "Ada Assistant"));
+  await skipWhatsNew(page);
+  await page.goto("/dashboard");
+
+  // Sidebar (second group, above Settings) on desktop; the More sheet on phones.
+  let tab: Locator;
+  if (testInfo.project.name === "mobile") {
+    await (await hydrated(page.getByRole("button", { name: "More" }))).click();
+    tab = page.getByRole("dialog", { name: "More" }).getByRole("link", { name: "AI Assistant" });
+  } else {
+    const sidebarLinks = page.locator('aside nav[aria-label="Primary"] a');
+    tab = page.locator('aside nav[aria-label="Primary"] a[href="/assistant"]');
+    const hrefs = await sidebarLinks.evaluateAll((links) => links.map((a) => a.getAttribute("href")));
+    expect(hrefs.indexOf("/assistant")).toBe(hrefs.indexOf("/settings") - 1);
+    expect(hrefs.indexOf("/assistant")).toBeGreaterThan(hrefs.indexOf("/schedule-builder"));
+  }
+  await expect(tab).toBeVisible();
+  await expect(tab).toHaveAttribute("href", "/assistant");
+  await (await hydrated(tab)).click();
+
+  await expect(page).toHaveURL(`${APP_URL}/assistant`);
+  await expect(page).toHaveTitle("AI Assistant · PantherWatch");
+  await expect(page.getByRole("heading", { level: 1, name: "AI Assistant" })).toBeVisible();
+  await expect(page.getByLabel("Connector URL", { exact: true })).toHaveText(`${new URL(APP_URL).origin}/api/mcp`);
+  const copy = page.getByRole("button", { name: "Copy" });
+  await (await hydrated(copy)).click();
+  await expect(page.getByRole("button", { name: "Copied!" })).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(`${new URL(APP_URL).origin}/api/mcp`);
+  // Steps per assistant, as tabs.
+  await expect(page.getByRole("tab", { name: "Claude" })).toHaveAttribute("aria-selected", "true");
+  await page.getByRole("tab", { name: "ChatGPT" }).click();
+  await expect(page.getByRole("tabpanel")).toContainText("Developer mode");
+  if (testInfo.project.name !== "mobile") {
+    await expect(page.locator('aside nav[aria-label="Primary"] a[href="/assistant"]')).toHaveAttribute("aria-current", "page");
+  }
+});
+
 test("the showcase finale fades out (headline, then overlay) instead of vanishing", async ({ page }) => {
   // The story runs ~16.4 s before the finale: drive its timers with the fake clock. CSS transitions
   // and Web Animations still run in real time, which is what this test watches.

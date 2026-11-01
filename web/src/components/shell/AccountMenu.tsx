@@ -87,8 +87,8 @@ export function AccountMenu({ placement }: AccountMenuProps) {
       <MenuItem href="/settings" icon={<SettingsIcon />}>
         Settings
       </MenuItem>
-      <MenuItem href="/settings#settings-connected-apps" icon={<PlugIcon />}>
-        Connect to Claude
+      <MenuItem href="/assistant" icon={<PlugIcon />}>
+        Connect an AI assistant
       </MenuItem>
       {isAdmin ? (
         <MenuItem href="/admin" icon={<AdminIcon />}>

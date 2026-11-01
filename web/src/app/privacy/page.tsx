@@ -100,9 +100,9 @@ export default function PrivacyPolicyPage() {
           </li>
         </ul>
         <p>
-          If you connect an app such as Claude to your account (Settings &rarr; Connected apps), that app can see your
-          tracked classes and schedule, and change them if you allowed it. It never sees your Google password. You
-          can disconnect it at any time.
+          If you connect an AI assistant or other app to your account (Settings &rarr; Connected apps), that app can
+          see your tracked classes and schedule, and change them if you allowed it. It never sees your Google
+          password. You can disconnect it at any time.
         </p>
         <p>
           We may also disclose information if required by law, or to protect the rights, safety, and security of

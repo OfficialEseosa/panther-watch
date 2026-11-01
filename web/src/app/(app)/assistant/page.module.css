@@ -1,0 +1,105 @@
+/* /assistant: the Settings page's column and cards (Settings.module.css); these are only the
+   pieces unique to it (lead paragraph, numbered steps, example prompts, permission list). */
+.page {
+  width: 100%;
+  max-width: 1000px;
+  margin-inline: auto;
+}
+
+.lead {
+  max-width: 68ch;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--color-text);
+}
+
+.panel {
+  padding-top: 16px;
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding-left: 22px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--color-text);
+}
+
+.steps strong {
+  font-weight: 600;
+  color: var(--color-heading);
+}
+
+.steps li::marker {
+  font-weight: 600;
+  color: var(--color-heading);
+}
+
+.note {
+  margin-top: 12px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.code {
+  margin: 8px 0 4px;
+  padding: 10px 14px;
+  overflow-x: auto;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--color-heading);
+}
+
+.prompts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.prompt {
+  padding: 12px 14px;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--color-text);
+}
+
+.scopes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scopeLabel {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-heading);
+}
+
+.scopeWhen {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.scopeDescription {
+  display: block;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--color-text);
+}

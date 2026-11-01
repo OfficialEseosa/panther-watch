@@ -7,11 +7,12 @@ import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { IconButton } from "@/components/ui/IconButton";
 import { ExpandIcon, LockIcon, XIcon } from "@/components/ui/icons";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { cn } from "@/lib/ui/cn";
 import { playExit } from "@/lib/ui/motion";
 import { AccountMenu, AccountMenuFallback } from "./AccountMenu";
 import { AnimatedIcon } from "./AnimatedIcon";
 import { Brand } from "./Brand";
-import { ADMIN_NAV, isActive, PRIMARY_NAV, SETTINGS_NAV, type NavItem } from "./nav";
+import { ADMIN_NAV, ASSISTANT_NAV, isActive, PRIMARY_NAV, SETTINGS_NAV, type NavItem } from "./nav";
 import { useViewer } from "./ViewerContext";
 import styles from "./Sidebar.module.css";
 
@@ -39,23 +40,33 @@ function SideNavLink({
   pathname,
   expanded,
   onNavigate,
+  liquid = false,
 }: {
   item: NavItem;
   pathname: string;
   /** Drawer: always show labels, no rail tooltips. */
   expanded: boolean;
   onNavigate?: () => void;
+  /** The AI Assistant pill: brand-blue blobs drifting behind a white label (motion.md 4.20). */
+  liquid?: boolean;
 }) {
   const active = isActive(item, pathname);
   const Icon = item.icon;
   const link = (
     <Link
       href={item.href}
-      className={styles.link}
+      className={cn(styles.link, liquid && styles.liquid)}
       data-anim-host
       aria-current={active ? "page" : undefined}
       onClick={onNavigate}
     >
+      {liquid ? (
+        <span className={styles.liquidBg} aria-hidden="true">
+          <span className={styles.blob} />
+          <span className={styles.blob} />
+          <span className={styles.blob} />
+        </span>
+      ) : null}
       <AnimatedIcon active={active} playKey={pathname} className={styles.icon}>
         <Icon />
       </AnimatedIcon>
@@ -91,6 +102,7 @@ function NavList({ expanded, onNavigate }: { expanded: boolean; onNavigate?: () 
       </ul>
       <hr className={styles.divider} />
       <ul className={styles.list}>
+        <SideNavLink item={ASSISTANT_NAV} pathname={pathname} expanded={expanded} onNavigate={onNavigate} liquid />
         <SideNavLink item={SETTINGS_NAV} pathname={pathname} expanded={expanded} onNavigate={onNavigate} />
         <Suspense fallback={null}>
           <AdminLink pathname={pathname} expanded={expanded} onNavigate={onNavigate} />

@@ -12,7 +12,7 @@ describe("robots.txt and sitemap.xml", () => {
     const { rules, sitemap: sitemapUrl } = robots();
     const rule = Array.isArray(rules) ? rules[0] : rules;
     expect(rule.userAgent).toBe("*");
-    expect(rule.allow).toEqual(["/", "/course-search", "/privacy", "/terms", "/developers"]);
+    expect(rule.allow).toEqual(["/", "/course-search", "/assistant", "/privacy", "/terms", "/developers"]);
     expect(rule.disallow).toEqual(
       expect.arrayContaining([
         "/api/",
@@ -33,6 +33,7 @@ describe("robots.txt and sitemap.xml", () => {
     expect(urls).toEqual([
       "https://www.pantherwatch.app",
       "https://www.pantherwatch.app/course-search",
+      "https://www.pantherwatch.app/assistant",
       "https://www.pantherwatch.app/developers",
       "https://www.pantherwatch.app/privacy",
       "https://www.pantherwatch.app/terms",

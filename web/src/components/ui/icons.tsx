@@ -206,6 +206,21 @@ export const PlugIcon = createIcon("plug", (
     <path d="M12 16.5v4" />
   </>
 ));
+export const SparkleIcon = createIcon("sparkle", (
+  <>
+    <path d="M10.5 3.5 12.3 8.7 17.5 10.5 12.3 12.3 10.5 17.5 8.7 12.3 3.5 10.5 8.7 8.7z" />
+    <path d="M18 15.5v5M15.5 18h5" />
+  </>
+));
+export const ChatIcon = createIcon("chat", (
+  <path d="M5.5 5h13A1.5 1.5 0 0 1 20 6.5v8a1.5 1.5 0 0 1-1.5 1.5H10l-4 3.5V16h-.5A1.5 1.5 0 0 1 4 14.5v-8A1.5 1.5 0 0 1 5.5 5z" />
+));
+export const LinkIcon = createIcon("link", (
+  <>
+    <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" />
+    <path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />
+  </>
+));
 export const PlayIcon = createIcon("play", <path d="M8 5.5v13l10-6.5z" />);
 export const PauseIcon = createIcon("pause", <path d="M9 5.5v13M15 5.5v13" />);
 export const RefreshIcon = createIcon("refresh", (

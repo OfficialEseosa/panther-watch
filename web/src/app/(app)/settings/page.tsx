@@ -13,7 +13,7 @@ import { ButtonAnchor } from "@/components/ui/Button";
 import { LogoutIcon, MailIcon, MoonIcon, PlugIcon, UserIcon, AlertIcon } from "@/components/ui/icons";
 import { Skeleton, SkeletonGroup } from "@/components/ui/Skeleton";
 import { requireUser, type CurrentUser } from "@/lib/auth/session";
-import { listConnectedApps, mcpResourceUrl } from "@/lib/oauth";
+import { listConnectedApps } from "@/lib/oauth";
 import ui from "@/components/settings/Settings.module.css";
 import styles from "./page.module.css";
 
@@ -159,7 +159,7 @@ async function AccountSections() {
       </Section>
 
       <Section icon={<PlugIcon />} title="Connected apps">
-        <ConnectedApps mcpUrl={mcpResourceUrl()} apps={await loadConnectedApps(user.id)} />
+        <ConnectedApps apps={await loadConnectedApps(user.id)} />
       </Section>
 
       <Section icon={<AlertIcon />} title="Account actions">

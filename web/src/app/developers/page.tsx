@@ -12,7 +12,7 @@ import styles from "./page.module.css";
 export const metadata: Metadata = {
   title: "Developers",
   description:
-    "Connect Claude to PantherWatch over MCP, or use the public JSON API for Georgia State University course data: terms, subjects, live section search, grade history and professor ratings.",
+    "Connect an AI assistant to PantherWatch over MCP, or use the public JSON API for Georgia State University course data: terms, subjects, live section search, grade history and professor ratings.",
   alternates: { canonical: "/developers" },
 };
 
@@ -277,16 +277,20 @@ export default function DevelopersPage() {
 
           <Section id="mcp" title="Connect an AI assistant (MCP)">
             <p>
-              PantherWatch is a remote MCP server. Connected to Claude (or any assistant that supports MCP connectors), it
-              searches classes and reads a student&rsquo;s tracked classes and schedule, and, if the student allows it,
-              tracks sections and edits the schedule for them. This is the preferred way for an assistant to use
-              PantherWatch.
+              PantherWatch is a remote MCP server. Any MCP-capable assistant or agent can connect, for example Claude,
+              ChatGPT or Cursor. Once connected, it searches classes and reads a student&rsquo;s tracked classes and
+              schedule, and, if the student allows it, tracks sections and edits the schedule for them. This is the
+              preferred way for an assistant to use PantherWatch.
+            </p>
+            <p>
+              Students: the <Link href="/assistant">AI Assistant</Link> page has step-by-step setup for Claude, ChatGPT
+              and Cursor. This page is the reference for developers.
             </p>
             <Code label="Connector URL">{MCP_URL}</Code>
             <ol>
               <li>
-                In Claude, open <strong>Settings → Connectors</strong>, choose <strong>Add custom connector</strong>{" "}
-                and paste the URL.
+                In the assistant&rsquo;s settings, add a custom connector (MCP server) and paste the URL. In Claude,
+                for example: <strong>Customize → Connectors → + Add → Add custom connector</strong>.
               </li>
               <li>
                 Sign in to PantherWatch if asked, then select <strong>Allow</strong>. Students can untick the write
@@ -614,9 +618,9 @@ export default function DevelopersPage() {
 
           <Section id="assistants" title="AI assistants">
             <p>
-              The <a href="#mcp">MCP connector</a> is the way to connect an assistant: it works from Claude without any
-              setup beyond pasting the URL, and it can act on the student&rsquo;s account. Agents that can&rsquo;t use
-              connectors can call the public API above directly.
+              The <a href="#mcp">MCP connector</a> is the way to connect an assistant: any MCP-capable assistant can
+              use it with no setup beyond pasting the URL, and it can act on the student&rsquo;s account. Agents that
+              can&rsquo;t use connectors can call the public API above directly.
             </p>
             <ul>
               <li>

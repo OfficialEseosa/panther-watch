@@ -5,6 +5,7 @@ import {
   DashboardIcon,
   SearchIcon,
   SettingsIcon,
+  SparkleIcon,
   type IconComponent,
 } from "@/components/ui/icons";
 
@@ -53,6 +54,15 @@ export const PRIMARY_NAV: NavItem[] = [
   },
 ];
 
+/** The AI integration (MCP connector setup): first in the second group, drawn as the "liquid" pill. */
+export const ASSISTANT_NAV: NavItem = {
+  href: "/assistant",
+  label: "AI Assistant",
+  shortLabel: "AI",
+  title: "AI Assistant",
+  icon: SparkleIcon,
+};
+
 export const SETTINGS_NAV: NavItem = {
   href: "/settings",
   label: "Settings",
@@ -79,6 +89,6 @@ export function isActive(item: NavItem, pathname: string): boolean {
 
 /** Title for the top bar, from the current path. */
 export function titleFor(pathname: string): string {
-  const item = [...PRIMARY_NAV, SETTINGS_NAV, ADMIN_NAV].find((entry) => isActive(entry, pathname));
+  const item = [...PRIMARY_NAV, ASSISTANT_NAV, SETTINGS_NAV, ADMIN_NAV].find((entry) => isActive(entry, pathname));
   return item?.title ?? "PantherWatch";
 }

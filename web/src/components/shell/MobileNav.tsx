@@ -9,7 +9,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { ChevronRightIcon, LockIcon, LogoutIcon, MoreIcon } from "@/components/ui/icons";
 import { cn } from "@/lib/ui/cn";
 import { AnimatedIcon } from "./AnimatedIcon";
-import { ADMIN_NAV, isActive, PRIMARY_NAV, SETTINGS_NAV, SIGN_IN_HREF, type NavItem } from "./nav";
+import { ADMIN_NAV, ASSISTANT_NAV, isActive, PRIMARY_NAV, SETTINGS_NAV, SIGN_IN_HREF, type NavItem } from "./nav";
 import { useSignOut } from "./useSignOut";
 import { useViewer } from "./ViewerContext";
 import styles from "./MobileNav.module.css";
@@ -29,14 +29,14 @@ function GuestNote() {
   return user ? null : <span className="sr-only">, sign in required</span>;
 }
 
-function SheetLink({ item, onNavigate }: { item: NavItem; onNavigate: () => void }) {
+function SheetLink({ item, onNavigate, liquid = false }: { item: NavItem; onNavigate: () => void; liquid?: boolean }) {
   const pathname = usePathname();
   const Icon = item.icon;
   return (
     <li>
       <Link
         href={item.href}
-        className={styles.row}
+        className={cn(styles.row, liquid && styles.liquidRow)}
         aria-current={isActive(item, pathname) ? "page" : undefined}
         onClick={onNavigate}
       >
@@ -72,13 +72,13 @@ function AccountRow() {
 
 /**
  * Bottom navigation for < 900 px (spec.md §2.15): Dashboard, Search, Tracked, Schedule, More.
- * "More" opens a sheet with Settings, Admin (admins), theme, Privacy, Terms and Sign out.
+ * "More" opens a sheet with AI Assistant, Settings, Admin (admins), theme, Privacy, Terms and Sign out.
  */
 export function MobileNav() {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
   const close = () => setMoreOpen(false);
-  const moreActive = [SETTINGS_NAV, ADMIN_NAV].some((item) => isActive(item, pathname));
+  const moreActive = [ASSISTANT_NAV, SETTINGS_NAV, ADMIN_NAV].some((item) => isActive(item, pathname));
 
   return (
     <>
@@ -133,6 +133,7 @@ export function MobileNav() {
 
       <Dialog open={moreOpen} onClose={close} title="More" size="sm">
         <ul className={styles.rows}>
+          <SheetLink item={ASSISTANT_NAV} onNavigate={close} liquid />
           <SheetLink item={SETTINGS_NAV} onNavigate={close} />
           <Suspense fallback={null}>
             <AdminRow onNavigate={close} />

@@ -104,10 +104,12 @@ the Hibernate tables is a separate, hand-run procedure in `scripts/prod-migrate/
 
 ## MCP connector
 
-Students connect PantherWatch to Claude (or any MCP client) with the URL `${APP_URL}/api/mcp`
-(production: `https://www.pantherwatch.app/api/mcp`). Settings → Connected apps shows the URL,
-the steps, and every connected app with Disconnect. The account menu links there as
-"Connect to Claude".
+Students connect PantherWatch to any MCP-capable assistant or agent (for example Claude, ChatGPT
+or Cursor) with the URL `${APP_URL}/api/mcp` (production: `https://www.pantherwatch.app/api/mcp`).
+`/assistant` (the sidebar's "AI Assistant" tab, also "Connect an AI assistant" in the account
+menu) shows the URL with Copy, step-by-step setup for Claude, ChatGPT, Cursor and others, example
+prompts, what each permission allows, and every connected app with Disconnect. Settings →
+Connected apps has a short card linking there plus the same app list.
 
 - **MCP server** (`src/app/api/mcp/route.ts`, `src/lib/mcp/`): `mcp-handler` 2 on the MCP SDK v2,
   Streamable HTTP, stateless (2026-07-28 protocol, with the SDK's fallback for 2025-era

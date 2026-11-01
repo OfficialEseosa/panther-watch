@@ -50,7 +50,7 @@ vercel env update APP_URL production                      # change a value later
 
 Env changes apply only to **new** deployments. Redeploy after editing (Deployments → ⋯ → Redeploy).
 
-The MCP connector (`/api/mcp`, OAuth under `/api/oauth/*` and `/.well-known/*`) needs **no new variables**: its issuer and resource URLs come from `APP_URL`, so `APP_URL` must be the exact origin users paste (`https://www.pantherwatch.app/api/mcp` in production). It needs migration `0003_oauth.sql` (`npm run db:migrate`) before the deploy that ships it. Deployment Protection doesn't affect it on the production domain; on preview URLs Claude can't reach it (Vercel's login page answers first), so test the connector on production or with a local client.
+The MCP connector (`/api/mcp`, OAuth under `/api/oauth/*` and `/.well-known/*`) needs **no new variables**: its issuer and resource URLs come from `APP_URL`, so `APP_URL` must be the exact origin users paste (`https://www.pantherwatch.app/api/mcp` in production). It needs migration `0003_oauth.sql` (`npm run db:migrate`) before the deploy that ships it. Deployment Protection doesn't affect it on the production domain; on preview URLs an MCP client can't reach it (Vercel's login page answers first), so test the connector on production or with a local client.
 
 ## 3. `web/vercel.json`
 

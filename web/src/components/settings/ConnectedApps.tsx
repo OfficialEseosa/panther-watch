@@ -3,10 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { RelativeTime } from "@/components/admin/RelativeTime";
-import { Button } from "@/components/ui/Button";
-import { CheckIcon, CopyIcon } from "@/components/ui/icons";
+import { Button, ButtonLink } from "@/components/ui/Button";
+import { ArrowRightIcon, CheckIcon, CopyIcon } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError, del, onUnauthorized, query } from "@/lib/client/http";
+import { cn } from "@/lib/ui/cn";
 import { SCOPE_INFO, type Scope } from "@/lib/oauth/scopes";
 import styles from "./ConnectedApps.module.css";
 import ui from "./Settings.module.css";
@@ -19,17 +20,10 @@ export interface ConnectedAppView {
   lastUsedAt: string | null;
 }
 
-/**
- * Settings → Connected apps: the MCP connector URL with a copy button and the three steps to
- * add it in Claude, then every app the user has allowed, each with Disconnect (revokes its
- * tokens; it has to ask again to reconnect).
- */
-export function ConnectedApps({ mcpUrl, apps: initial }: { mcpUrl: string; apps: ConnectedAppView[] }) {
+/** The MCP connector URL with a Copy button ("Copied!" for 2 s). `large` is the /assistant version. */
+export function ConnectorUrl({ mcpUrl, large = false }: { mcpUrl: string; large?: boolean }) {
   const toast = useToast();
-  const router = useRouter();
-  const [apps, setApps] = useState(initial);
   const [copied, setCopied] = useState(false);
-  const [pending, setPending] = useState<string | null>(null);
 
   const copy = async () => {
     try {
@@ -40,6 +34,34 @@ export function ConnectedApps({ mcpUrl, apps: initial }: { mcpUrl: string; apps:
       toast.info("Copy the URL by hand", { body: mcpUrl });
     }
   };
+
+  return (
+    <div className={cn(styles.urlRow, large && styles.urlRowLarge)}>
+      <code className={styles.url} aria-label="Connector URL">
+        {mcpUrl}
+      </code>
+      <Button
+        variant={large ? "primary" : "secondary"}
+        size={large ? "md" : "sm"}
+        onClick={copy}
+        aria-live="polite"
+        leadingIcon={copied ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
+      >
+        {copied ? "Copied!" : "Copy"}
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * Every app the user has allowed, each with Disconnect (revokes its tokens; it has to ask again
+ * to reconnect). Shared by Settings → Connected apps and /assistant.
+ */
+export function ConnectedAppsList({ apps: initial }: { apps: ConnectedAppView[] }) {
+  const toast = useToast();
+  const router = useRouter();
+  const [apps, setApps] = useState(initial);
+  const [pending, setPending] = useState<string | null>(null);
 
   const disconnect = async (app: ConnectedAppView) => {
     setPending(app.clientId);
@@ -55,83 +77,71 @@ export function ConnectedApps({ mcpUrl, apps: initial }: { mcpUrl: string; apps:
     setPending(null);
   };
 
+  if (apps.length === 0) {
+    return (
+      <p className={ui.description}>
+        No apps are connected. Apps you allow show up here, and you can disconnect them anytime.
+      </p>
+    );
+  }
+  return (
+    <ul className={styles.apps}>
+      {apps.map((app) => (
+        <li key={app.clientId} className={styles.app}>
+          <div className={styles.appInfo}>
+            <p className={styles.appName}>{app.name}</p>
+            <p className={styles.appMeta}>{app.scopes.map((scope) => SCOPE_INFO[scope].label).join(" · ")}</p>
+            <p className={styles.appMeta}>
+              Connected <RelativeTime value={app.connectedAt} />
+              {" · "}
+              {app.lastUsedAt ? (
+                <>
+                  last used <RelativeTime value={app.lastUsedAt} />
+                </>
+              ) : (
+                "not used yet"
+              )}
+            </p>
+          </div>
+          <Button
+            variant="danger-ghost"
+            size="sm"
+            onClick={() => void disconnect(app)}
+            loading={pending === app.clientId}
+            aria-label={`Disconnect ${app.name}`}
+          >
+            Disconnect
+          </Button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * Settings → Connected apps: a short intro linking to /assistant (the URL and the step-by-step
+ * setup live there), then the connected apps with Disconnect.
+ */
+export function ConnectedApps({ apps }: { apps: ConnectedAppView[] }) {
   return (
     <>
-      <div className={styles.intro}>
-        <p className={ui.label}>Use PantherWatch from Claude</p>
-        <p className={ui.description}>
-          Let Claude, or another AI assistant that supports connectors, search classes, read your schedule and track
-          sections for you. You choose what it&rsquo;s allowed to change.
-        </p>
+      <div className={ui.item}>
+        <div className={ui.info}>
+          <p className={ui.label}>Connect an AI assistant</p>
+          <p className={ui.description}>
+            Use PantherWatch from an AI assistant that supports MCP connectors, such as Claude, ChatGPT or Cursor.
+          </p>
+        </div>
+        <ButtonLink href="/assistant" variant="secondary" size="sm" trailingIcon={<ArrowRightIcon size={16} />}>
+          Set it up
+        </ButtonLink>
       </div>
-
-      <div className={styles.urlRow}>
-        <code className={styles.url} aria-label="Connector URL">
-          {mcpUrl}
-        </code>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={copy}
-          aria-live="polite"
-          leadingIcon={copied ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
-        >
-          {copied ? "Copied" : "Copy"}
-        </Button>
-      </div>
-
-      <ol className={styles.steps}>
-        <li>
-          In Claude, open <strong>Settings → Connectors</strong>.
-        </li>
-        <li>
-          Choose <strong>Add custom connector</strong> and paste the URL.
-        </li>
-        <li>
-          On the PantherWatch page that opens, select <strong>Allow</strong>.
-        </li>
-      </ol>
 
       <div className={ui.divider} />
 
       <div className={styles.appsBlock}>
         <p className={ui.label}>Connected apps</p>
-        {apps.length === 0 ? (
-          <p className={ui.description}>
-            No apps are connected. Apps you allow show up here, and you can disconnect them anytime.
-          </p>
-        ) : (
-          <ul className={styles.apps}>
-            {apps.map((app) => (
-              <li key={app.clientId} className={styles.app}>
-                <div className={styles.appInfo}>
-                  <p className={styles.appName}>{app.name}</p>
-                  <p className={styles.appMeta}>{app.scopes.map((scope) => SCOPE_INFO[scope].label).join(" · ")}</p>
-                  <p className={styles.appMeta}>
-                    Connected <RelativeTime value={app.connectedAt} />
-                    {" · "}
-                    {app.lastUsedAt ? (
-                      <>
-                        last used <RelativeTime value={app.lastUsedAt} />
-                      </>
-                    ) : (
-                      "not used yet"
-                    )}
-                  </p>
-                </div>
-                <Button
-                  variant="danger-ghost"
-                  size="sm"
-                  onClick={() => void disconnect(app)}
-                  loading={pending === app.clientId}
-                  aria-label={`Disconnect ${app.name}`}
-                >
-                  Disconnect
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
+        <ConnectedAppsList apps={apps} />
       </div>
     </>
   );

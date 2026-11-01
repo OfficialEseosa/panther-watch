@@ -4,6 +4,7 @@ import type { MetadataRoute } from "next";
 const PAGES: Array<{ path: string; changeFrequency: "weekly" | "monthly" | "yearly"; priority: number }> = [
   { path: "/", changeFrequency: "weekly", priority: 1 },
   { path: "/course-search", changeFrequency: "weekly", priority: 0.8 },
+  { path: "/assistant", changeFrequency: "monthly", priority: 0.6 },
   { path: "/developers", changeFrequency: "monthly", priority: 0.5 },
   { path: "/privacy", changeFrequency: "yearly", priority: 0.2 },
   { path: "/terms", changeFrequency: "yearly", priority: 0.2 },
