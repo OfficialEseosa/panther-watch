@@ -47,7 +47,7 @@
 .apps {
   display: flex;
   flex-direction: column;
-  margin: 8px 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -57,7 +57,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 12px 0;
+  padding: 10px 0;
 }
 
 .app + .app {

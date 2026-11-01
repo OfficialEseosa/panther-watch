@@ -69,8 +69,13 @@ export function ConnectedApps({ mcpUrl, apps: initial }: { mcpUrl: string; apps:
         <code className={styles.url} aria-label="Connector URL">
           {mcpUrl}
         </code>
-        <Button variant="secondary" size="sm" onClick={copy} aria-live="polite">
-          {copied ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={copy}
+          aria-live="polite"
+          leadingIcon={copied ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
+        >
           {copied ? "Copied" : "Copy"}
         </Button>
       </div>
