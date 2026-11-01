@@ -5,6 +5,7 @@
  * meta hasn't loaded has no rating or GPA (it fails a minimum and sorts last).
  */
 import type { SectionMeta } from "@/lib/courses/meta";
+import { effectiveSeatsAvailable } from "@/lib/gosolar/seats";
 import type { CourseData } from "@/lib/gosolar/types";
 import { meetingsOf, type WeekDay } from "@/lib/schedule/conflicts";
 
@@ -90,14 +91,13 @@ export function matchesDays(section: FilterableSection, pattern: DayPattern): bo
 export const isHonors = (section: FilterableSection) => attributeCodes(section).has("HC");
 
 /**
- * Seats a student can actually take: a cross-listed section shares its pool with the other
- * listings, so it is the smaller of its own and the pool's.
+ * Seats a student can actually take (the seat watcher's rule, `effectiveSeatsAvailable`): a
+ * cross-listed section shares its pool with the other listings, so it is the smaller of its
+ * own and the pool's.
  */
 export function openSeats(section: FilterableSection): number {
-  const own = Number.isFinite(section.seatsAvailable) ? section.seatsAvailable : 0;
-  const pool = section.crossListAvailable;
-  if (section.crossList != null && pool != null && Number.isFinite(pool)) return Math.min(own, pool);
-  return own;
+  const seats = effectiveSeatsAvailable(section);
+  return Number.isFinite(seats) ? seats : 0;
 }
 
 /** The RMP average the card shows (a match with at least one rating), or null. */
