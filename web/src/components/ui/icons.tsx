@@ -199,6 +199,13 @@ export const CopyIcon = createIcon("copy", (
     <path d="M15.5 8.5V6a1.5 1.5 0 0 0-1.5-1.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2.5" />
   </>
 ));
+export const PlugIcon = createIcon("plug", (
+  <>
+    <path d="M9 3.5v4M15 3.5v4" />
+    <path d="M6.5 7.5h11V11a5.5 5.5 0 0 1-11 0z" />
+    <path d="M12 16.5v4" />
+  </>
+));
 export const PlayIcon = createIcon("play", <path d="M8 5.5v13l10-6.5z" />);
 export const PauseIcon = createIcon("pause", <path d="M9 5.5v13M15 5.5v13" />);
 export const RefreshIcon = createIcon("refresh", (

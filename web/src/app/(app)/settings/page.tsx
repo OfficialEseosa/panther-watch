@@ -3,15 +3,17 @@ import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
+import { ConnectedApps } from "@/components/settings/ConnectedApps";
 import { DeleteAccount } from "@/components/settings/DeleteAccount";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ThemeSegmented } from "@/components/theme/ThemeToggle";
 import { Avatar } from "@/components/ui/Avatar";
 import { Banner } from "@/components/ui/Banner";
 import { ButtonAnchor } from "@/components/ui/Button";
-import { LogoutIcon, MailIcon, MoonIcon, UserIcon, AlertIcon } from "@/components/ui/icons";
+import { LogoutIcon, MailIcon, MoonIcon, PlugIcon, UserIcon, AlertIcon } from "@/components/ui/icons";
 import { Skeleton, SkeletonGroup } from "@/components/ui/Skeleton";
 import { requireUser, type CurrentUser } from "@/lib/auth/session";
+import { listConnectedApps, mcpResourceUrl } from "@/lib/oauth";
 import ui from "@/components/settings/Settings.module.css";
 import styles from "./page.module.css";
 
@@ -19,7 +21,7 @@ export const metadata: Metadata = { title: "Settings" };
 
 /**
  * /settings: the original Settings page (old Settings.jsx): one card per section (Profile,
- * Appearance, Notifications, Account actions), each with an icon + title header. The header and
+ * Appearance, Notifications, Connected apps, Account actions), each with an icon + title header. The header and
  * Appearance are static; the user-dependent sections stream in behind <Suspense>. proxy.ts
  * already sends visitors without a session cookie to "/"; requireUser() handles forged cookies.
  */
@@ -156,6 +158,10 @@ async function AccountSections() {
         </div>
       </Section>
 
+      <Section icon={<PlugIcon />} title="Connected apps">
+        <ConnectedApps mcpUrl={mcpResourceUrl()} apps={await loadConnectedApps(user.id)} />
+      </Section>
+
       <Section icon={<AlertIcon />} title="Account actions">
         <SignOutAction />
         <div className={ui.divider} />
@@ -163,6 +169,17 @@ async function AccountSections() {
       </Section>
     </>
   );
+}
+
+/** The user's connected apps; empty when the lookup fails (the section still shows how to connect). */
+async function loadConnectedApps(userId: string) {
+  try {
+    return await listConnectedApps(userId);
+  } catch (error) {
+    unstable_rethrow(error);
+    console.error("settings: could not load connected apps", error instanceof Error ? error.name : typeof error);
+    return [];
+  }
 }
 
 function ProfileSkeleton() {
@@ -185,6 +202,7 @@ function AccountSkeleton() {
     <>
       {[
         { title: "Notifications", icon: <MailIcon /> },
+        { title: "Connected apps", icon: <PlugIcon /> },
         { title: "Account actions", icon: <AlertIcon /> },
       ].map(({ title, icon }) => (
         <Section key={title} icon={icon} title={title}>
