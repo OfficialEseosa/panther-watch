@@ -17,11 +17,25 @@ uses Supabase Postgres through the transaction pooler.
 
 ## Run
 
-```bash
-cp .env.example .env.local   # fill in values
+The quickest way is `npm run dev:local` (local Postgres, migrations, grade history, a seeded
+account, a fake Resend and `next dev`, with no `.env.local` to fill in); see
+[`docs/runbooks/local-dev.md`](../docs/runbooks/local-dev.md). To run against your own database
+and credentials instead:
+
+```sh
+docker compose up -d postgres        # from the repo root: local Postgres on :5432 (or PGlite, see local-dev.md)
+cd web
 npm install
-npm run dev                  # http://localhost:3000
+cp .env.example .env.local           # fill in values; local-dev.md §3 lists each one
+npm run db:migrate                   # apply drizzle/ migrations to DATABASE_URL
+npm run dev                          # http://localhost:3000
 ```
+
+With the Docker database, `DATABASE_URL` is
+`postgres://pantherwatch:pantherwatch@localhost:5432/pantherwatch?sslmode=disable`.
+No Docker? local-dev.md option B runs PGlite as a local Postgres server. The test suite needs
+no database at all: it brings its own in-memory PGlite. Local Google sign-in needs a separate
+OAuth client with redirect URI `http://localhost:3000/api/auth/google/callback` (local-dev.md §4).
 
 You need Node 20 or newer to run the app. The test runner (Vitest 5) needs Node 22.12 or newer.
 
@@ -72,12 +86,17 @@ work must be `pg_try_advisory_xact_lock(key)` inside `db.transaction(...)`.
 | Script | What it does |
 |---|---|
 | `npm run dev` / `build` / `start` | Next.js |
+| `npm run dev:local` | The whole app locally with one command (`scripts/dev-local.ts`, see `docs/runbooks/local-dev.md`) |
 | `npm run lint` | ESLint (Next config) |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm test` | Vitest, run once (`test:watch` to watch) |
+| `npm run e2e` | Playwright against `next dev`, a throwaway Postgres and a fake GoSolar ([`e2e/README.md`](e2e/README.md)) |
 | `npm run db:generate` | `drizzle-kit generate`: diff `src/db/schema/` into a new SQL migration in `drizzle/` |
 | `npm run db:migrate` | Apply pending `drizzle/` migrations to `DATABASE_URL` (`src/db/migrate.ts`). Prefer a direct or session-pooler URL (port 5432). |
 | `npm run db:studio` | `drizzle-kit studio` against `DATABASE_URL` |
+
+Before pushing: `npm run lint && npm run typecheck && npm test && npm run build`. There is no CI
+yet, so these are the gates.
 
 ## Schema
 
@@ -174,7 +193,10 @@ with each turn (at most 30 messages, 24,000 characters).
 
 ## Testing
 
-Vitest runs `src/**/*.test.ts` and `tests/**/*.test.ts` (`npm test`).
+Integration and end-to-end tests come first; unit tests are kept for pure parsing code. Vitest
+runs `src/**/*.test.ts` and `tests/**/*.test.ts` (`npm test`). Playwright (`npm run e2e`, specs in
+`e2e/`) drives real Chromium against a real `next dev` and a real Postgres
+([`e2e/README.md`](e2e/README.md)).
 
 - **Unit tests** sit next to the code in `__tests__/` folders.
 - **Integration tests** live in `tests/` (`tests/api` calls route handlers directly with
@@ -186,6 +208,34 @@ Vitest runs `src/**/*.test.ts` and `tests/**/*.test.ts` (`npm test`).
 - `tests/setup.ts` sets fixed fake env values before every file; tests never read `.env.local`
   and never connect to `DATABASE_URL`. `server-only` is aliased to an empty module
   (`tests/helpers/server-only.ts`) so server modules can be imported.
+
+## Deployment
+
+- **App:** Vercel Hobby, project root directory `web`. Env vars and limits:
+  [`docs/runbooks/vercel-setup.md`](../docs/runbooks/vercel-setup.md).
+- **Database:** Supabase Postgres (free tier). The app connects through the transaction
+  pooler with verified TLS (`DATABASE_CA_CERT`); migrations go through the session pooler.
+- **Scheduled jobs:** Supabase pg_cron + pg_net call the `/api/cron/*` routes with
+  `CRON_SECRET`; the seat watcher runs every 3 minutes
+  ([`docs/runbooks/supabase-cron.sql`](../docs/runbooks/supabase-cron.sql)). Vercel's daily cron
+  is only a backup trigger for cleanup.
+- **Email:** Resend, from `class.pantherwatch.app`.
+- **AI assistant:** the on-site chat calls the Anthropic API with `ANTHROPIC_API_KEY` (unset =
+  feature off). Daily message and spend caps reset at midnight Eastern
+  ([`docs/runbooks/assistant.md`](../docs/runbooks/assistant.md)).
+- **Grades:** new terms are uploaded through the admin grade upload (GSU's APEX source is
+  behind a Cloudflare challenge, so there is no grades scraper; see `data/README.md`).
+- **Cutover** from the old stack, with backup and rollback steps:
+  [`docs/runbooks/cutover-checklist.md`](../docs/runbooks/cutover-checklist.md). One-time
+  production schema migration: [`scripts/README.md`](scripts/README.md).
+
+## History
+
+PantherWatch began as a Spring Boot API (Java 21, deployed to Koyeb from a root `Dockerfile`), a
+React + Vite SPA, and an Android client. In October 2026 all three were retired and replaced by
+this Next.js app, with a normalized schema and the existing users carried over. The reasoning,
+the audits of the old code, and the decisions are in
+[`docs/audit-2026-10/`](../docs/audit-2026-10/README.md). The old code remains in git history.
 
 ## Notes
 
