@@ -14,6 +14,9 @@ import { clientIp, tokenLimiter } from "@/lib/oauth/rate-limit";
  * - `grant_type=authorization_code&code&code_verifier&client_id[&redirect_uri][&resource]`
  * - `grant_type=refresh_token&refresh_token&client_id[&scope][&resource]` (rotates the refresh token)
  * -> 200 `{ access_token, token_type: "Bearer", expires_in: 3600, refresh_token, scope }`.
+ * Client authentication: `client_id` alone (public), a secret (registered confidential clients) or
+ * `client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion`
+ * (private_key_jwt, RFC 7523). PKCE is required either way.
  * Errors follow RFC 6749 §5.2 (`invalid_grant`, `invalid_client` 401, ...).
  */
 export async function POST(request: Request) {

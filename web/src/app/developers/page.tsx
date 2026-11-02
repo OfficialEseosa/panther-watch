@@ -392,7 +392,9 @@ export default function DevelopersPage() {
               <code>/.well-known/oauth-protected-resource/api/mcp</code> (also at the root location) and{" "}
               <code>/.well-known/oauth-authorization-server</code>. Clients identify themselves with a Client ID
               Metadata Document URL or register at <code>/api/oauth/register</code>; PKCE (S256) is required,
-              redirect URIs must be https or localhost, access tokens last an hour and refresh tokens rotate. The
+              redirect URIs must be https or localhost, access tokens last an hour and refresh tokens rotate. At the
+              token endpoint, metadata-document clients authenticate with <code>none</code> or{" "}
+              <code>private_key_jwt</code> (RS256, ES256 or PS256, keys from their <code>jwks_uri</code>). The
               server allows about 30 tool calls a minute per student.
             </p>
           </Section>

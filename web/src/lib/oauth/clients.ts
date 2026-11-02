@@ -2,6 +2,7 @@ import "server-only";
 import { lookup as dnsLookup, type LookupAddress } from "node:dns";
 import { BlockList, isIP } from "node:net";
 import { eq } from "drizzle-orm";
+import type { JSONWebKeySet } from "jose";
 import { Agent, fetch as undiciFetch } from "undici";
 import { z } from "zod";
 import { getDb } from "@/db";
@@ -26,6 +27,13 @@ export class ClientError extends Error {
   }
 }
 
+/**
+ * How a client authenticates at the token (and revocation) endpoint: `none` (public, PKCE
+ * only), `client_secret` (a registered secret, post or basic) or `private_key_jwt` (an RFC 7523
+ * assertion signed with a key from the client's JWKS).
+ */
+export type TokenAuthMethod = "none" | "client_secret" | "private_key_jwt";
+
 export interface Client {
   id: string;
   name: string;
@@ -34,6 +42,27 @@ export interface Client {
   confidential: boolean;
   /** "metadata": a Client ID Metadata Document URL; "registered": dynamically registered. */
   kind: "metadata" | "registered";
+  /** The token endpoint auth methods this client may use. */
+  authMethods: TokenAuthMethod[];
+}
+
+/** Where a private_key_jwt client's public keys come from (its document's jwks_uri / jwks). */
+export interface ClientKeys {
+  jwksUri: string | null;
+  jwks: JSONWebKeySet | null;
+  /** The only alg its assertions may use, when its document declares one. */
+  signingAlg: string | null;
+}
+
+/** A client row as the token endpoint needs it: the client, its secret hash and its keys. */
+export type ClientRecord = Client & ClientKeys & { secretHash: string | null };
+
+function authMethodsOf(row: OAuthClient): TokenAuthMethod[] {
+  if (row.clientSecretHash !== null) return ["client_secret"];
+  if (row.tokenEndpointAuthMethods === null) return ["none"];
+  return row.tokenEndpointAuthMethods.filter(
+    (method): method is TokenAuthMethod => method === "none" || method === "private_key_jwt",
+  );
 }
 
 const toClient = (row: OAuthClient): Client => ({
@@ -42,6 +71,7 @@ const toClient = (row: OAuthClient): Client => ({
   redirectUris: row.redirectUris,
   confidential: row.clientSecretHash !== null,
   kind: row.metadataExpiresAt === null ? "registered" : "metadata",
+  authMethods: authMethodsOf(row),
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -211,15 +241,17 @@ export async function registerClient(body: unknown, { now = new Date() } = {}): 
 // Lookup (registered clients and Client ID Metadata Documents)
 // ---------------------------------------------------------------------------------------------
 
-/** A Client ID Metadata Document URL: https, a real hostname (not an IP literal), a path. */
-export function isMetadataClientId(clientId: string): boolean {
-  if (!clientId.startsWith("https://") || clientId.length > MAX_URI_LENGTH) return false;
+/**
+ * A URL the guarded fetcher may fetch (a metadata document or a JWKS): https, a real public
+ * hostname (not an IP literal, not localhost / .local / .internal), no credentials or fragment.
+ */
+export function isFetchableHttpsUrl(value: string): boolean {
+  if (!value.startsWith("https://") || value.length > MAX_URI_LENGTH) return false;
   try {
-    const url = new URL(clientId);
+    const url = new URL(value);
     const host = url.hostname.replace(/^\[|\]$/g, "");
     return (
       url.protocol === "https:" &&
-      url.pathname !== "/" &&
       !url.hash &&
       !url.username &&
       !url.password &&
@@ -235,11 +267,24 @@ export function isMetadataClientId(clientId: string): boolean {
   }
 }
 
+/** A Client ID Metadata Document URL: a fetchable https URL with a path. */
+export function isMetadataClientId(clientId: string): boolean {
+  return isFetchableHttpsUrl(clientId) && new URL(clientId).pathname !== "/";
+}
+
 /** The client row only (token endpoint, revocation): never fetches anything. */
-export async function findClient(clientId: string): Promise<(Client & { secretHash: string | null }) | null> {
+export async function findClient(clientId: string): Promise<ClientRecord | null> {
   if (!clientId || clientId.length > MAX_URI_LENGTH) return null;
   const [row] = await getDb().select().from(oauthClients).where(eq(oauthClients.id, clientId)).limit(1);
-  return row ? { ...toClient(row), secretHash: row.clientSecretHash } : null;
+  return row
+    ? {
+        ...toClient(row),
+        secretHash: row.clientSecretHash,
+        jwksUri: row.jwksUri,
+        jwks: row.jwks as JSONWebKeySet | null,
+        signingAlg: row.tokenEndpointAuthSigningAlg,
+      }
+    : null;
 }
 
 /**
@@ -397,10 +442,14 @@ const defaultMetadataFetch: MetadataFetch = async (url) => {
 
 let metadataFetch: MetadataFetch = defaultMetadataFetch;
 
-/** Replaces the metadata fetcher (tests serve documents without https). Throws outside tests. */
+/**
+ * Replaces the metadata fetcher (tests serve documents and JWKS without https) and empties the
+ * JWKS cache. Throws outside tests.
+ */
 export function setClientMetadataFetchForTests(fetcher: MetadataFetch | undefined): void {
   if (process.env.NODE_ENV !== "test") throw new Error("setClientMetadataFetchForTests() is only allowed when NODE_ENV=test");
   metadataFetch = fetcher ?? defaultMetadataFetch;
+  jwksCache.clear();
 }
 
 function ttlSeconds(cacheControl: string | null): number {
@@ -414,7 +463,93 @@ const metadataDocumentSchema = z.object({
   client_name: z.unknown().optional(),
   redirect_uris: z.array(z.string()),
   token_endpoint_auth_method: z.string().optional(),
+  // Optional extras: a malformed one is ignored rather than refusing the whole document.
+  token_endpoint_auth_methods_supported: z.array(z.string()).optional().catch(undefined),
+  jwks_uri: z.string().optional().catch(undefined),
+  jwks: z.unknown().optional(),
+  token_endpoint_auth_signing_alg: z.string().optional().catch(undefined),
 });
+
+type MetadataDocument = z.infer<typeof metadataDocumentSchema>;
+
+/** JWS algs a private_key_jwt client may declare (asymmetric only: never `none` or HS*). */
+const DECLARABLE_SIGNING_ALGS = new Set([
+  "RS256",
+  "RS384",
+  "RS512",
+  "PS256",
+  "PS384",
+  "PS512",
+  "ES256",
+  "ES384",
+  "ES512",
+  "EdDSA",
+  "Ed25519",
+]);
+/** Private or symmetric key members: a JWKS carrying any of them is refused. */
+const PRIVATE_JWK_MEMBERS = ["d", "p", "q", "dp", "dq", "qi", "k", "oth"];
+const MAX_JWKS_KEYS = 20;
+
+/** Why `value` is not a usable public JWKS, or null when it is. */
+export function jwksProblem(value: unknown): string | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "is not a JSON object";
+  const keys = (value as { keys?: unknown }).keys;
+  if (!Array.isArray(keys) || keys.length === 0) return "has no keys";
+  if (keys.length > MAX_JWKS_KEYS) return `has more than ${MAX_JWKS_KEYS} keys`;
+  for (const key of keys) {
+    if (!key || typeof key !== "object" || Array.isArray(key) || typeof (key as { kty?: unknown }).kty !== "string") {
+      return "has a key without kty";
+    }
+    if (PRIVATE_JWK_MEMBERS.some((member) => member in key)) return "contains private or symmetric key material";
+  }
+  return null;
+}
+
+type DocumentAuth = Pick<OAuthClient, "tokenEndpointAuthMethods" | "jwksUri" | "jwks" | "tokenEndpointAuthSigningAlg">;
+
+/**
+ * The token endpoint auth a metadata document allows (OIDC Core 9 / RFC 7523):
+ * - `none` when the document's method is `none` (or absent), or its
+ *   `token_endpoint_auth_methods_supported` lists `none`;
+ * - `private_key_jwt` when the document's method is (or it supports) `private_key_jwt` and it
+ *   names a usable `jwks_uri` (https, same SSRF rules as the document fetch) or inline `jwks`.
+ * A document whose own method is private_key_jwt with unusable keys is refused, and so is one
+ * that allows neither method (client secrets cannot come from a metadata document).
+ */
+function documentAuth(doc: MetadataDocument): DocumentAuth {
+  const declared = doc.token_endpoint_auth_method ?? "none";
+  const supported = new Set([declared, ...(doc.token_endpoint_auth_methods_supported ?? [])]);
+  const methods: TokenAuthMethod[] = supported.has("none") ? ["none"] : [];
+  let keys: Omit<DocumentAuth, "tokenEndpointAuthMethods"> = { jwksUri: null, jwks: null, tokenEndpointAuthSigningAlg: null };
+
+  if (supported.has("private_key_jwt")) {
+    let problem: string | null = null;
+    const alg = doc.token_endpoint_auth_signing_alg ?? null;
+    if (alg !== null && !DECLARABLE_SIGNING_ALGS.has(alg)) {
+      problem = `token_endpoint_auth_signing_alg ${alg.slice(0, 20)} is not supported`;
+    } else if (doc.jwks_uri !== undefined) {
+      if (isFetchableHttpsUrl(doc.jwks_uri)) keys = { jwksUri: doc.jwks_uri, jwks: null, tokenEndpointAuthSigningAlg: alg };
+      else problem = "jwks_uri must be a public https URL";
+    } else if (doc.jwks !== undefined) {
+      const jwksIssue = jwksProblem(doc.jwks);
+      if (jwksIssue) problem = `jwks ${jwksIssue}`;
+      else keys = { jwksUri: null, jwks: doc.jwks as DocumentAuth["jwks"], tokenEndpointAuthSigningAlg: alg };
+    } else {
+      problem = "private_key_jwt needs a jwks_uri or jwks";
+    }
+    if (problem === null) methods.push("private_key_jwt");
+    else if (declared === "private_key_jwt") {
+      throw new ClientError("invalid_client", `The app's client metadata document is unusable: ${problem}.`);
+    }
+  }
+  if (methods.length === 0) {
+    throw new ClientError(
+      "invalid_client",
+      `The app authenticates with ${declared.slice(0, 40)}, which PantherWatch doesn't support (it supports none and private_key_jwt).`,
+    );
+  }
+  return { tokenEndpointAuthMethods: methods, ...keys };
+}
 
 /**
  * One log line for a failed fetch: undici reports every network failure as "fetch failed" and
@@ -459,9 +594,7 @@ async function refreshMetadataClient(clientId: string, now: Date): Promise<OAuth
   if (doc.client_id !== clientId) {
     throw new ClientError("invalid_client", "The app's client metadata document names a different client_id.");
   }
-  if (doc.token_endpoint_auth_method !== undefined && doc.token_endpoint_auth_method !== "none") {
-    throw new ClientError("invalid_client", "Only public clients (token_endpoint_auth_method none) are supported.");
-  }
+  const auth = documentAuth(doc);
   const redirectUris = [...new Set(doc.redirect_uris)];
   try {
     checkRedirectUris(redirectUris);
@@ -473,6 +606,7 @@ async function refreshMetadataClient(clientId: string, now: Date): Promise<OAuth
     redirectUris,
     clientSecretHash: null,
     metadataExpiresAt: new Date(now.getTime() + ttlSeconds(fetched.cacheControl) * 1000),
+    ...auth,
   };
   const [row] = await getDb()
     .insert(oauthClients)
@@ -480,4 +614,64 @@ async function refreshMetadataClient(clientId: string, now: Date): Promise<OAuth
     .onConflictDoUpdate({ target: oauthClients.id, set: values })
     .returning();
   return row;
+}
+
+// ---------------------------------------------------------------------------------------------
+// JWKS (private_key_jwt clients)
+// ---------------------------------------------------------------------------------------------
+
+const JWKS_DEFAULT_TTL_S = 10 * 60;
+const JWKS_MIN_TTL_S = 60;
+const JWKS_MAX_TTL_S = 60 * 60;
+const JWKS_CACHE_MAX_ENTRIES = 200;
+
+/**
+ * Fetched JWKS per (client, jwks_uri), in memory (per serverless instance). An entry lives for
+ * the response's max-age clamped to 1 minute .. 1 hour (10 minutes without one); an assertion
+ * whose `kid` is not in the cached set triggers one refetch (key rotation).
+ */
+const jwksCache = new Map<string, { jwks: JSONWebKeySet; expiresAt: number }>();
+
+/**
+ * The client's public keys: its inline `jwks`, or its `jwks_uri` fetched through the same
+ * guarded fetcher as metadata documents (https, no private addresses, 64 KB, 5 s, no
+ * redirects) and cached. `fresh` is true when refetching cannot give newer keys (just fetched,
+ * or inline). Throws an Error when the keys cannot be fetched or are malformed.
+ */
+export async function clientJwks(
+  client: Pick<ClientRecord, "id" | "jwksUri" | "jwks">,
+  { refresh = false, now = Date.now() }: { refresh?: boolean; now?: number } = {},
+): Promise<{ jwks: JSONWebKeySet; fresh: boolean }> {
+  if (client.jwks) return { jwks: client.jwks, fresh: true };
+  if (!client.jwksUri) throw new Error("the client has no jwks_uri");
+  const key = `${client.id} ${client.jwksUri}`;
+  const cached = jwksCache.get(key);
+  if (cached && !refresh && cached.expiresAt > now) return { jwks: cached.jwks, fresh: false };
+
+  let fetched: Awaited<ReturnType<MetadataFetch>>;
+  try {
+    fetched = await metadataFetch(client.jwksUri);
+  } catch (error) {
+    console.warn("oauth: client JWKS fetch failed", describeFetchError(error));
+    throw new Error("the client's JWKS could not be fetched");
+  }
+  if (fetched.status !== 200) throw new Error(`the client's JWKS answered HTTP ${fetched.status}`);
+  let json: unknown;
+  try {
+    json = JSON.parse(fetched.body);
+  } catch {
+    throw new Error("the client's JWKS is not valid JSON");
+  }
+  const problem = jwksProblem(json);
+  if (problem) throw new Error(`the client's JWKS ${problem}`);
+  const jwks = json as JSONWebKeySet;
+  const maxAge = /max-age=(\d+)/i.exec(fetched.cacheControl ?? "");
+  const ttl = Math.min(JWKS_MAX_TTL_S, Math.max(JWKS_MIN_TTL_S, maxAge ? Number(maxAge[1]) : JWKS_DEFAULT_TTL_S));
+  jwksCache.delete(key);
+  jwksCache.set(key, { jwks, expiresAt: now + ttl * 1000 });
+  if (jwksCache.size > JWKS_CACHE_MAX_ENTRIES) {
+    const oldest = jwksCache.keys().next().value;
+    if (oldest !== undefined) jwksCache.delete(oldest);
+  }
+  return { jwks, fresh: true };
 }

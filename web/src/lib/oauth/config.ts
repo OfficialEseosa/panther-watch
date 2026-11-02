@@ -22,6 +22,19 @@ export function mcpResourceUrl(): string {
   return `${issuer()}${MCP_PATH}`;
 }
 
+/** The token endpoint's URL (also an accepted `aud` of private_key_jwt client assertions). */
+export function tokenEndpointUrl(): string {
+  return `${issuer()}/api/oauth/token`;
+}
+
+/** The RFC 7009 revocation endpoint's URL. */
+export function revocationEndpointUrl(): string {
+  return `${issuer()}/api/oauth/revoke`;
+}
+
+/** JWS algs advertised for private_key_jwt client assertions (a client may declare another asymmetric one). */
+export const ASSERTION_SIGNING_ALGS = ["RS256", "ES256", "PS256"] as const;
+
 /** Where the MCP server's RFC 9728 metadata is served (path-inserted form). */
 export function protectedResourceMetadataUrl(): string {
   return `${issuer()}${PROTECTED_RESOURCE_METADATA_PATH}`;
@@ -49,16 +62,20 @@ export function authorizationServerMetadata() {
   return {
     issuer: base,
     authorization_endpoint: `${base}/api/oauth/authorize`,
-    token_endpoint: `${base}/api/oauth/token`,
+    token_endpoint: tokenEndpointUrl(),
     registration_endpoint: `${base}/api/oauth/register`,
-    revocation_endpoint: `${base}/api/oauth/revoke`,
+    revocation_endpoint: revocationEndpointUrl(),
     scopes_supported: [...SCOPES],
     response_types_supported: ["code"],
     response_modes_supported: ["query"],
     grant_types_supported: ["authorization_code", "refresh_token"],
     code_challenge_methods_supported: ["S256"],
-    token_endpoint_auth_methods_supported: ["none", "client_secret_post", "client_secret_basic"],
-    revocation_endpoint_auth_methods_supported: ["none", "client_secret_post", "client_secret_basic"],
+    // none: public clients (PKCE). private_key_jwt: Client ID Metadata Document clients with a
+    // jwks_uri (RFC 7523, e.g. ChatGPT). The secret methods are for dynamically registered clients.
+    token_endpoint_auth_methods_supported: ["none", "private_key_jwt", "client_secret_post", "client_secret_basic"],
+    token_endpoint_auth_signing_alg_values_supported: [...ASSERTION_SIGNING_ALGS],
+    revocation_endpoint_auth_methods_supported: ["none", "private_key_jwt", "client_secret_post", "client_secret_basic"],
+    revocation_endpoint_auth_signing_alg_values_supported: [...ASSERTION_SIGNING_ALGS],
     client_id_metadata_document_supported: true,
     authorization_response_iss_parameter_supported: true,
     service_documentation: `${base}/developers#mcp`,

@@ -2,8 +2,9 @@ import "server-only";
 import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { oauthClients, oauthCodes, oauthTokens } from "@/db/schema";
+import { assertionClientId, ClientAssertionError, JWT_BEARER_ASSERTION_TYPE, verifyClientAssertion } from "./client-assertion";
 import { clientSecretMatches, findClient, type Client } from "./clients";
-import { ACCESS_TOKEN_TTL_S, isOurResource, REFRESH_TOKEN_TTL_S } from "./config";
+import { ACCESS_TOKEN_TTL_S, isOurResource, issuer, REFRESH_TOKEN_TTL_S, tokenEndpointUrl } from "./config";
 import { hashSecret, randomSecret, verifyPkce } from "./crypto";
 import { formatScopes, splitScopes, type Scope } from "./scopes";
 
@@ -13,6 +14,8 @@ export class OAuthGrantError extends Error {
     readonly error: string,
     message: string,
     readonly status = 400,
+    /** Extra response headers (`WWW-Authenticate` on a Basic-auth failure). */
+    readonly headers?: Record<string, string>,
   ) {
     super(message);
     this.name = "OAuthGrantError";
@@ -32,31 +35,77 @@ export interface TokenResponse {
 // ---------------------------------------------------------------------------------------------
 
 /**
- * Identifies the calling client from `client_id` (+ `client_secret`) in the form body or HTTP
- * Basic credentials. Public clients send only their id; confidential ones must send the secret.
- * Throws `invalid_client` (401) otherwise.
+ * Identifies the calling client (RFC 6749 §2.3, RFC 7523 §2.2), by exactly one of:
+ * - `client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer` +
+ *   `client_assertion` (private_key_jwt; `client_id` optional, and must match the assertion);
+ * - `client_id` + `client_secret` in the form body, or HTTP Basic credentials (registered
+ *   confidential clients);
+ * - `client_id` alone (public clients; not allowed for a client that may only use
+ *   private_key_jwt).
+ * Throws `invalid_client` (401; with `WWW-Authenticate: Basic` when Basic was used) otherwise.
+ * `audience`: an extra accepted assertion `aud` besides the token endpoint and the issuer
+ * (the revocation endpoint passes its own URL).
  */
-export async function authenticateClient(request: Request, form: URLSearchParams): Promise<Client> {
+export async function authenticateClient(
+  request: Request,
+  form: URLSearchParams,
+  { audience, now = new Date() }: { audience?: string; now?: Date } = {},
+): Promise<Client> {
   let clientId = form.get("client_id");
   let secret = form.get("client_secret");
   const header = request.headers.get("authorization");
-  if (header?.toLowerCase().startsWith("basic ")) {
+  const usedBasic = header?.toLowerCase().startsWith("basic ") === true;
+  const fail = (message: string) =>
+    new OAuthGrantError(
+      "invalid_client",
+      message,
+      401,
+      usedBasic ? { "WWW-Authenticate": 'Basic realm="PantherWatch", error="invalid_client"' } : undefined,
+    );
+  if (usedBasic) {
     try {
-      const decoded = Buffer.from(header.slice(6).trim(), "base64").toString("utf8");
+      const decoded = Buffer.from(header!.slice(6).trim(), "base64").toString("utf8");
       const colon = decoded.indexOf(":");
       if (colon > 0) {
         clientId = decodeURIComponent(decoded.slice(0, colon));
         secret = decodeURIComponent(decoded.slice(colon + 1));
       }
     } catch {
-      throw new OAuthGrantError("invalid_client", "malformed Basic credentials", 401);
+      throw fail("malformed Basic credentials");
     }
   }
-  if (!clientId) throw new OAuthGrantError("invalid_client", "client_id is required", 401);
+
+  const assertionType = form.get("client_assertion_type");
+  const assertion = form.get("client_assertion");
+  if (assertionType !== null || assertion !== null) {
+    if (usedBasic || secret !== null) {
+      throw new OAuthGrantError("invalid_request", "use only one client authentication method");
+    }
+    if (assertionType !== JWT_BEARER_ASSERTION_TYPE) throw fail(`client_assertion_type must be ${JWT_BEARER_ASSERTION_TYPE}`);
+    if (!assertion) throw fail("client_assertion is required with client_assertion_type");
+    try {
+      const claimed = assertionClientId(assertion);
+      if (clientId !== null && clientId !== claimed) throw fail("client_id does not match the client assertion");
+      const client = await findClient(claimed);
+      if (!client) throw fail("unknown client");
+      const audiences = [tokenEndpointUrl(), issuer(), ...(audience ? [audience] : [])];
+      await verifyClientAssertion(client, assertion, { audiences, now });
+      return client;
+    } catch (error) {
+      if (error instanceof ClientAssertionError) throw fail(error.message);
+      throw error;
+    }
+  }
+
+  if (!clientId) throw fail("client_id is required");
   const client = await findClient(clientId);
-  if (!client) throw new OAuthGrantError("invalid_client", "unknown client", 401);
-  if (client.secretHash !== null && !clientSecretMatches(client.secretHash, secret)) {
-    throw new OAuthGrantError("invalid_client", "client authentication failed", 401);
+  if (!client) throw fail("unknown client");
+  if (client.secretHash !== null) {
+    if (!clientSecretMatches(client.secretHash, secret)) throw fail("client authentication failed");
+    return client;
+  }
+  if (!client.authMethods.includes("none")) {
+    throw fail("this client must authenticate with a private_key_jwt client_assertion");
   }
   return client;
 }

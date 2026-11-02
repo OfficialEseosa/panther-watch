@@ -7,6 +7,7 @@ import "server-only";
  * revocation, RFC 9207 `iss`. Tokens are random 32-byte strings stored as SHA-256 hashes.
  */
 export * from "./authorize";
+export * from "./client-assertion";
 export * from "./clients";
 export * from "./config";
 export * from "./scopes";

@@ -22,6 +22,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   smallint,
   text,
   timestamp,
@@ -304,6 +305,10 @@ export const jobRuns = pgTable(
  *   `metadata_expires_at`, then the authorize endpoint fetches it again.
  * `client_secret_hash` is null for public clients (PKCE only, the default); it is set when a
  * client registered with `client_secret_post` / `client_secret_basic`.
+ * A metadata-document client may instead authenticate with a `private_key_jwt` assertion
+ * (RFC 7523, e.g. ChatGPT): `token_endpoint_auth_methods` lists what it may use at the token
+ * endpoint (`none` and/or `private_key_jwt`; null means "none, or the secret when one is set")
+ * and `jwks_uri` / `jwks` hold its public keys.
  */
 export const oauthClients = pgTable(
   "oauth_clients",
@@ -315,8 +320,35 @@ export const oauthClients = pgTable(
     redirectUris: jsonb("redirect_uris").$type<string[]>().notNull(),
     metadataExpiresAt: timestamptz("metadata_expires_at"),
     createdAt: timestamptz("created_at").notNull().defaultNow(),
+    /** Token endpoint auth methods allowed (`none`, `private_key_jwt`); null: derived from the secret. */
+    tokenEndpointAuthMethods: jsonb("token_endpoint_auth_methods").$type<string[]>(),
+    /** Where the client's public keys are served (private_key_jwt). */
+    jwksUri: text("jwks_uri"),
+    /** The client's public keys, when its metadata document embeds them instead of a jwks_uri. */
+    jwks: jsonb("jwks").$type<{ keys: Record<string, unknown>[] }>(),
+    /** The one JWS alg its assertions must use, when the document declares it. */
+    tokenEndpointAuthSigningAlg: text("token_endpoint_auth_signing_alg"),
   },
   (t) => [check("oauth_clients_name_not_blank", sql`btrim(${t.name}) <> ''`)],
+);
+
+/**
+ * `jti`s of private_key_jwt client assertions already accepted (RFC 7523 §3: an assertion is
+ * single-use). Kept until the assertion would have expired, then the daily cleanup deletes them.
+ */
+export const oauthAssertionJtis = pgTable(
+  "oauth_assertion_jtis",
+  {
+    clientId: text("client_id")
+      .notNull()
+      .references(() => oauthClients.id, { onDelete: "cascade" }),
+    jti: text("jti").notNull(),
+    expiresAt: timestamptz("expires_at").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.clientId, t.jti], name: "oauth_assertion_jtis_pkey" }),
+    index("oauth_assertion_jtis_expires_at_idx").on(t.expiresAt),
+  ],
 );
 
 /**

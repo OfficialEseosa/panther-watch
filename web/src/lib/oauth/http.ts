@@ -36,7 +36,9 @@ export async function handleOAuthErrors(label: string, fn: () => Promise<Respons
     return await fn();
   } catch (error) {
     unstable_rethrow(error);
-    if (error instanceof OAuthGrantError) return oauthError(error.status, error.error, error.message);
+    if (error instanceof OAuthGrantError) {
+      return oauthError(error.status, error.error, error.message, error.headers ? { headers: error.headers } : {});
+    }
     if (error instanceof ClientError) {
       return oauthError(error.code === "invalid_client" ? 401 : 400, error.code, error.message);
     }

@@ -1,6 +1,16 @@
 import { and, eq, inArray, lt, ne, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { emailLog, jobRuns, oauthClients, oauthCodes, oauthTokens, scheduleEntries, terms, watchedSections } from "@/db/schema";
+import {
+  emailLog,
+  jobRuns,
+  oauthAssertionJtis,
+  oauthClients,
+  oauthCodes,
+  oauthTokens,
+  scheduleEntries,
+  terms,
+  watchedSections,
+} from "@/db/schema";
 import type { GoSolarOptions } from "@/lib/gosolar";
 import { errorMessage, withJobRun, type JobOutcome } from "./runs";
 import { isTermExpired, refreshTerms } from "./terms";
@@ -28,6 +38,7 @@ export interface CleanupSummary extends Record<string, unknown> {
   oauthCodesDeleted: number;
   oauthTokensDeleted: number;
   oauthClientsDeleted: number;
+  oauthAssertionJtisDeleted: number;
   termsRefresh?: CleanupOptions["termsRefresh"];
 }
 
@@ -115,8 +126,9 @@ export const OAUTH_IDLE_CLIENT_DAYS = 7;
 /**
  * OAuth housekeeping: authorization codes a day past expiry, token rows whose refresh token
  * expired (revoked rows are kept until then so a replayed refresh token is still recognised),
- * and clients with no codes or tokens left that were registered (or their metadata document
- * fetched) more than a week ago. A client that is still connected always has a live row.
+ * clients with no codes or tokens left that were registered (or their metadata document
+ * fetched) more than a week ago (a client that is still connected always has a live row), and
+ * the jti records of expired private_key_jwt client assertions.
  */
 async function pruneOAuth(now: Date) {
   const db = getDb();
@@ -138,7 +150,16 @@ async function pruneOAuth(now: Date) {
       ),
     )
     .returning({ id: oauthClients.id });
-  return { oauthCodesDeleted: codes.length, oauthTokensDeleted: tokens.length, oauthClientsDeleted: clients.length };
+  const jtis = await db
+    .delete(oauthAssertionJtis)
+    .where(lt(oauthAssertionJtis.expiresAt, now))
+    .returning({ jti: oauthAssertionJtis.jti });
+  return {
+    oauthCodesDeleted: codes.length,
+    oauthTokensDeleted: tokens.length,
+    oauthClientsDeleted: clients.length,
+    oauthAssertionJtisDeleted: jtis.length,
+  };
 }
 
 /** GoSolar's term list must answer well inside pg_net's 10 s wait for the route. */
