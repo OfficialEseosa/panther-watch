@@ -83,8 +83,36 @@ const MAX_REDIRECT_URIS = 10;
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 /**
- * Why `uri` cannot be a redirect URI, or null when it can. MCP (and OAuth 2.1): HTTPS, or
- * http on a loopback host for native apps. No fragment, no credentials.
+ * Private-use URI schemes (RFC 8252 §7.1) of known MCP clients, accepted as redirect URIs even
+ * though they are not reverse-domain names (Cursor registers cursor://anysphere.cursor-mcp/...).
+ */
+const KNOWN_APP_SCHEMES = new Set(["cursor", "windsurf", "vscode", "vscode-insiders", "cline", "goose", "claude"]);
+/** Schemes that run code, read local files or open other apps: never a redirect URI. */
+const UNSAFE_SCHEMES = new Set(["javascript", "data", "file", "vbscript", "about", "blob", "filesystem", "view-source"]);
+/** A reverse-domain scheme (RFC 8252 §7.1), e.g. com.example.app: dot-separated, non-empty labels. */
+const REVERSE_DOMAIN_SCHEME = /^[a-z][a-z0-9+-]*(\.[a-z0-9+-]+)+$/;
+
+/** The scheme of an absolute URI (lowercased), or null when there is none. */
+function schemeOf(uri: string): string | null {
+  const match = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(uri);
+  return match ? match[1].toLowerCase() : null;
+}
+
+/**
+ * Whether `scheme` is a private-use scheme a native app may receive its redirect on: a known
+ * editor / agent scheme, or any reverse-domain scheme. Never javascript:, data:, file:,
+ * vbscript:, about:, blob: or an ms-* (Windows app protocol) scheme.
+ */
+function isPrivateUseScheme(scheme: string): boolean {
+  if (UNSAFE_SCHEMES.has(scheme) || scheme.startsWith("ms-")) return false;
+  return KNOWN_APP_SCHEMES.has(scheme) || REVERSE_DOMAIN_SCHEME.test(scheme);
+}
+
+/**
+ * Why `uri` cannot be a redirect URI, or null when it can. MCP (and OAuth 2.1): HTTPS, http on
+ * a loopback host for native apps, or a native app's private-use scheme (RFC 8252 §7.1: a
+ * known editor / agent scheme such as cursor:, or a reverse-domain scheme such as
+ * com.example.app:). No fragment, no credentials.
  */
 export function redirectUriProblem(uri: string): string | null {
   if (uri.length > MAX_URI_LENGTH) return "redirect URI is too long";
@@ -98,15 +126,28 @@ export function redirectUriProblem(uri: string): string | null {
   if (url.username || url.password) return "redirect URIs must not contain credentials";
   if (url.protocol === "https:") return null;
   if (url.protocol === "http:" && LOOPBACK_HOSTS.has(url.hostname)) return null;
-  return "redirect URIs must use https, or http on localhost";
+  const scheme = url.protocol.slice(0, -1);
+  if (isPrivateUseScheme(scheme)) {
+    if (!url.host && (url.pathname === "" || url.pathname === "/")) return "redirect URIs need a path or host after the scheme";
+    return null;
+  }
+  return "redirect URIs must use https, http on localhost, or an app's own scheme (like cursor: or com.example.app:)";
+}
+
+/** `uri` with its scheme lowercased (schemes are case-insensitive, RFC 3986 §3.1); the rest as is. */
+function normalizeScheme(uri: string): string {
+  const scheme = schemeOf(uri);
+  return scheme ? scheme + uri.slice(scheme.length) : uri;
 }
 
 /**
- * Whether `candidate` is one of `registered`: exact string match, except that a loopback
- * http URI matches on any port (RFC 8252 §7.3: native apps pick a free port at runtime).
+ * Whether `candidate` is one of `registered`: exact string match (the scheme compared
+ * case-insensitively), except that a loopback http URI matches on any port (RFC 8252 §7.3:
+ * native apps pick a free port at runtime).
  */
 export function redirectUriAllowed(registered: readonly string[], candidate: string): boolean {
-  if (registered.includes(candidate)) return true;
+  const normalized = normalizeScheme(candidate);
+  if (registered.some((entry) => normalizeScheme(entry) === normalized)) return true;
   let url: URL;
   try {
     url = new URL(candidate);
@@ -129,11 +170,17 @@ export function redirectUriAllowed(registered: readonly string[], candidate: str
   });
 }
 
-/** True when every redirect URI is a loopback one (the consent page warns: anyone can claim those). */
-export function loopbackOnly(uris: readonly string[]): boolean {
+/**
+ * True when every redirect URI returns to an app on the user's own device: a loopback host or
+ * a private-use scheme. The consent page warns about those, since any app on the computer
+ * could be listening on that port or have claimed that scheme.
+ */
+export function localRedirectOnly(uris: readonly string[]): boolean {
   return uris.every((uri) => {
     try {
-      return LOOPBACK_HOSTS.has(new URL(uri).hostname);
+      const url = new URL(uri);
+      if (LOOPBACK_HOSTS.has(url.hostname)) return true;
+      return url.protocol !== "https:" && url.protocol !== "http:" && isPrivateUseScheme(url.protocol.slice(0, -1));
     } catch {
       return false;
     }

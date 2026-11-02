@@ -31,7 +31,8 @@ describe("parseSearch: course number lists", () => {
     const search = parsed as Extract<typeof parsed, { ok: true }>;
     expect(resultsHref(search)).toBe("/course-results?term=202701&subjects=CSC&courseNumber=4352%2C4350%2C4110%2C1301L");
     expect(searchFormHref(search)).toContain("courseNumber=4352%2C4350%2C4110%2C1301L");
-    expect(resultsTitle(search, "Spring 2027")).toBe("CSC 4352, 4350, 4110, 1301L · Spring 2027");
+    expect(resultsTitle(search, "Spring 2027")).toBe("CSC 4352, 4350, 4110, 1301L · Spring 2027 · All levels");
+    expect(resultsTitle({ ...search, level: "US" }, "Spring 2027")).toBe("CSC 4352, 4350, 4110, 1301L · Spring 2027 · Bachelors");
   });
 
   it("rejects more than 6 numbers, a bad number, and more than 10 subject x number pairs", () => {

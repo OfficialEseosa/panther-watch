@@ -121,11 +121,15 @@ Connected apps has a short card linking there plus the same app list.
   clients). `withMcpAuth` requires `Authorization: Bearer <access token>`; without a valid one
   it answers 401 with `WWW-Authenticate: Bearer ... resource_metadata="${APP_URL}/.well-known/oauth-protected-resource/api/mcp"`.
 - **Tools** (`src/lib/mcp/tools.ts`): `list_terms`, `search_subjects`, `search_sections`,
-  `get_section_details`, `get_course_requirements`, `list_watches`, `list_schedule`,
-  `check_conflicts` (scope `read`);
+  `get_section_details`, `get_course_requirements`, `get_syllabus_summary`, `list_watches`,
+  `list_schedule`, `check_conflicts` (scope `read`);
   `add_watch`, `remove_watch` (`watches:write`); `add_to_schedule`, `remove_from_schedule`
   (`schedule:write`). They call the same library functions as the routes (`addWatch` keeps the
-  track-while-open rule; `add_to_schedule` adds even on a clash and reports it). A missing
+  track-while-open rule; `add_to_schedule` adds even on a clash and reports it).
+  `get_syllabus_summary` (`src/lib/course-meta/syllabus-summary.ts`) re-reads the section's
+  syllabus PDF on every call (cdn.gsu.edu only, 10 s / 8 MB caps, text via `unpdf`) and reuses
+  the Claude Haiku summary stored in `syllabus_summaries` while the text hash is unchanged; new
+  summaries count toward `ASSISTANT_GLOBAL_DAILY_USD` (`assistant_daily`). A missing
   scope is a tool error, not a 403 step-up challenge, because students can untick write scopes
   on purpose. Rate limit: an in-memory token bucket per user (30 calls, then one every 2 s),
   best effort only (per serverless instance), plus GoSolar's own per-search concurrency.

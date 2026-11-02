@@ -26,6 +26,8 @@ test("terms come from GoSolar once, then from the database cache", async ({ page
 test("subject picker and submit", async ({ page }) => {
   await login(page.request, freshUser("search"));
   await page.goto("/course-search");
+  // Bachelor's level unless the student picks another: GoSolar mixes Perimeter College sections in otherwise.
+  await expect(page.getByRole("combobox", { name: "Choose a degree" })).toHaveValue("US");
 
   const subjects = await hydrated(page.getByRole("combobox", { name: "Enter subjects" }));
   await subjects.click();
@@ -63,7 +65,8 @@ test("subject picker and submit", async ({ page }) => {
   const url = new URL(page.url());
   expect(url.searchParams.get("term")).toBe(SEED.term);
   expect(url.searchParams.get("subjects")).toBe("CSC");
-  await expect(page.getByRole("heading", { level: 1, name: "CSC · Spring Semester 2027" })).toBeVisible();
+  expect(url.searchParams.get("level")).toBe("US");
+  await expect(page.getByRole("heading", { level: 1, name: "CSC · Spring Semester 2027 · Bachelors", exact: true })).toBeVisible();
 });
 
 test("submitting without a subject shows the field error", async ({ page }) => {

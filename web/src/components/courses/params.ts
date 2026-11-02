@@ -134,9 +134,20 @@ export function searchFormHref(search: { term: string; subjects: string[]; cours
   return `/course-search?${params.toString()}`;
 }
 
-/** "CSC 1301 · Spring 2027" ("CSC 4352, 4350 · …" for a list): the results page's h1 (the original toolbar summary). */
-export function resultsTitle(search: { subjects: string[]; courseNumber: string | null }, termName: string): string {
-  return `${search.subjects.join(", ")}${search.courseNumber ? ` ${displayCourseNumbers(search.courseNumber)}` : ""} · ${termName}`;
+/** Short names of the GoSolar levels the search form offers (its "Choose a degree" select). */
+const LEVEL_NAMES: Record<string, string> = { US: "Bachelors", UA: "Associates", GS: "Graduate", LW: "Law" };
+
+/** "Bachelors" for US; "All levels" for no level (GoSolar then returns every level). */
+export const levelName = (level: string | null): string => (level ? (LEVEL_NAMES[level] ?? level) : "All levels");
+
+/**
+ * "CSC 1301 · Spring 2027 · Bachelors" ("CSC 4352, 4350 · …" for a list): the results page's h1
+ * (the original toolbar summary), with the level searched, since GoSolar mixes associate
+ * (Perimeter College) sections in with bachelor's ones when no level is given.
+ */
+export function resultsTitle(search: { subjects: string[]; courseNumber: string | null; level: string | null }, termName: string): string {
+  const course = `${search.subjects.join(", ")}${search.courseNumber ? ` ${displayCourseNumbers(search.courseNumber)}` : ""}`;
+  return `${course} · ${termName} · ${levelName(search.level)}`;
 }
 
 // ------------------------------------------------------------------ filters

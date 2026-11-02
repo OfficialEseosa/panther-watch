@@ -144,8 +144,11 @@ function compactDistribution(d: Distribution | null | undefined) {
   };
 }
 
-/** Grades, rating and syllabus for get_section_details, without the bulky parts. */
-export function compactMeta(meta: SectionMeta) {
+/**
+ * Grades, rating and syllabus for get_section_details, without the bulky parts.
+ * `syllabusSummaryCached` (when known) says whether get_syllabus_summary has a stored summary.
+ */
+export function compactMeta(meta: SectionMeta, extra: { syllabusSummaryCached?: boolean } = {}) {
   const grades = meta.grades;
   const rating: ProfessorRating | null = meta.rating;
   return {
@@ -166,6 +169,7 @@ export function compactMeta(meta: SectionMeta) {
         ? {
             found: true,
             matchedName: rating.matchedName ?? null,
+            matchQuality: rating.matchQuality ?? null,
             avgRating: rating.avgRating ?? null,
             avgDifficulty: rating.avgDifficulty ?? null,
             numRatings: rating.numRatings ?? null,
@@ -175,6 +179,7 @@ export function compactMeta(meta: SectionMeta) {
         : { found: false }
       : null,
     syllabusUrl: meta.syllabus?.url ?? null,
+    ...(meta.syllabus && extra.syllabusSummaryCached !== undefined ? { syllabusSummaryCached: extra.syllabusSummaryCached } : {}),
   };
 }
 

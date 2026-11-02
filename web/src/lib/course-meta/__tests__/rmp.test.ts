@@ -7,7 +7,9 @@ import {
   RMP_MISS_TTL_MS,
   RMP_SCHOOL_ID,
   bestMatch,
+  findMatch,
   getProfessorRating,
+  rmpCacheKey,
   parseTeacherSearch,
   type RmpTeacher,
 } from "../rmp";
@@ -117,13 +119,98 @@ describe("bestMatch (ported from ProfessorRatingServiceTest)", () => {
     expect(bestMatch(hits, name("Jones, William (Bob)"))?.legacyId).toBe(2);
   });
 
-  it("falls back to the most-rated last-name match", () => {
+  it("never falls back to a last-name-only match (a namesake's rating is worse than none)", () => {
+    // The live regression: Keith, Smith, Wang, Luo, Asare, Powell got a different person's rating.
     const hits = teachers(
       { first: "Robert", last: "Smith", legacyId: 111, numRatings: 50, rating: 4 },
       { first: "Rob", last: "Smith", legacyId: 112, numRatings: 2, rating: 4 },
       { first: "Alice", last: "Smithers", legacyId: 333, numRatings: 99, rating: 4 },
     );
-    expect(bestMatch(hits, name("Smith, Jane"))?.legacyId).toBe(111);
+    expect(bestMatch(hits, name("Smith, Jane"))).toBeNull();
+    expect(bestMatch(teachers({ first: "Wei", last: "Wang", legacyId: 1, numRatings: 80, rating: 2 }), name("Wang, Yu"))).toBeNull();
+  });
+
+  it("does not match a query without a first name", () => {
+    const hits = teachers({ first: "Robert", last: "Smith", legacyId: 111, numRatings: 50, rating: 4 });
+    expect(bestMatch(hits, name("Smith"))).toBeNull();
+  });
+
+  it("matches a GoSolar initial to a full RMP first name, flagged as an initial match", () => {
+    const hits = teachers(
+      { first: "Jennifer", last: "Smith", legacyId: 1, numRatings: 4, rating: 4 },
+      { first: "Robert", last: "Smith", legacyId: 2, numRatings: 90, rating: 4 },
+    );
+    expect(findMatch(hits, name("Smith, J."))).toMatchObject({ teacher: { legacyId: 1 }, quality: "initial" });
+    expect(findMatch(hits, name("Smith, J"))?.teacher.legacyId).toBe(1);
+    expect(findMatch(hits, name("Smith, Jennifer"))?.quality).toBe("exact");
+  });
+
+  it("never matches by initial when a full first name is available", () => {
+    // Full query name vs an initial-only RMP profile, and vice versa a different J-name.
+    const initialProfile = teachers({ first: "J.", last: "Smith", legacyId: 1, numRatings: 9, rating: 4 });
+    expect(bestMatch(initialProfile, name("Smith, John"))).toBeNull();
+    const james = teachers({ first: "James", last: "Smith", legacyId: 2, numRatings: 9, rating: 4 });
+    expect(bestMatch(james, name("Smith, Jennifer"))).toBeNull();
+  });
+
+  it("returns no match when an initial fits several different first names", () => {
+    const hits = teachers(
+      { first: "John", last: "Smith", legacyId: 1, numRatings: 4, rating: 4 },
+      { first: "James", last: "Smith", legacyId: 2, numRatings: 40, rating: 4 },
+    );
+    expect(bestMatch(hits, name("Smith, J."))).toBeNull();
+  });
+
+  it("matches multi-token given names in full (GoSolar initials plus a name)", () => {
+    const hits = teachers({ first: "S M Towhidul", last: "Islam", legacyId: 2921056, numRatings: 13, rating: 3.7 });
+    expect(findMatch(hits, name("Islam, S M Towhidul (Towhid)"))).toMatchObject({ teacher: { legacyId: 2921056 }, quality: "exact" });
+  });
+
+  it("breaks ties between duplicate profiles by ratings count", () => {
+    const hits = teachers(
+      { first: "Jennifer", last: "Ortgies-Young", legacyId: 1, numRatings: 3, rating: 4 },
+      { first: "Jennifer", last: "Ortgies-Young", legacyId: 2, numRatings: 30, rating: 4 },
+      { first: "J", last: "Ortgies-Young", legacyId: 3, numRatings: 99, rating: 4 },
+    );
+    expect(findMatch(hits, name("Ortgies-Young, Jennifer"))).toMatchObject({ teacher: { legacyId: 2 }, quality: "exact" });
+  });
+
+  it("fuzzy-matches a misspelled RMP last name when the first name matches in full", () => {
+    // Live case: RMP lists Tamra Ortgies-Young (POLS) as "Ortegies-Young".
+    const hits = teachers(
+      { first: "Tamra", last: "Ortegies-Young", legacyId: 2753188, numRatings: 7, rating: 4 },
+      { first: "Jennifer", last: "Ortgies-Young", legacyId: 9, numRatings: 70, rating: 4 },
+    );
+    expect(findMatch(hits, name("Ortgies-Young, Tamra"))).toMatchObject({ teacher: { legacyId: 2753188 }, quality: "fuzzy" });
+    expect(findMatch(hits, name("Ortgies-Young, Tamra S."))?.quality).toBe("fuzzy");
+    // Two typos are tolerated only because both names are 8+ letters; three never are.
+    const twoOff = teachers({ first: "Tamra", last: "Ortegies-Yuong", legacyId: 3, numRatings: 1, rating: 4 });
+    expect(findMatch(twoOff, name("Ortgies-Young, Tamra"))?.quality).toBe("fuzzy");
+    const threeOff = teachers({ first: "Tamra", last: "Ortegeis-Yuong", legacyId: 4, numRatings: 1, rating: 4 });
+    expect(findMatch(threeOff, name("Ortgies-Young, Tamra"))).toBeNull();
+  });
+
+  it("prefers a strict match over a fuzzy one, and needs the first name to match", () => {
+    const hits = teachers(
+      { first: "Tamra", last: "Ortegies-Young", legacyId: 1, numRatings: 70, rating: 4 },
+      { first: "Tamra", last: "Ortgies-Young", legacyId: 2, numRatings: 1, rating: 4 },
+    );
+    expect(findMatch(hits, name("Ortgies-Young, Tamra"))).toMatchObject({ teacher: { legacyId: 2 }, quality: "exact" });
+    expect(bestMatch(hits.slice(0, 1), name("Ortgies-Young, Jennifer"))).toBeNull();
+  });
+
+  it("never fuzzy-matches last names under 7 letters (Smith vs Smyth, Powell vs Howell)", () => {
+    const smyth = teachers({ first: "Jane", last: "Smyth", legacyId: 1, numRatings: 9, rating: 4 });
+    expect(bestMatch(smyth, name("Smith, Jane"))).toBeNull();
+    const howell = teachers({ first: "Gary", last: "Howell", legacyId: 2, numRatings: 9, rating: 4 });
+    expect(bestMatch(howell, name("Powell, Gary"))).toBeNull(); // 6 letters: a real different name
+    const jacksom = teachers({ first: "Gary", last: "Jacksom", legacyId: 3, numRatings: 9, rating: 4 });
+    expect(findMatch(jacksom, name("Jackson, Gary"))?.quality).toBe("fuzzy"); // 7 letters, one typo
+  });
+
+  it("never fuzzy-matches an initial-only first name", () => {
+    const hits = teachers({ first: "Tamra", last: "Ortegies-Young", legacyId: 1, numRatings: 7, rating: 4 });
+    expect(bestMatch(hits, name("Ortgies-Young, T."))).toBeNull();
   });
 
   it("compares last names folded (case, diacritics, suffixes)", () => {
@@ -153,6 +240,7 @@ describe("getProfessorRating", () => {
       professorQueried: "Nemira, Alina (Alina) ",
       found: true,
       matchedName: "Alina Nemira",
+      matchQuality: "exact",
       legacyId: 3119831,
       avgRating: 1.7,
       profileUrl: "https://www.ratemyprofessors.com/professor/3119831",
@@ -201,11 +289,43 @@ describe("getProfessorRating", () => {
     expect(cachedRead).toMatchObject({ found: true, legacyId: 3119831, professorQueried: "Alina Nemira" });
 
     const rows = await t.db.select().from(rmpCache);
-    expect(rows.map((r) => r.queryKey)).toEqual(["rmp:nemira|alina"]);
+    expect(rows.map((r) => r.queryKey)).toEqual(["rmp:v2:nemira|alina"]);
     expect(rows[0].payload).not.toHaveProperty("professorQueried");
 
     await getProfessorRating("Nemira, Alina", { fetchImpl, db: t.db, now: new Date(now.getTime() + RMP_HIT_TTL_MS) });
     expect(calls).toHaveLength(2);
+  });
+
+  it("ignores rows cached under the pre-v2 key (written by the old last-name fallback)", async () => {
+    const now = new Date("2026-10-25T12:00:00Z");
+    // A stale wrong hit from the old rules: Jane Smith got Robert Smith's rating.
+    await t.db.insert(rmpCache).values({
+      queryKey: "rmp:smith|jane",
+      payload: { found: true, matchedName: "Robert Smith", legacyId: 111, avgRating: 4, topTags: [] },
+      fetchedAt: now,
+    });
+    const robert = { first: "Robert", last: "Smith", legacyId: 111, numRatings: 50, rating: 4 };
+    const { fetchImpl, calls } = fakeFetch(response({ body: graphql(robert) }));
+
+    const rating = await getProfessorRating("Smith, Jane", { fetchImpl, db: t.db, now });
+    expect(calls).toHaveLength(1);
+    expect(rating.found).toBe(false);
+    expect(rmpCacheKey(name("Smith, Jane"))).toBe("rmp:v2:smith|jane");
+
+    // The fresh miss is now what later reads get, without another RMP call.
+    expect((await getProfessorRating("Smith, Jane", { fetchImpl, db: t.db, now })).found).toBe(false);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("round-trips an initial match through the cache", async () => {
+    const now = new Date("2026-10-25T12:00:00Z");
+    const jennifer = { first: "Jennifer", last: "Smith", legacyId: 5, numRatings: 4, rating: 4 };
+    const { fetchImpl, calls } = fakeFetch(response({ body: graphql(jennifer) }));
+    const first = await getProfessorRating("Smith, J.", { fetchImpl, db: t.db, now });
+    const second = await getProfessorRating("Smith, J", { fetchImpl, db: t.db, now });
+    expect(calls).toHaveLength(1);
+    expect(first).toMatchObject({ found: true, matchedName: "Jennifer Smith", matchQuality: "initial" });
+    expect(second).toMatchObject({ found: true, matchedName: "Jennifer Smith", matchQuality: "initial", professorQueried: "Smith, J" });
   });
 
   it("caches misses as a null payload for 6 h", async () => {

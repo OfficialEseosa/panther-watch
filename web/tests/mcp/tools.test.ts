@@ -152,6 +152,7 @@ describe("tools", () => {
         "check_conflicts",
         "get_course_requirements",
         "get_section_details",
+        "get_syllabus_summary",
         "list_schedule",
         "list_terms",
         "list_watches",
@@ -190,7 +191,12 @@ describe("tools", () => {
       }),
     ]);
     const { data } = await callTool(await mcp(), "search_sections", { term: OPEN, subject: "csc", courseNumber: "1301" });
-    expect(data).toMatchObject({ total: 3, returned: 3, truncated: false });
+    expect(data).toMatchObject({ level: "US", levelName: "Bachelor's level", total: 3, returned: 3, truncated: false });
+    // No level given: bachelor's (US), never GoSolar's every-level default that mixes in Perimeter College sections.
+    const searches = gs.requests.filter((r) => r.path === "/searchResults/searchResults");
+    expect(searches.length).toBeGreaterThan(0);
+    expect(searches.every((r) => r.query.txt_level === "US")).toBe(true);
+    expect(data!.resultsUrl).toMatch(/[?&]level=US$/);
     const sections = data!.sections as Array<Record<string, unknown>>;
     expect(sections[0]).toEqual({
       term: OPEN,

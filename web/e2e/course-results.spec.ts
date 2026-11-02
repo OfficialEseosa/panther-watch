@@ -18,7 +18,8 @@ const card = (page: Page, code: string) => page.getByRole("article", { name: `${
 
 test("sections, the filter, and the detail dialog", async ({ page }) => {
   await page.goto(RESULTS);
-  await expect(page.getByRole("heading", { level: 1, name: "CSC 1301 · Spring Semester 2027" })).toBeVisible();
+  // No level in the link: GoSolar's every-level search, and the summary says so.
+  await expect(page.getByRole("heading", { level: 1, name: "CSC 1301 · Spring Semester 2027 · All levels", exact: true })).toBeVisible();
   await expect(cards(page)).toHaveCount(2);
   // The full original card: heading, CRN chip, title/section/credits, the five enrollment numbers.
   await expect(card(page, OPEN)).toContainText("Computer Science (CSC 1301)");

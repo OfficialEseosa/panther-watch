@@ -116,7 +116,7 @@ async function Results({ searchParams }: PageProps) {
   if (failedSearches.length === pairCount) {
     return (
       <ResultsUnavailable
-        title={resultsTitle({ subjects, courseNumber }, name)}
+        title={resultsTitle({ subjects, courseNumber, level }, name)}
         editHref={searchFormHref({ term, subjects, courseNumber, level })}
       />
     );

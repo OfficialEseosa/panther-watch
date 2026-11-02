@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { SCOPES } from "@/lib/oauth/scopes";
 import { callTool, type ToolAuth } from "@/lib/tools/registry";
-import { assistantConfig, type AssistantConfig } from "./config";
+import { anthropicClient, assistantConfig } from "./config";
 import { addUsage, costMicroUsd, ZERO_USAGE, type AssistantModel, type TokenUsage } from "./pricing";
 import { contextNote, SYSTEM_PROMPT } from "./prompt";
 import { apiTools, toolLabel } from "./tools";
@@ -69,16 +69,6 @@ const MAX_TOKENS_NOTE = "\n\n(I ran out of room for this answer. Ask me to conti
 
 const effortFor = (model: AssistantModel): "low" | "medium" => (model === "claude-haiku-5-5" ? "medium" : "low");
 const supportsFallback = (model: AssistantModel) => model !== "claude-haiku-5-5";
-
-function client(config: AssistantConfig): Anthropic {
-  return new Anthropic({
-    apiKey: config.apiKey,
-    authToken: null,
-    ...(config.fetch ? { fetch: config.fetch } : {}),
-    maxRetries: 1,
-    timeout: 45_000,
-  });
-}
 
 /** The client's conversation as API messages; the context note leads the first user message. */
 export function toApiMessages(messages: ClientMessage[], userName: string | null, now: Date): Anthropic.Beta.BetaMessageParam[] {
@@ -170,7 +160,7 @@ function classify(error: unknown, signal: AbortSignal): Exclude<ErrorCode, "budg
 export async function runTurn({ userId, userName, messages, signal, emit, now = new Date() }: TurnInput): Promise<TurnResult> {
   const config = assistantConfig();
   const model = config.model;
-  const anthropic = client(config);
+  const anthropic = anthropicClient(config);
   const auth: ToolAuth = { userId, scopes: SCOPES };
   const convo = toApiMessages(messages, userName, now);
   const base = {

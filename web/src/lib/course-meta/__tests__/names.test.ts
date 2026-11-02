@@ -27,6 +27,9 @@ describe("parseName", () => {
   it("ignores middle names and initials", () => {
     expect(professorKey("Dayananda, Mathes A.")).toBe("dayananda|mathes");
     expect(professorKey("Mathes A. Dayananda")).toBe("dayananda|mathes");
+    // The full given name is kept beside the key (RMP lists some professors by all of it).
+    expect(parseName("Islam, S M Towhidul (Towhid)")).toMatchObject({ first: "S", given: "S M Towhidul", key: "islam|s" });
+    expect(parseName("Mathes A. Dayananda")?.given).toBe("Mathes A");
     expect(professorKey("Saghaeiannejad Esfahani, Sayed Hossein")).toBe("saghaeiannejad esfahani|sayed");
   });
 

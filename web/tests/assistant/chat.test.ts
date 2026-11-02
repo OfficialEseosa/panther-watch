@@ -170,7 +170,7 @@ describe("a turn", () => {
     // Cache: frozen system prompt + last tool marked, automatic caching for the conversation.
     expect(body.system).toEqual([{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }]);
     expect(body.cache_control).toEqual({ type: "ephemeral" });
-    expect(body.tools).toHaveLength(12);
+    expect(body.tools).toHaveLength(13);
     expect(body.tools.at(-1).cache_control).toEqual({ type: "ephemeral" });
     expect(body.tools.slice(0, -1).every((t: { cache_control?: unknown }) => !t.cache_control)).toBe(true);
     for (const tool of body.tools) {
@@ -237,7 +237,10 @@ describe("tools", () => {
     expect(events[2].data).toMatchObject({ id: "toolu_1", status: "done" });
     // A new round's text starts a new paragraph.
     expect(textOf(events)).toBe("Let me check.\n\nCRN 81234 has 4 open seats.");
-    expect(gs.requests.some((r) => r.path.includes("searchResults"))).toBe(true);
+    // No level from the model: the tool searches bachelor's level (US), not every level.
+    const searches = gs.requests.filter((r) => r.path === "/searchResults/searchResults");
+    expect(searches.length).toBeGreaterThan(0);
+    expect(searches.every((r) => r.query.txt_level === "US")).toBe(true);
 
     expect(claude.requests).toHaveLength(2);
     const second = claude.requests[1].body.messages;
@@ -250,8 +253,8 @@ describe("tools", () => {
     expect(result).toMatchObject({ type: "tool_result", tool_use_id: "toolu_1" });
     expect(result.is_error).toBeUndefined();
     const data = JSON.parse(result.content);
-    expect(data).toMatchObject({ total: 1, sections: [{ crn: "81234", seatsAvailable: 4, open: true }] });
-    expect(data.resultsUrl).toBe(`${TEST_ORIGIN}/course-results?term=${OPEN}&subjects=CSC&courseNumber=4350`);
+    expect(data).toMatchObject({ level: "US", levelName: "Bachelor's level", total: 1, sections: [{ crn: "81234", seatsAvailable: 4, open: true }] });
+    expect(data.resultsUrl).toBe(`${TEST_ORIGIN}/course-results?term=${OPEN}&subjects=CSC&courseNumber=4350&level=US`);
 
     // Usage: both model requests, summed and priced (Haiku 5.5: $0.10 in, $0.50 out, $0.01 read, $0.125 write per MTok).
     const row = await usageRow();
@@ -261,6 +264,33 @@ describe("tools", () => {
     const [daily] = await testDb.db.select().from(assistantDaily);
     expect(daily).toMatchObject({ day: easternDay(), messages: 1, inputTokens: 1300, outputTokens: 80, costMicroUsd: cost });
     expect(events.at(-1)!.data.usage).toEqual({ input: 1300, output: 80, cacheRead: 5000, cacheWrite: 4000 });
+  });
+
+  it("search_sections searches the level asked for (UA: Perimeter College) and says so", async () => {
+    gs.setSections(OPEN, "POLS", "2401", [makeSection({ term: OPEN, subject: "POLS", courseNumber: "2401", courseReferenceNumber: "82001" })]);
+    claude.reply({ tools: [{ id: "toolu_ua", name: "search_sections", input: { term: OPEN, subject: "POLS", courseNumber: "2401", level: "UA" } }] });
+    claude.reply({ text: ["One associate-level section."] });
+    await chat("Any Perimeter sections of POLS 2401?");
+    const searches = gs.requests.filter((r) => r.path === "/searchResults/searchResults");
+    expect(searches.length).toBeGreaterThan(0);
+    expect(searches.every((r) => r.query.txt_level === "UA")).toBe(true);
+    const result = claude.requests[1].body.messages[2].content[0];
+    expect(result.is_error).toBeUndefined();
+    const data = JSON.parse(result.content);
+    expect(data).toMatchObject({ level: "UA", levelName: "Associate level (Perimeter College)", total: 1 });
+    expect(data.resultsUrl).toBe(`${TEST_ORIGIN}/course-results?term=${OPEN}&subjects=POLS&courseNumber=2401&level=UA`);
+  });
+
+  it("search_sections' strict schema: level is an optional US/UA/GS enum whose US default is applied server side", async () => {
+    claude.reply({ text: ["ok"] });
+    await chat("hi");
+    const tool = claude.requests[0].body.tools.find((t: { name: string }) => t.name === "search_sections");
+    const { input_schema: schema } = tool;
+    expect(schema.properties.level).toMatchObject({ type: "string", enum: ["US", "UA", "GS"] });
+    expect(schema.properties.level.description).toMatch(/^US = bachelor's level \(the default;.*Default: "US"\.$/);
+    // Strict tool use allows optional properties: the default isn't sent, so `level` stays out of required.
+    expect(schema.required).toEqual(["term", "subject"]);
+    expect(SYSTEM_PROMPT).toContain("Search at the bachelor's level unless");
   });
 
   it("list_terms marks the term students are registering for as default, not the semester under way", async () => {

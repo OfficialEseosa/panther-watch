@@ -1,4 +1,5 @@
 import "server-only";
+import Anthropic from "@anthropic-ai/sdk";
 import { env } from "@/lib/env";
 import type { AssistantModel } from "./pricing";
 
@@ -15,6 +16,17 @@ export interface AssistantConfig {
   globalDailyUsd: number;
   /** Custom fetch for the Anthropic client (tests: a scripted fake). */
   fetch?: typeof fetch;
+}
+
+/** The Anthropic client for the assistant's settings (also used for syllabus summaries). */
+export function anthropicClient(config: AssistantConfig): Anthropic {
+  return new Anthropic({
+    apiKey: config.apiKey,
+    authToken: null,
+    ...(config.fetch ? { fetch: config.fetch } : {}),
+    maxRetries: 1,
+    timeout: 45_000,
+  });
 }
 
 let override: Partial<AssistantConfig> | undefined;

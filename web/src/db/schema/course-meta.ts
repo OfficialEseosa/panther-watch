@@ -7,9 +7,12 @@
  * Proposed in docs/audit-2026-10/02-backend-audit.md section 4. Code in
  * src/lib/course-meta imports these tables from this module directly.
  */
+import { sql } from "drizzle-orm";
 import {
+  bigint,
   boolean,
   char,
+  check,
   index,
   integer,
   jsonb,
@@ -104,8 +107,40 @@ export const rmpCache = pgTable("rmp_cache", {
   fetchedAt: timestamptz("fetched_at").notNull().defaultNow(),
 });
 
+/**
+ * Claude-written summaries of syllabus PDFs (src/lib/course-meta/syllabus-summary.ts), keyed by
+ * the PDF's public URL. `text_sha256` is the hash of the text extracted from the PDF when it was
+ * summarized: every lookup re-reads the PDF and reuses the summary only while the hash matches.
+ * `status = 'unavailable'` records a PDF that can't be summarized (no text, not a PDF, the
+ * model declined) so it isn't paid for again until the text changes; transient failures (fetch
+ * errors, budget, no API key) are never stored. Cost columns are the latest generation's, in
+ * micro-dollars (the spend itself is added to `assistant_daily`).
+ */
+export const syllabusSummaries = pgTable(
+  "syllabus_summaries",
+  {
+    url: text("url").primaryKey(),
+    status: text("status").notNull(),
+    textSha256: text("text_sha256"),
+    summary: jsonb("summary"),
+    error: text("error"),
+    model: text("model"),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    costMicroUsd: bigint("cost_micro_usd", { mode: "number" }).notNull().default(0),
+    /** When this text version was first seen (reset when the text changes). */
+    createdAt: timestamptz("created_at").notNull().defaultNow(),
+    /** When `summary` was generated; null for unavailable rows the model never saw. */
+    summarizedAt: timestamptz("summarized_at"),
+    /** Last time the live PDF was read and matched `text_sha256`. */
+    checkedAt: timestamptz("checked_at").notNull().defaultNow(),
+  },
+  (table) => [check("syllabus_summaries_status_check", sql`${table.status} IN ('ok', 'unavailable')`)],
+);
+
 export type GradeTerm = typeof gradeTerms.$inferSelect;
 export type SectionGrade = typeof sectionGrades.$inferSelect;
 export type NewSectionGrade = typeof sectionGrades.$inferInsert;
 export type Syllabus = typeof syllabi.$inferSelect;
 export type RmpCacheEntry = typeof rmpCache.$inferSelect;
+export type SyllabusSummaryRow = typeof syllabusSummaries.$inferSelect;

@@ -157,6 +157,7 @@ const MCP_TOOLS: Array<[name: string, scope: string, description: string]> = [
   ["search_sections", "read", "Live sections of a subject or course: seats, waitlist, meetings, delivery mode."],
   ["get_section_details", "read", "Grade history, RateMyProfessors rating and syllabus for one section."],
   ["get_course_requirements", "read", "Prerequisites, corequisites, registration restrictions and catalog description of one section."],
+  ["get_syllabus_summary", "read", "An AI summary of one section's posted syllabus: grading weights, exams, attendance, textbook, workload."],
   ["list_watches", "read", "The student's tracked sections, optionally with live seats."],
   ["list_schedule", "read", "The student's PantherWatch schedule, by term."],
   ["check_conflicts", "read", "Time clashes between CRNs, from live meeting times."],
@@ -392,7 +393,8 @@ export default function DevelopersPage() {
               <code>/.well-known/oauth-protected-resource/api/mcp</code> (also at the root location) and{" "}
               <code>/.well-known/oauth-authorization-server</code>. Clients identify themselves with a Client ID
               Metadata Document URL or register at <code>/api/oauth/register</code>; PKCE (S256) is required,
-              redirect URIs must be https or localhost, access tokens last an hour and refresh tokens rotate. At the
+              redirect URIs must be https, localhost or an app&rsquo;s own scheme (like <code>cursor:</code>),
+              access tokens last an hour and refresh tokens rotate. At the
               token endpoint, metadata-document clients authenticate with <code>none</code> or{" "}
               <code>private_key_jwt</code> (RS256, ES256 or PS256, keys from their <code>jwks_uri</code>). The
               server allows about 30 tool calls a minute per student.
@@ -481,7 +483,9 @@ export default function DevelopersPage() {
                   "level",
                   false,
                   <>
-                    GoSolar level: <code>US</code> undergraduate, <code>GS</code> graduate. Leave it out for all levels.
+                    GoSolar level: <code>US</code> bachelor&rsquo;s (undergraduate, Atlanta campus and Online),{" "}
+                    <code>UA</code> associate (Perimeter College), <code>GS</code> graduate. Leave it out for all
+                    levels. The site&rsquo;s search form and the assistant default to <code>US</code>.
                   </>,
                 ],
               ]}

@@ -67,6 +67,11 @@ export interface ProfessorRating {
   professorQueried: string | null;
   found: boolean;
   matchedName: string | null;
+  /**
+   * How the name matched (null when not found): "exact", "initial" (GoSolar only gave an initial)
+   * or "fuzzy" (full first name, last name misspelled by one or two letters on RMP).
+   */
+  matchQuality: RmpMatchQuality | null;
   department: string | null;
   legacyId: number | null;
   profileUrl: string | null;
@@ -177,31 +182,120 @@ export async function searchTeachers(text: string, options: RmpOptions = {}): Pr
 
 // ------------------------------------------------------------------------- matching
 
-function firstNameMatches(rmpFirst: string, queryFirst: string | undefined): boolean {
-  if (!queryFirst) return false;
-  const a = foldNamePart(rmpFirst).replace(/\s+/g, "");
-  const b = foldNamePart(queryFirst).replace(/\s+/g, "");
-  if (!a || !b) return false;
-  return a === b || a.startsWith(b) || b.startsWith(a);
+/**
+ * How a hit matched: "exact" (last name equal, first name in full or by prefix), "initial"
+ * (last name equal, GoSolar only gave an initial) or "fuzzy" (first name in full, last name a
+ * typo or two off, e.g. RMP's "Ortegies-Young" for "Ortgies-Young").
+ */
+export type RmpMatchQuality = "exact" | "initial" | "fuzzy";
+
+const foldFirst = (value: string) => foldNamePart(value).replace(/[\s-]+/g, "");
+
+/** Equal, or a prefix either way ("Alina" vs "Alina Marie", "Chris" vs "Christopher"). Both sides need 2+ letters. */
+function fullNameMatches(rmpFirst: string, queryFirst: string): boolean {
+  if (rmpFirst.length < 2 || queryFirst.length < 2) return false;
+  return rmpFirst === queryFirst || rmpFirst.startsWith(queryFirst) || queryFirst.startsWith(rmpFirst);
 }
 
 /**
- * Picks the hit whose last name matches and whose first name matches or is a prefix either
- * way ("Alina" vs "Alina Marie"), or matches the preferred name. Ties go to the most-rated
- * profile. Falls back to a last-name-only match when no first name matches.
+ * How the query's given name matches an RMP first name, or null. Full names (the first given
+ * name, every given name together, the preferred name) must match in full or by prefix. A bare
+ * initial only counts when GoSolar gave nothing but initials ("Smith, J."): a full first name
+ * never matches an initial-only RMP profile, and an initial never matches a different name.
  */
-export function bestMatch(hits: readonly RmpTeacher[], name: ParsedName): RmpTeacher | null {
+function firstNameMatch(rmpFirstRaw: string, name: ParsedName): RmpMatchQuality | null {
+  const rmpFirst = foldFirst(rmpFirstRaw);
+  if (!rmpFirst) return null;
+  const full = [name.first, name.given, name.preferred].map((part) => foldFirst(part ?? "")).filter((part) => part.length > 1);
+  if (full.some((part) => fullNameMatches(rmpFirst, part))) return "exact";
+  const givenTokens = foldNamePart(name.given ?? name.first).split(/[\s-]+/).filter(Boolean);
+  const initialsOnly = givenTokens.length > 0 && givenTokens.every((token) => token.length === 1);
+  if (initialsOnly && !name.preferred && rmpFirst.startsWith(givenTokens[0])) return "initial";
+  return null;
+}
+
+export interface RmpMatch {
+  teacher: RmpTeacher;
+  quality: RmpMatchQuality;
+}
+
+/**
+ * The RMP profile for a professor, or null. A hit counts only when the last name matches (folded:
+ * case, diacritics, suffixes) AND the first name matches (see `firstNameMatch`); there is no
+ * last-name-only fallback, because a namesake's rating is worse than none. Full-name matches beat
+ * initial matches. Ties go to the most-rated profile (RMP often has duplicate profiles for one
+ * person), except that an initial matching several different first names ("J." vs John and
+ * James) is ambiguous and returns null. A query without a first name never matches.
+ *
+ * Only when nothing passes that strict test, a hit whose first name is a full ("exact") match and
+ * whose last name is within `lastNameTolerance` typos counts as "fuzzy" (closest last name first,
+ * then most-rated). Initial-only first names never fuzzy-match.
+ */
+export function findMatch(hits: readonly RmpTeacher[], name: ParsedName): RmpMatch | null {
+  if (!foldFirst(name.first)) return null;
   const wantedLast = foldLastName(name.last);
-  const sameLast = hits.filter((teacher) => foldLastName(teacher.lastName) === wantedLast);
-  const mostRated = (candidates: RmpTeacher[]) =>
-    candidates.reduce<RmpTeacher | null>(
-      (best, teacher) => (!best || (teacher.numRatings ?? 0) > (best.numRatings ?? 0) ? teacher : best),
-      null,
-    );
-  const exact = sameLast.filter(
-    (teacher) => firstNameMatches(teacher.firstName, name.first) || firstNameMatches(teacher.firstName, name.preferred),
+  const matched = hits
+    .filter((teacher) => foldLastName(teacher.lastName) === wantedLast)
+    .map((teacher) => ({ teacher, quality: firstNameMatch(teacher.firstName, name) }))
+    .filter((m): m is RmpMatch => m.quality !== null);
+  const exact = matched.filter((m) => m.quality === "exact");
+  const pool = exact.length > 0 ? exact : matched;
+  if (pool.length > 0) {
+    if (pool[0].quality === "initial" && new Set(pool.map((m) => foldFirst(m.teacher.firstName))).size > 1) return null;
+    return mostRated(pool);
+  }
+
+  const wantedLetters = lettersOf(wantedLast);
+  const fuzzy = hits
+    .filter((teacher) => firstNameMatch(teacher.firstName, name) === "exact")
+    .map((teacher) => {
+      const letters = lettersOf(foldLastName(teacher.lastName));
+      return { teacher, distance: editDistance(letters, wantedLetters), tolerance: lastNameTolerance(letters, wantedLetters) };
+    })
+    .filter((candidate) => candidate.distance <= candidate.tolerance);
+  if (fuzzy.length === 0) return null;
+  const closest = Math.min(...fuzzy.map((candidate) => candidate.distance));
+  return mostRated(
+    fuzzy.filter((candidate) => candidate.distance === closest).map(({ teacher }) => ({ teacher, quality: "fuzzy" as const })),
   );
-  return mostRated(exact) ?? mostRated(sameLast);
+}
+
+function mostRated(candidates: readonly RmpMatch[]): RmpMatch {
+  return candidates.reduce((best, m) => ((m.teacher.numRatings ?? 0) > (best.teacher.numRatings ?? 0) ? m : best));
+}
+
+/** Letters only, for typo tolerance ("ortgies-young" -> "ortgiesyoung"). */
+const lettersOf = (foldedLast: string) => foldedLast.replace(/[\s-]+/g, "");
+
+/**
+ * Typos tolerated between two last names (letters only): none under 6 letters, so Smith/Smyth
+ * stay different people; 1 from 6 letters; 2 when both are 8+ letters.
+ */
+function lastNameTolerance(a: string, b: string): number {
+  const shorter = Math.min(a.length, b.length);
+  if (shorter >= 8) return 2;
+  if (shorter >= 7) return 1;
+  return 0;
+}
+
+/** Optimal-string-alignment (restricted Damerau-Levenshtein) distance: edits plus adjacent swaps. */
+export function editDistance(a: string, b: string): number {
+  const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) =>
+    Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)),
+  );
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+    }
+  }
+  return d[a.length][b.length];
+}
+
+/** `findMatch(hits, name)?.teacher ?? null`. */
+export function bestMatch(hits: readonly RmpTeacher[], name: ParsedName): RmpTeacher | null {
+  return findMatch(hits, name)?.teacher ?? null;
 }
 
 function notFound(professorQueried: string | null): ProfessorRating {
@@ -209,6 +303,7 @@ function notFound(professorQueried: string | null): ProfessorRating {
     professorQueried,
     found: false,
     matchedName: null,
+    matchQuality: null,
     department: null,
     legacyId: null,
     profileUrl: null,
@@ -221,11 +316,16 @@ function notFound(professorQueried: string | null): ProfessorRating {
   };
 }
 
-export function toProfessorRating(teacher: RmpTeacher, professorQueried: string | null): ProfessorRating {
+export function toProfessorRating(
+  teacher: RmpTeacher,
+  professorQueried: string | null,
+  matchQuality: RmpMatchQuality = "exact",
+): ProfessorRating {
   return {
     professorQueried,
     found: true,
     matchedName: `${teacher.firstName} ${teacher.lastName}`.trim(),
+    matchQuality,
     department: teacher.department,
     legacyId: teacher.legacyId,
     profileUrl: `${PROFILE_URL}${teacher.legacyId}`,
@@ -243,6 +343,7 @@ export function toProfessorRating(teacher: RmpTeacher, professorQueried: string 
 const cachedRating = z.object({
   found: z.literal(true),
   matchedName: z.string().nullable(),
+  matchQuality: z.enum(["exact", "initial", "fuzzy"]),
   department: z.string().nullable(),
   legacyId: z.number().nullable(),
   profileUrl: z.string().nullable(),
@@ -254,7 +355,13 @@ const cachedRating = z.object({
   topTags: z.array(z.object({ name: z.string(), count: z.number() })),
 });
 
-export const rmpCacheKey = (name: ParsedName) => `rmp:${name.key}`;
+/**
+ * Versioned so a matching-rule change orphans old rows instead of serving them: v1 rows (`rmp:last|first`)
+ * were written by the last-name-only fallback and may hold a namesake's rating. Orphaned rows are
+ * just never read again.
+ */
+export const RMP_CACHE_VERSION = "v2";
+export const rmpCacheKey = (name: ParsedName) => `rmp:${RMP_CACHE_VERSION}:${name.key}`;
 
 export interface RatingOptions extends RmpOptions, DbOptions {
   now?: Date;
@@ -318,8 +425,8 @@ export async function getProfessorRating(
   const hits = await searchTeachers(`${name.first} ${name.last}`, options);
   if (hits === null) return notFound(queried);
 
-  const match = bestMatch(hits, name);
-  const rating = match ? toProfessorRating(match, queried) : null;
+  const match = findMatch(hits, name);
+  const rating = match ? toProfessorRating(match.teacher, queried, match.quality) : null;
   if (useCache) {
     try {
       await writeCache(key, rating, options, now);

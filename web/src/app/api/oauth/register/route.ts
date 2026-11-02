@@ -5,9 +5,11 @@ import { clientIp, registrationLimiter } from "@/lib/oauth/rate-limit";
 /**
  * POST /api/oauth/register: RFC 7591 Dynamic Client Registration (no initial access token).
  * Body `{ redirect_uris, client_name?, token_endpoint_auth_method? }` -> 201 with the client
- * (`client_secret` only for client_secret_post/basic). Redirect URIs must be https or
- * http://localhost. 400 `invalid_redirect_uri` / `invalid_client_metadata`; 429 when an IP
- * registers too often.
+ * (`client_secret` only for client_secret_post/basic). Redirect URIs must be https,
+ * http://localhost (any loopback host), or a native app's private-use scheme (RFC 8252 §7.1:
+ * cursor:, vscode:, windsurf:, ... or a reverse-domain scheme like com.example.app:); never a
+ * fragment or credentials. 400 `invalid_redirect_uri` / `invalid_client_metadata`; 429 when an
+ * IP registers too often.
  */
 export async function POST(request: Request) {
   return handleOAuthErrors("POST /api/oauth/register", async () => {

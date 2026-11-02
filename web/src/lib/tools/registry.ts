@@ -16,8 +16,10 @@ import {
   subjectSchema,
   termCodeSchema,
 } from "@/lib/courses";
+import { getSyllabus } from "@/lib/course-meta";
+import { hasStoredSummary, summarizeSyllabus } from "@/lib/course-meta/syllabus-summary";
 import { env } from "@/lib/env";
-import { instructorOf, nyDateParts, termName } from "@/lib/format";
+import { instructorOf, nyDateParts, termLabel, termName } from "@/lib/format";
 import { findSectionsByCrn, type CourseData, type CourseGroup } from "@/lib/gosolar";
 import { compactMeta, compactRequirements, compactSection } from "@/lib/mcp/format";
 import { toolLimiter } from "@/lib/oauth/rate-limit";
@@ -146,6 +148,18 @@ export const scheduleUrl = (term: string): string => absolute(`/schedule-builder
 
 // ------------------------------------------------------------------------------------------
 
+/**
+ * GoSolar `txt_level` values search_sections accepts. Without a level GoSolar returns every
+ * level, and a Perimeter College (associate) section looks like any other (both levels have
+ * "Online" campuses), so the tool always searches one level, bachelor's unless asked.
+ */
+const SECTION_LEVELS = ["US", "UA", "GS"] as const;
+const LEVEL_NAMES: Record<(typeof SECTION_LEVELS)[number], string> = {
+  US: "Bachelor's level",
+  UA: "Associate level (Perimeter College)",
+  GS: "Graduate level",
+};
+
 const termInput = termCodeSchema.describe('6-digit term code from list_terms, e.g. "202701" (Spring 2027).');
 const crnInput = crnSchema.describe('5-digit CRN, e.g. "19010".');
 const subjectInput = subjectSchema.describe('Subject code, e.g. "CSC".');
@@ -261,13 +275,23 @@ export const TOOLS: readonly ToolDefinition[] = [
       "instructor, credits, seats, waitlist, meetings and delivery mode. `seatsAvailable` is what a student can " +
       "actually take (cross-listed seat pools included); `open` means a free seat and an empty waitlist. Meeting " +
       "`days` use M T W R F S U; `start`/`end` are 24-hour HHMM, null when TBA or asynchronous. One subject per " +
-      "call; omit courseNumber for the whole subject (results are capped by `limit`). `resultsUrl` opens the same " +
-      "search on PantherWatch, with every section and its filters.",
+      "call; omit courseNumber for the whole subject (results are capped by `limit`). Searches one degree level, " +
+      "bachelor's unless `level` says otherwise; `level`/`levelName` in the result say which. `resultsUrl` opens " +
+      "the same search on PantherWatch, with every section and its filters. Search the courses the student names; " +
+      "PantherWatch doesn't know their degree requirements, so don't search for other courses to suggest as " +
+      "requirement fillers.",
     inputSchema: z.object({
       term: termInput,
       subject: subjectInput,
       courseNumber: courseNumberInput.optional(),
-      level: z.enum(["US", "GS"]).optional().describe("US undergraduate, GS graduate. Omit for both."),
+      level: z
+        .enum(SECTION_LEVELS)
+        .default("US")
+        .describe(
+          "US = bachelor's level (the default; what most GSU students want), UA = associate level at Perimeter " +
+            "College campuses, GS = graduate. Only pass UA or GS when the student asks for Perimeter/associate or " +
+            "graduate sections.",
+        ),
       openOnly: z.boolean().default(false).describe("Only sections with an open seat and no waitlist."),
       limit: z.number().int().min(1).max(MAX_SECTION_LIMIT).default(DEFAULT_SECTION_LIMIT),
     }),
@@ -277,6 +301,8 @@ export const TOOLS: readonly ToolDefinition[] = [
       const all = (await searchSections({ term, subject, courseNumber, level })).map(compactSection);
       const matching = openOnly ? all.filter((s) => s.open) : all;
       return text({
+        level,
+        levelName: LEVEL_NAMES[level],
         total: matching.length,
         returned: Math.min(limit, matching.length),
         truncated: matching.length > limit,
@@ -293,7 +319,8 @@ export const TOOLS: readonly ToolDefinition[] = [
       "For one section: GSU grade history for the course (course-wide and this instructor's own, GPA and D/F/W " +
       "rate), the instructor's RateMyProfessors summary, and the syllabus link when one is published. A missing " +
       "rating means unknown, not bad. Pass `instructor` (from search_sections) to skip a GoSolar lookup. " +
-      "`sectionUrl` opens this section on PantherWatch.",
+      "`sectionUrl` opens this section on PantherWatch. When `syllabusUrl` is set, get_syllabus_summary reads it " +
+      "(grading, exams, attendance, textbook); `syllabusSummaryCached: true` means a summary is already stored.",
     inputSchema: z.object({
       term: termInput,
       subject: subjectInput,
@@ -312,9 +339,11 @@ export const TOOLS: readonly ToolDefinition[] = [
         name = instructorOf(section);
       }
       const meta = await getSectionMeta({ term, subject, courseNumber, crn, instructor: name });
+      // A cache lookup only: summaries are generated by get_syllabus_summary, never here.
+      const syllabusSummaryCached = meta.syllabus ? await hasStoredSummary(meta.syllabus.url).catch(() => false) : undefined;
       return text({
         ...(section ? { section: compactSection(section) } : { instructor: name }),
-        ...compactMeta(meta),
+        ...compactMeta(meta, { syllabusSummaryCached }),
         sectionUrl: sectionUrl(term, subject, courseNumber, crn),
       });
     },
@@ -331,7 +360,9 @@ export const TOOLS: readonly ToolDefinition[] = [
       "every course in it, with minimum grade and whether it may be taken concurrently. `restrictions` say who " +
       "may register (level, major, college, classification and so on), not seats: the student must match one " +
       "value of each `mustBe` group and none of `mustNotBe`; `specialApprovals` need department permission. " +
-      "PantherWatch doesn't know what the student has taken. Pass subject and courseNumber to get `sectionUrl`.",
+      "PantherWatch doesn't know what the student has taken. Pass subject and courseNumber to get `sectionUrl`. " +
+      "Explain what the requirements say; never tell the student they are or aren't eligible, and don't use them " +
+      "to suggest other courses (PantherWatch doesn't know the student's degree requirements).",
     inputSchema: z.object({
       term: termInput,
       crn: crnInput,
@@ -348,6 +379,63 @@ export const TOOLS: readonly ToolDefinition[] = [
       return text({
         ...compactRequirements(requirements),
         ...(course ? { sectionUrl: sectionUrl(term, course.subject, course.courseNumber, crn) } : {}),
+      });
+    },
+  }),
+
+  defineTool({
+    name: "get_syllabus_summary",
+    title: "Syllabus summary",
+    description:
+      "A summary of the syllabus PDF the department posted for one section: grading components and weights, " +
+      "exam and quiz counts, attendance and late-work policies, textbook (and cost notes), major projects, " +
+      "workload, modality notes and cautions. Call it when comparing sections or professors of a course, or for " +
+      "\"what's the workload\", \"how is it graded\", \"is attendance required\" or \"what textbook\" (call it " +
+      "for several sections in parallel). It is AI-written from the PDF's text, and the PDF may be from an earlier " +
+      "term: `termLabel` is the term the syllabus itself names (null if it doesn't), `summarizedAt` and " +
+      "`textUnchangedSince` say how fresh it is, and `stale: true` means the live PDF couldn't be re-checked. Null " +
+      "fields mean the syllabus doesn't say. `unavailable` (with `message`) when no syllabus is posted or it can't " +
+      "be read. Pass subject and courseNumber to get `sectionUrl`.",
+    inputSchema: z.object({
+      term: termInput,
+      crn: crnInput,
+      subject: subjectInput.optional(),
+      courseNumber: courseNumberInput.optional(),
+    }),
+    annotations: { readOnlyHint: true, openWorldHint: true },
+    scope: "read",
+    handler: async (_auth, { term, crn, subject, courseNumber }) => {
+      const link = subject && courseNumber ? { sectionUrl: sectionUrl(term, subject, courseNumber, crn) } : {};
+      const syllabus = await getSyllabus(term, crn);
+      if (!syllabus) {
+        return text({
+          term,
+          crn,
+          syllabusUrl: null,
+          unavailable: "no_syllabus",
+          message: `No syllabus is posted for CRN ${crn} in ${termLabel(term)}.`,
+          ...link,
+        });
+      }
+      const result = await summarizeSyllabus(syllabus.url);
+      if (result.status === "unavailable") {
+        return text({ term, crn, syllabusUrl: syllabus.url, unavailable: result.reason, message: result.message, ...link });
+      }
+      const { termLabel: syllabusTerm, ...summary } = result.summary;
+      // Older uploads keep the term they were filed under in the path ("syllabi/202508/83410.pdf").
+      const filedUnder = /\/syllabi\/(\d{6})\//.exec(syllabus.url)?.[1];
+      return text({
+        term,
+        crn,
+        syllabusUrl: syllabus.url,
+        termLabel: syllabusTerm,
+        ...(filedUnder && filedUnder !== term ? { filedUnderTerm: termLabel(filedUnder) } : {}),
+        summary,
+        summarizedAt: result.summarizedAt.toISOString(),
+        textUnchangedSince: result.textUnchangedSince.toISOString(),
+        ...(result.stale ? { stale: true, staleReason: result.stale.message } : {}),
+        ...(result.truncated ? { note: "The syllabus is long; only its first part was summarized." } : {}),
+        ...link,
       });
     },
   }),

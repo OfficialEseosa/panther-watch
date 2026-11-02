@@ -116,6 +116,8 @@ const LABELS: Record<string, (input: Record<string, unknown>) => string> = {
     `Getting grades and ratings for ${[course(i), crnPart(i) && `(${crnPart(i)})`].filter(Boolean).join(" ") || "a section"}`,
   get_course_requirements: (i) =>
     `Checking requirements for ${[course(i), crnPart(i) && (course(i) ? `(${crnPart(i)})` : crnPart(i))].filter(Boolean).join(" ") || "a section"}`,
+  get_syllabus_summary: (i) =>
+    `Reading the syllabus for ${[course(i), crnPart(i) && (course(i) ? `(${crnPart(i)})` : crnPart(i))].filter(Boolean).join(" ") || "a section"}`,
   list_watches: (i) => (i.includeSeats ? "Checking seats in your tracked classes" : "Checking your tracked classes"),
   list_schedule: () => "Checking your schedule",
   check_conflicts: (i) =>

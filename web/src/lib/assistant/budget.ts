@@ -171,3 +171,47 @@ export async function remainingToday(userId: string, now: Date = new Date()): Pr
     .where(and(eq(assistantUsage.userId, userId), eq(assistantUsage.day, easternDay(now))));
   return Math.max(0, userDailyMessages - (row?.messages ?? 0));
 }
+
+// ------------------------------------------------------------------ site spend outside chat turns
+
+/**
+ * Whether today's site-wide spend has reached ASSISTANT_GLOBAL_DAILY_USD. For model calls made
+ * outside a chat turn (syllabus summaries, which the MCP connector can trigger too): they count
+ * toward the spend cap but not toward anyone's message count.
+ */
+export async function spendCapReached(now: Date = new Date()): Promise<boolean> {
+  const spendCap = microUsd(assistantConfig().globalDailyUsd);
+  if (spendCap <= 0) return true;
+  const [row] = await getDb()
+    .select({ cost: assistantDaily.costMicroUsd })
+    .from(assistantDaily)
+    .where(eq(assistantDaily.day, easternDay(now)));
+  return (row?.cost ?? 0) >= spendCap;
+}
+
+/** Adds tokens and cost to today's site-wide row (created if needed), leaving `messages` alone. */
+export async function recordSiteSpend(usage: TokenUsage, costMicro: number, now: Date = new Date()): Promise<void> {
+  const day = easternDay(now);
+  await getDb()
+    .insert(assistantDaily)
+    .values({
+      day,
+      messages: 0,
+      inputTokens: usage.input,
+      outputTokens: usage.output,
+      cacheReadTokens: usage.cacheRead,
+      cacheWriteTokens: usage.cacheWrite,
+      costMicroUsd: costMicro,
+    })
+    .onConflictDoUpdate({
+      target: assistantDaily.day,
+      set: {
+        inputTokens: sql`${assistantDaily.inputTokens} + ${usage.input}`,
+        outputTokens: sql`${assistantDaily.outputTokens} + ${usage.output}`,
+        cacheReadTokens: sql`${assistantDaily.cacheReadTokens} + ${usage.cacheRead}`,
+        cacheWriteTokens: sql`${assistantDaily.cacheWriteTokens} + ${usage.cacheWrite}`,
+        costMicroUsd: sql`${assistantDaily.costMicroUsd} + ${costMicro}`,
+        updatedAt: sql`now()`,
+      },
+    });
+}

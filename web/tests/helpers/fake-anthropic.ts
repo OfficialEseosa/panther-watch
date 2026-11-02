@@ -2,12 +2,14 @@
  * A transport-level fake of the Claude Messages API for the assistant tests: a `fetch` to hand
  * the Anthropic SDK (via setAssistantConfigForTests), answering each request with the next
  * scripted reply as a real SSE stream (message_start, content blocks, message_delta,
- * message_stop). No network, no key.
+ * message_stop), or, for a non-streaming request (no `stream: true`, e.g. `messages.parse`), as
+ * one JSON message. No network, no key.
  *
  *   const claude = fakeAnthropic();
  *   setAssistantConfigForTests({ apiKey: "sk-ant-test-dummy", fetch: claude.fetch });
  *   claude.reply({ text: ["Hi ", "there"] });
  *   claude.reply({ tools: [{ name: "list_terms", input: {} }] });
+ *   claude.reply({ json: { examCount: 2 } });   // structured output: the JSON as the text block
  *   ... run the route ...
  *   claude.requests[0].body.messages
  */
@@ -29,6 +31,8 @@ export type FakeReply =
   | {
       /** Text deltas, streamed in order (before any tool calls). */
       text?: string[];
+      /** Structured output: JSON.stringify(json) as one text block (after `text`). */
+      json?: unknown;
       tools?: FakeToolUse[];
       /** Defaults: "tool_use" when there are tools, else "end_turn". */
       stopReason?: "end_turn" | "tool_use" | "max_tokens" | "refusal";
@@ -143,9 +147,34 @@ export function fakeAnthropic(): FakeAnthropic {
 
     const tools = reply.tools ?? [];
     const stopReason = reply.stopReason ?? (tools.length ? "tool_use" : "end_turn");
+    const texts = [...(reply.text?.length ? [reply.text] : []), ...("json" in reply && reply.json !== undefined ? [[JSON.stringify(reply.json)]] : [])];
+
+    if (body?.stream !== true) {
+      const message = {
+        id: `msg_fake_${++ids}`,
+        type: "message",
+        role: "assistant",
+        model,
+        content: [
+          ...texts.map((deltas) => ({ type: "text", text: deltas.join(""), citations: null })),
+          ...tools.map((tool) => ({ type: "tool_use", id: tool.id ?? `toolu_fake_${++ids}`, name: tool.name, input: tool.input })),
+        ],
+        stop_reason: stopReason,
+        stop_sequence: null,
+        stop_details: stopReason === "refusal" ? { type: "refusal", category: "general_harms", explanation: null } : null,
+        usage: {
+          input_tokens: usage.input ?? 0,
+          output_tokens: usage.output ?? 0,
+          cache_read_input_tokens: usage.cacheRead ?? 0,
+          cache_creation_input_tokens: usage.cacheWrite ?? 0,
+        },
+      };
+      return new Response(JSON.stringify(message), { status: 200, headers: { "content-type": "application/json", "request-id": "req_fake" } });
+    }
+
     let out = messageStart(model, usage);
     let index = 0;
-    if (reply.text?.length) out += textBlock(index++, reply.text);
+    for (const deltas of texts) out += textBlock(index++, deltas);
     for (const tool of tools) {
       const id = tool.id ?? `toolu_fake_${++ids}`;
       out +=

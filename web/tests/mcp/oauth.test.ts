@@ -136,6 +136,48 @@ describe("dynamic client registration", () => {
     }
   });
 
+  it("accepts native apps' private-use schemes (RFC 8252 §7.1): known editor schemes and reverse-domain ones", async () => {
+    for (const uris of [
+      ["cursor://anysphere.cursor-mcp/oauth/callback"],
+      ["com.example.app://callback"],
+      ["com.example.app:/oauth2redirect/example-provider"],
+      ["vscode://vscode.github-authentication/did-authenticate", "windsurf://codeium.windsurf/oauth"],
+      ["Cursor://anysphere.cursor-mcp/oauth/callback"],
+    ]) {
+      const registered = await register({ redirect_uris: uris });
+      expect(registered.redirect_uris).toEqual(uris);
+    }
+  });
+
+  it("rejects dangerous and unknown schemes, and private-use URIs with a fragment or credentials", async () => {
+    for (const uri of [
+      "javascript:alert(1)",
+      "data:text/html,<script>alert(1)</script>",
+      "file:///etc/passwd",
+      "vbscript:msgbox(1)",
+      "about:blank",
+      "blob:https://evil.test/1234",
+      "ms-word:ofe|u|https://evil.test/x.docx",
+      "ms-settings:privacy",
+      "ms-word.app://callback",
+      "myapp://callback",
+      "ftp://files.test/cb",
+      "cursor://anysphere.cursor-mcp/oauth/callback#frag",
+      "com.example.app://callback#",
+      "cursor://user:pass@anysphere.cursor-mcp/oauth/callback",
+      "cursor:",
+      "com.example.app:/",
+    ]) {
+      const response = await appFetch(`${TEST_ORIGIN}/api/oauth/register`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ redirect_uris: [uri] }),
+      });
+      expect(response.status, uri).toBe(400);
+      expect(await response.json()).toMatchObject({ error: "invalid_redirect_uri" });
+    }
+  });
+
   it("issues a secret for client_secret_post clients and requires it at the token endpoint", async () => {
     const confidential = await register({ redirect_uris: [REDIRECT], token_endpoint_auth_method: "client_secret_post" });
     expect(confidential.client_secret).toMatch(/^pwcs_/);
@@ -253,6 +295,48 @@ describe("authorization code flow", () => {
     expect(plain.searchParams.get("error")).toBe("invalid_request");
     const token = await startAuthorize(authorizeQuery({ clientId: client.client_id, extra: { response_type: "token" } }), alice);
     expect(token.searchParams.get("error")).toBe("unsupported_response_type");
+  });
+
+  it("private-use scheme redirect URIs must match a registered one exactly (scheme case-insensitive)", async () => {
+    const CURSOR = "cursor://anysphere.cursor-mcp/oauth/callback";
+    client = await register({ redirect_uris: [CURSOR, "https://www.cursor.com/agents/mcp/oauth/callback"] });
+
+    for (const redirectUri of [CURSOR, "CURSOR://anysphere.cursor-mcp/oauth/callback"]) {
+      expect((await startAuthorize(authorizeQuery({ clientId: client.client_id, redirectUri }), alice)).pathname).toBe("/connect");
+    }
+    // Not registered: another app's scheme, another host or path, a case change after the scheme.
+    for (const redirectUri of [
+      "windsurf://anysphere.cursor-mcp/oauth/callback",
+      "com.evil.app://anysphere.cursor-mcp/oauth/callback",
+      "cursor://anysphere.cursor-mcp/oauth/callback2",
+      "cursor://evil.cursor-mcp/oauth/callback",
+      "cursor://Anysphere.cursor-mcp/oauth/callback",
+      "cursor://anysphere.cursor-mcp/oauth/callback?x=1",
+    ]) {
+      const response = await decide(alice, authorizeQuery({ clientId: client.client_id, redirectUri, state: "st" }));
+      expect(response.status, redirectUri).toBe(303);
+      const location = new URL(response.headers.get("location")!);
+      expect(`${location.origin}${location.pathname}`, redirectUri).toBe(`${TEST_ORIGIN}/connect`);
+      expect(location.searchParams.get("code")).toBeNull();
+    }
+    expect(await testDb.db.select().from(oauthCodes)).toHaveLength(0);
+
+    // Registered: Allow sends the code to the app's own scheme, and the token exchange works.
+    const { verifier, challenge } = pkce();
+    const response = await decide(alice, authorizeQuery({ clientId: client.client_id, redirectUri: CURSOR, challenge, state: "cs" }));
+    const location = new URL(response.headers.get("location")!);
+    expect(location.href.replace(/\?.*$/, "")).toBe(CURSOR);
+    expect(location.searchParams.get("state")).toBe("cs");
+    expect(location.searchParams.get("iss")).toBe(TEST_ORIGIN);
+    const ok = await tokenRequest({
+      grant_type: "authorization_code",
+      code: location.searchParams.get("code")!,
+      code_verifier: verifier,
+      client_id: client.client_id,
+      redirect_uri: CURSOR,
+      resource: MCP_URL,
+    });
+    expect(ok.status).toBe(200);
   });
 
   it("loopback redirect URIs match on any port (RFC 8252)", async () => {

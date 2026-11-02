@@ -22,6 +22,11 @@ export interface ParsedName {
   last: string;
   /** Preferred name from a parenthetical, e.g. "Alina" in "Nemira, Alina (Alina)". */
   preferred?: string;
+  /**
+   * Every given-name token, set only when there is more than one ("S M Towhidul" in
+   * "Islam, S M Towhidul (Towhid)"). Not part of `key`; RMP matching uses it.
+   */
+  given?: string;
   /** Stable `last|first` match key, lowercase ASCII. */
   key: string;
 }
@@ -72,6 +77,7 @@ export function parseName(raw: string | null | undefined): ParsedName | null {
 
   let first: string;
   let last: string;
+  let given: string[] = [];
   const comma = cleaned.indexOf(",");
   if (comma >= 0) {
     // "Last, First Middle" (a second comma, as in "Smith, Edward, Jr", is just noise).
@@ -83,6 +89,7 @@ export function parseName(raw: string | null | undefined): ParsedName | null {
       .filter((token) => token && !isSuffix(token));
     last = lastTokens.join(" ");
     first = givenTokens[0] ?? "";
+    given = givenTokens;
   } else {
     // "First Middle Last [Suffix]"
     const tokens = dropSuffixes(cleaned.split(" ").filter(Boolean));
@@ -92,6 +99,7 @@ export function parseName(raw: string | null | undefined): ParsedName | null {
     } else {
       first = tokens[0];
       last = tokens[tokens.length - 1];
+      given = tokens.slice(0, -1);
     }
   }
 
@@ -101,6 +109,7 @@ export function parseName(raw: string | null | undefined): ParsedName | null {
 
   const parsed: ParsedName = { first, last, key: `${lastKey}|${firstKey}` };
   if (preferred) parsed.preferred = preferred;
+  if (given.length > 1) parsed.given = given.join(" ");
   return parsed;
 }
 

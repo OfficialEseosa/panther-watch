@@ -11,7 +11,7 @@ import { AlertIcon, PlugIcon } from "@/components/ui/icons";
 import { Skeleton, SkeletonGroup } from "@/components/ui/Skeleton";
 import { AUTHORIZE_PATH } from "@/lib/auth/next";
 import { getCurrentUser } from "@/lib/auth/session";
-import { checkAuthorizeRequest, loopbackOnly, SCOPE_INFO, REQUIRED_SCOPE, toSearchParams } from "@/lib/oauth";
+import { checkAuthorizeRequest, localRedirectOnly, SCOPE_INFO, REQUIRED_SCOPE, toSearchParams } from "@/lib/oauth";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = {
@@ -71,10 +71,13 @@ function Problem({ message }: { message: string }) {
   );
 }
 
+/** Where the app returns: host[:port] for http(s), `scheme://host` (or `scheme:`) for an app's own scheme. */
 function hostOf(uri: string): string {
   try {
     const url = new URL(uri);
-    return url.port ? `${url.hostname}:${url.port}` : url.hostname;
+    const host = url.port ? `${url.hostname}:${url.port}` : url.hostname;
+    if (url.protocol === "https:" || url.protocol === "http:") return host;
+    return host ? `${url.protocol}//${host}` : url.protocol;
   } catch {
     return uri;
   }
@@ -106,7 +109,7 @@ async function Consent({ searchParams }: PageProps) {
   const { client, redirectUri, scopes } = check.request;
   const writeScopes = scopes.filter((scope) => scope !== REQUIRED_SCOPE);
   const returnHost = hostOf(redirectUri);
-  const local = loopbackOnly([redirectUri]);
+  const local = localRedirectOnly([redirectUri]);
 
   return (
     <Card icon={<PlugIcon />} title={`Connect ${client.name}`}>

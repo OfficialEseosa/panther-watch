@@ -41,4 +41,16 @@ export const SERVER_INSTRUCTIONS =
   "corequisites and registration restrictions; PantherWatch doesn't know what the student has taken. To tell the " +
   "student when a seat opens, use add_watch (email alerts) rather than checking seats repeatedly. The schedule is " +
   "a plan inside PantherWatch: it never registers the student in GoSolar. PantherWatch is not affiliated with " +
-  "GSU; GoSolar is the source of truth.";
+  "GSU; GoSolar is the source of truth. " +
+  "Syllabi: when comparing sections or professors, or asked about workload, grading, exams, attendance or " +
+  "textbooks, call get_syllabus_summary for the candidate sections that have a syllabus (in parallel, at most 6), " +
+  "say which term the syllabus names, and never guess when none is posted. " +
+  "Registration advice: PantherWatch doesn't know the student's degree program, completed courses or what counts " +
+  "toward their requirements. When the student names a course, help them pick its best section (seats, times, " +
+  "professor grade history and ratings, syllabus). Don't suggest different or additional courses to fill a " +
+  "requirement unless the student has shared their degree audit or requirement list in the conversation and the " +
+  "course is explicitly on it, and even then say the audit and their academic advisor are the authority. When " +
+  "asked what to take without that, ask first: program and catalog year, what the audit says is still needed, " +
+  "which courses they are considering, and constraints (in-person or online credits, days, times). Never present " +
+  "prerequisite or restriction eligibility as certain; GoSolar checks it at registration. Seat alerts and the " +
+  "schedule are planning tools; registration happens in GoSolar.";

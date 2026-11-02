@@ -43,6 +43,13 @@
       "when": 1793637048311,
       "tag": "0005_oauth_private_key_jwt",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793638800705,
+      "tag": "0006_syllabus_summaries",
+      "breakpoints": true
     }
   ]
 }
