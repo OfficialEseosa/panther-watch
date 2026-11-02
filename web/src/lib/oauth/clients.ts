@@ -274,8 +274,13 @@ const DEFAULT_TTL_S = 60 * 60;
 const MIN_TTL_S = 5 * 60;
 const MAX_TTL_S = 24 * 60 * 60;
 
-/** Addresses a metadata fetch must never reach (SSRF): private, loopback, link-local, CGNAT, multicast, reserved. */
-const blocked = new BlockList();
+/**
+ * Addresses a metadata fetch must never reach (SSRF): private, loopback, link-local, CGNAT,
+ * multicast, reserved. One list per family: a BlockList checks an IPv4 address against IPv6
+ * rules too (as ::ffff:a.b.c.d), so the ::ffff:0:0/96 rule in a shared list blocked every IPv4
+ * address, which refused every real client metadata host.
+ */
+const blockedV4 = new BlockList();
 for (const [network, prefix] of [
   ["0.0.0.0", 8],
   ["10.0.0.0", 8],
@@ -289,8 +294,9 @@ for (const [network, prefix] of [
   ["224.0.0.0", 4],
   ["240.0.0.0", 4],
 ] as const) {
-  blocked.addSubnet(network, prefix, "ipv4");
+  blockedV4.addSubnet(network, prefix, "ipv4");
 }
+const blockedV6 = new BlockList();
 for (const [network, prefix] of [
   ["::", 128],
   ["::1", 128],
@@ -300,40 +306,64 @@ for (const [network, prefix] of [
   ["fe80::", 10],
   ["ff00::", 8],
 ] as const) {
-  blocked.addSubnet(network, prefix, "ipv6");
+  blockedV6.addSubnet(network, prefix, "ipv6");
 }
 
 export function isBlockedAddress(address: string): boolean {
   const family = isIP(address);
-  if (family === 4) return blocked.check(address, "ipv4");
+  if (family === 4) return blockedV4.check(address, "ipv4");
   if (family === 6) {
     const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(address);
-    if (mapped) return blocked.check(mapped[1], "ipv4");
-    return blocked.check(address, "ipv6");
+    if (mapped) return blockedV4.check(mapped[1], "ipv4");
+    return blockedV6.check(address, "ipv6");
   }
   return true;
 }
 
 type LookupCallback = (error: NodeJS.ErrnoException | null, address: string | LookupAddress[], family?: number) => void;
+type Resolver = (
+  hostname: string,
+  options: { family: number; all: true },
+  callback: (error: NodeJS.ErrnoException | null, addresses: LookupAddress[]) => void,
+) => void;
 
-/** DNS lookup for the metadata fetch: refuses any hostname that resolves to a blocked address. */
-function safeLookup(hostname: string, options: { all?: boolean; family?: number }, callback: LookupCallback): void {
-  dnsLookup(hostname, { family: options.family ?? 0, all: true }, (error, addresses) => {
-    if (error) return callback(error, []);
-    if (addresses.length === 0 || addresses.some((entry) => isBlockedAddress(entry.address))) {
-      const refused = Object.assign(new Error(`refusing to fetch client metadata from ${hostname}`), { code: "EREFUSED" });
-      return callback(refused, []);
-    }
-    if (options.all) return callback(null, addresses);
-    return callback(null, addresses[0].address, addresses[0].family);
-  });
+/**
+ * IPv4 addresses first, then the rest, each family keeping its resolver order. Vercel Functions
+ * have no outbound IPv6, so a dual-stack host that resolves AAAA-first must not be tried over
+ * IPv6 first; IPv6 addresses stay as later fallbacks for IPv6-only hosts.
+ */
+export function orderAddresses(addresses: readonly LookupAddress[]): LookupAddress[] {
+  return [...addresses.filter((entry) => entry.family === 4), ...addresses.filter((entry) => entry.family !== 4)];
 }
+
+/**
+ * DNS lookup for the metadata fetch: refuses any hostname that resolves to a blocked address
+ * (any one blocked address refuses the whole host), and hands the connector IPv4 first.
+ */
+export function createSafeLookup(resolve: Resolver = dnsLookup as unknown as Resolver) {
+  return (hostname: string, options: { all?: boolean; family?: number }, callback: LookupCallback): void => {
+    resolve(hostname, { family: options.family ?? 0, all: true }, (error, addresses) => {
+      if (error) return callback(error, []);
+      if (addresses.length === 0 || addresses.some((entry) => isBlockedAddress(entry.address))) {
+        const refused = Object.assign(new Error(`refusing to fetch client metadata from ${hostname}`), { code: "EREFUSED" });
+        return callback(refused, []);
+      }
+      const ordered = orderAddresses(addresses);
+      if (options.all) return callback(null, ordered);
+      return callback(null, ordered[0].address, ordered[0].family);
+    });
+  };
+}
+
+const safeLookup = createSafeLookup();
 
 let metadataAgent: Agent | undefined;
 
 const defaultMetadataFetch: MetadataFetch = async (url) => {
   metadataAgent ??= new Agent({
-    connect: { lookup: safeLookup as never, timeout: METADATA_TIMEOUT_MS },
+    // autoSelectFamily: Happy Eyeballs (RFC 8305) over the addresses safeLookup returns, so an
+    // unreachable family falls through to the next address instead of failing the fetch.
+    connect: { lookup: safeLookup as never, timeout: METADATA_TIMEOUT_MS, autoSelectFamily: true },
     headersTimeout: METADATA_TIMEOUT_MS,
     bodyTimeout: METADATA_TIMEOUT_MS,
   });
@@ -386,12 +416,30 @@ const metadataDocumentSchema = z.object({
   token_endpoint_auth_method: z.string().optional(),
 });
 
+/**
+ * One log line for a failed fetch: undici reports every network failure as "fetch failed" and
+ * puts the reason (ENETUNREACH, ECONNREFUSED, EREFUSED from safeLookup, a timeout) in `cause`,
+ * possibly an AggregateError when several addresses were tried.
+ */
+export function describeFetchError(error: unknown): string {
+  const describe = (value: unknown): string => {
+    if (!(value instanceof Error)) return String(value);
+    const code = (value as NodeJS.ErrnoException).code;
+    const own = code ? `${code}: ${value.message}` : `${value.name}: ${value.message}`;
+    const inner = value instanceof AggregateError ? ` [${value.errors.map(describe).join("; ")}]` : "";
+    return own + inner;
+  };
+  let text = describe(error);
+  if (error instanceof Error && error.cause !== undefined) text += ` (cause: ${describe(error.cause)})`;
+  return text.length > 500 ? `${text.slice(0, 500)}...` : text;
+}
+
 async function refreshMetadataClient(clientId: string, now: Date): Promise<OAuthClient> {
   let fetched: Awaited<ReturnType<MetadataFetch>>;
   try {
     fetched = await metadataFetch(clientId);
   } catch (error) {
-    console.warn("oauth: client metadata fetch failed", error instanceof Error ? error.message : error);
+    console.warn("oauth: client metadata fetch failed", describeFetchError(error));
     throw new ClientError("invalid_client", "The app's client metadata document could not be fetched.");
   }
   if (fetched.status !== 200) {

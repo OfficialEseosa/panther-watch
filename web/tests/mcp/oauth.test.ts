@@ -21,7 +21,7 @@ import { setDbForTests } from "@/db";
 import { oauthClients, oauthCodes, oauthTokens, users, type User } from "@/db/schema";
 import { GET as login } from "@/app/api/auth/google/login/route";
 import { AUTH_NEXT_COOKIE } from "@/lib/auth/next";
-import { setClientMetadataFetchForTests, verifyAccessToken } from "@/lib/oauth";
+import { createSafeLookup, describeFetchError, isBlockedAddress, setClientMetadataFetchForTests, verifyAccessToken } from "@/lib/oauth";
 import { resetRateLimits } from "@/lib/oauth/rate-limit";
 import { createTestDb, seedUser, truncateAll, type TestDatabase } from "../helpers/db";
 import {
@@ -377,6 +377,61 @@ describe("Client ID Metadata Documents", () => {
     const response = await decide(alice, authorizeQuery({ clientId: CIMD }));
     expect(new URL(response.headers.get("location")!).pathname).toBe("/connect");
     expect(await testDb.db.select().from(oauthCodes)).toHaveLength(0);
+  });
+});
+
+describe("Client ID Metadata Document fetch: DNS guard", () => {
+  // claude.ai's real answer: AAAA first, then A. Vercel Functions cannot reach IPv6.
+  const CLAUDE = [
+    { address: "2607:6bc0::10", family: 6 },
+    { address: "160.79.104.10", family: 4 },
+  ];
+
+  /** Runs the guarded lookup over a fake resolver, the way undici's connector calls it. */
+  function lookup(answer: { address: string; family: number }[], options: { all?: boolean } = {}) {
+    const safeLookup = createSafeLookup((_host, _opts, callback) => callback(null, answer));
+    return new Promise<{ error: NodeJS.ErrnoException | null; address: unknown; family?: number }>((resolve) =>
+      safeLookup("claude.ai", options, (error, address, family) => resolve({ error, address, family })),
+    );
+  }
+
+  it("public IPv4 hosts are allowed (an IPv4-mapped IPv6 rule once blocked every IPv4 address)", async () => {
+    expect(await lookup([CLAUDE[1]])).toEqual({ error: null, address: "160.79.104.10", family: 4 });
+    expect(isBlockedAddress("8.8.8.8")).toBe(false);
+    expect(isBlockedAddress("::ffff:160.79.104.10")).toBe(false);
+    for (const address of ["10.0.0.5", "127.0.0.1", "169.254.169.254", "::1", "::ffff:10.0.0.5", "::ffff:a00:5", "fe80::1"]) {
+      expect(isBlockedAddress(address), address).toBe(true);
+    }
+  });
+
+  it("a host answering AAAA then A is tried over IPv4 first, keeping IPv6 as a fallback", async () => {
+    const all = await lookup(CLAUDE, { all: true });
+    expect(all.error).toBeNull();
+    expect(all.address).toEqual([CLAUDE[1], CLAUDE[0]]);
+
+    const single = await lookup(CLAUDE);
+    expect(single).toEqual({ error: null, address: "160.79.104.10", family: 4 });
+  });
+
+  it("one private address among public ones refuses the whole host", async () => {
+    const result = await lookup([...CLAUDE, { address: "10.0.0.5", family: 4 }], { all: true });
+    expect(result.error?.code).toBe("EREFUSED");
+    expect((await lookup([{ address: "fd00::1", family: 6 }, CLAUDE[1]])).error?.code).toBe("EREFUSED");
+  });
+
+  it("an IPv6-only public host still resolves", async () => {
+    const v6 = [
+      { address: "2607:6bc0::10", family: 6 },
+      { address: "2607:6bc0::11", family: 6 },
+    ];
+    expect((await lookup(v6, { all: true })).address).toEqual(v6);
+    expect(await lookup(v6)).toEqual({ error: null, address: "2607:6bc0::10", family: 6 });
+  });
+
+  it("a failed fetch is logged with its underlying cause", () => {
+    const unreachable = Object.assign(new Error("connect ENETUNREACH 2607:6bc0::10:443"), { code: "ENETUNREACH" });
+    const failed = new TypeError("fetch failed", { cause: unreachable });
+    expect(describeFetchError(failed)).toBe("TypeError: fetch failed (cause: ENETUNREACH: connect ENETUNREACH 2607:6bc0::10:443)");
   });
 });
 
