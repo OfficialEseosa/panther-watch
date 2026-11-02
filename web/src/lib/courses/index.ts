@@ -19,6 +19,7 @@ export {
   type SectionRequirementsInput,
 } from "./requirements";
 export {
+  countSections,
   getTerms,
   searchCourseList,
   searchCourseListSchema,

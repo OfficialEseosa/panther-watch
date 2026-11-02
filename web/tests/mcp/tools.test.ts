@@ -10,7 +10,7 @@ vi.mock("next/server", async (importOriginal) => ({
 
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { setDbForTests } from "@/db";
-import { scheduleEntries, terms, watchedSections, type User } from "@/db/schema";
+import { scheduleEntries, terms, users, watchedSections, type User } from "@/db/schema";
 import { setGoSolarOptionsForTests } from "@/lib/courses";
 import type { CourseData, MeetingTime } from "@/lib/gosolar";
 import { disconnectApp } from "@/lib/oauth";
@@ -162,6 +162,8 @@ describe("tools", () => {
         "search_subjects",
       ].sort(),
     );
+    // The chat-only campus tool (scope "site") is never served over MCP.
+    expect(tools.map((t) => t.name)).not.toContain("set_level_preference");
     for (const tool of tools) {
       expect(tool.description?.length).toBeGreaterThan(20);
       expect(tool.inputSchema.type).toBe("object");
@@ -191,11 +193,12 @@ describe("tools", () => {
       }),
     ]);
     const { data } = await callTool(await mcp(), "search_sections", { term: OPEN, subject: "csc", courseNumber: "1301" });
-    expect(data).toMatchObject({ level: "US", levelName: "Bachelor's level", total: 3, returned: 3, truncated: false });
-    // No level given: bachelor's (US), never GoSolar's every-level default that mixes in Perimeter College sections.
+    expect(data).toMatchObject({ level: "US", levelName: "Bachelor's level", levelSource: "default", total: 3, returned: 3, truncated: false });
+    // No level given and none saved: bachelor's (US), never GoSolar's every-level default that mixes in Perimeter
+    // College sections, plus one count of the same course at the associate level (this fake has no levels: 3).
     const searches = gs.requests.filter((r) => r.path === "/searchResults/searchResults");
-    expect(searches.length).toBeGreaterThan(0);
-    expect(searches.every((r) => r.query.txt_level === "US")).toBe(true);
+    expect(searches.map((r) => `${r.query.txt_level}:${r.query.pageMaxSize}`)).toEqual(["US:500", "UA:1"]);
+    expect(data!.alsoAtAssociateLevel).toBe(3);
     expect(data!.resultsUrl).toMatch(/[?&]level=US$/);
     const sections = data!.sections as Array<Record<string, unknown>>;
     expect(sections[0]).toEqual({
@@ -428,6 +431,22 @@ describe("tools", () => {
     expect(listed.data).toMatchObject({ terms: [{ term: OPEN, sections: [{ crn: "80001" }, { crn: "80010" }] }] });
     expect((await callTool(client, "remove_from_schedule", { term: OPEN, crn: "80001" })).data).toMatchObject({ removed: true });
     expect(await testDb.db.select().from(scheduleEntries)).toHaveLength(1);
+  });
+
+  it("search_sections uses the campus saved on the account (Settings) when no level is given", async () => {
+    gs.setSections(OPEN, "ENGL", "1101", [makeSection({ term: OPEN, subject: "ENGL", courseNumber: "1101", courseReferenceNumber: "82001" })], "UA");
+    await testDb.db.update(users).set({ levelPreference: "UA" }).where(eq(users.id, alice.id));
+    const { data } = await callTool(await mcp(), "search_sections", { term: OPEN, subject: "ENGL", courseNumber: "1101" });
+    expect(data).toMatchObject({ level: "UA", levelSource: "preference", total: 1 });
+    expect(data).not.toHaveProperty("alsoAtAssociateLevel");
+    const searches = gs.requests.filter((r) => r.path === "/searchResults/searchResults");
+    expect(searches.map((r) => r.query.txt_level)).toEqual(["UA"]);
+  });
+
+  it("set_level_preference can't be called over MCP, even with every scope", async () => {
+    await expect(callTool(await mcp(), "set_level_preference", { level: "UA" })).rejects.toThrow(/set_level_preference not found/);
+    const [row] = await testDb.db.select({ level: users.levelPreference }).from(users).where(eq(users.id, alice.id));
+    expect(row.level).toBeNull();
   });
 
   it("invalid arguments are rejected before any work", async () => {

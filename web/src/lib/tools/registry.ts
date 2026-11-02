@@ -2,7 +2,10 @@ import "server-only";
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { resultsHref } from "@/components/courses/params";
+import { getLevelPreference, setLevelPreference } from "@/lib/account";
+import { CAMPUS_OPTIONS, DEFAULT_LEVEL, LEVEL_NAMES, LEVEL_PREFERENCES, type LevelPreference } from "@/lib/account/levels";
 import {
+  countSections,
   courseNumberSchema,
   crnSchema,
   getSectionMeta,
@@ -42,7 +45,10 @@ import { watchAddedBody } from "@/lib/watches/messages";
  * - over MCP (src/lib/mcp/tools.ts registers each one on the McpServer; auth comes from the
  *   OAuth access token and its scopes), and
  * - in-process by the on-site assistant (src/lib/assistant), as the signed-in user with every
- *   scope.
+ *   scope (and `site: true`).
+ *
+ * A tool with `scope: "site"` exists only for the on-site assistant: MCP never registers it and
+ * `runAs` refuses it without `site: true`. Used for account settings, which have no OAuth scope.
  *
  * Every call goes through `runAs`: scope check, per-user rate limit (shared by both callers),
  * and error mapping. A missing scope is a tool error that tells the assistant how the user can
@@ -53,7 +59,12 @@ import { watchAddedBody } from "@/lib/watches/messages";
 export interface ToolAuth {
   userId: string;
   scopes: readonly Scope[];
+  /** The caller is the on-site assistant (the user's own PantherWatch session), not an OAuth client. */
+  site?: boolean;
 }
+
+/** An OAuth scope, or "site": only the on-site assistant may call it (never served over MCP). */
+export type ToolScope = Scope | "site";
 
 export interface ToolAnnotations {
   readOnlyHint?: boolean;
@@ -71,8 +82,8 @@ export interface ToolDefinition<S extends AnyObjectSchema = AnyObjectSchema> {
   description: string;
   inputSchema: S;
   annotations: ToolAnnotations;
-  /** The scope a call needs. */
-  scope: Scope;
+  /** The scope a call needs; "site" = on-site assistant only. */
+  scope: ToolScope;
   /** The tool body. `input` is already validated (defaults applied); `runAs` checked scope and rate limit. */
   handler: (auth: ToolAuth, input: z.output<S>) => Promise<CallToolResult>;
 }
@@ -103,10 +114,17 @@ export const describeIssues = (error: z.ZodError): string =>
 /** Runs a tool body as `auth`, with scope, rate-limit and error handling around it. */
 export async function runAs(
   auth: ToolAuth,
-  scope: Scope,
+  scope: ToolScope,
   body: (auth: ToolAuth) => Promise<CallToolResult>,
 ): Promise<CallToolResult> {
-  if (!auth.scopes.includes(scope)) {
+  if (scope === "site") {
+    if (!auth.site) {
+      return toolError(
+        "This tool only works in the assistant on the PantherWatch site. Nothing was changed. The student can " +
+          "set their campus under Settings → Campus on PantherWatch.",
+      );
+    }
+  } else if (!auth.scopes.includes(scope)) {
     const label = scope === "read" ? "See your classes" : SCOPE_HELP[scope];
     return toolError(
       `This PantherWatch connection doesn't have "${label}" permission (${scope}). Ask the user to disconnect and ` +
@@ -149,16 +167,36 @@ export const scheduleUrl = (term: string): string => absolute(`/schedule-builder
 // ------------------------------------------------------------------------------------------
 
 /**
- * GoSolar `txt_level` values search_sections accepts. Without a level GoSolar returns every
- * level, and a Perimeter College (associate) section looks like any other (both levels have
- * "Online" campuses), so the tool always searches one level, bachelor's unless asked.
+ * search_sections always searches one GoSolar `txt_level` (src/lib/account/levels.ts). Without a
+ * level GoSolar returns every level, and a Perimeter College (associate) section looks like any
+ * other (both levels have "Online" campuses). The level is the tool's `level` input, else the
+ * student's saved campus, else bachelor's.
  */
-const SECTION_LEVELS = ["US", "UA", "GS"] as const;
-const LEVEL_NAMES: Record<(typeof SECTION_LEVELS)[number], string> = {
-  US: "Bachelor's level",
-  UA: "Associate level (Perimeter College)",
-  GS: "Graduate level",
-};
+type LevelSource = "input" | "preference" | "default";
+
+/**
+ * How many sections the same search finds at another level, for the "also at Perimeter" hint.
+ * Same GoSolar options with the live-check timeout cap; a failure is logged and returns null
+ * (the hint is left out rather than reported as zero).
+ */
+async function countAtLevel(
+  search: { term: string; subject: string; courseNumber?: string },
+  level: LevelPreference,
+): Promise<number | null> {
+  const options = gosolarOptions();
+  try {
+    return await countSections(
+      { ...search, level },
+      { ...options, timeoutMs: Math.min(options?.timeoutMs ?? LIVE_TIMEOUT_MS, LIVE_TIMEOUT_MS) },
+    );
+  } catch (error) {
+    console.warn(
+      `tools: GoSolar ${level} count failed for ${search.term} ${search.subject} ${search.courseNumber ?? ""}:`,
+      error instanceof Error ? error.message : error,
+    );
+    return null;
+  }
+}
 
 const termInput = termCodeSchema.describe('6-digit term code from list_terms, e.g. "202701" (Spring 2027).');
 const crnInput = crnSchema.describe('5-digit CRN, e.g. "19010".');
@@ -275,8 +313,11 @@ export const TOOLS: readonly ToolDefinition[] = [
       "instructor, credits, seats, waitlist, meetings and delivery mode. `seatsAvailable` is what a student can " +
       "actually take (cross-listed seat pools included); `open` means a free seat and an empty waitlist. Meeting " +
       "`days` use M T W R F S U; `start`/`end` are 24-hour HHMM, null when TBA or asynchronous. One subject per " +
-      "call; omit courseNumber for the whole subject (results are capped by `limit`). Searches one degree level, " +
-      "bachelor's unless `level` says otherwise; `level`/`levelName` in the result say which. `resultsUrl` opens " +
+      "call; omit courseNumber for the whole subject (results are capped by `limit`). Searches one degree level: " +
+      "`level` when given, else the student's saved campus, else bachelor's; `level`, `levelName` and " +
+      "`levelSource` (input, preference or default) in the result say which. With `levelSource: \"default\"` the " +
+      "result also has `alsoAtAssociateLevel` (sections of the same search at Perimeter College, 0 when none) and, " +
+      "when nothing was found, `alsoAtGraduateLevel`; missing means that check failed. `resultsUrl` opens " +
       "the same search on PantherWatch, with every section and its filters. Search the courses the student names; " +
       "PantherWatch doesn't know their degree requirements, so don't search for other courses to suggest as " +
       "requirement fillers.",
@@ -285,24 +326,42 @@ export const TOOLS: readonly ToolDefinition[] = [
       subject: subjectInput,
       courseNumber: courseNumberInput.optional(),
       level: z
-        .enum(SECTION_LEVELS)
-        .default("US")
+        .enum(LEVEL_PREFERENCES)
+        .optional()
         .describe(
-          "US = bachelor's level (the default; what most GSU students want), UA = associate level at Perimeter " +
-            "College campuses, GS = graduate. Only pass UA or GS when the student asks for Perimeter/associate or " +
-            "graduate sections.",
+          "US = bachelor's level (Atlanta campus and online), UA = associate level at Perimeter College " +
+            "campuses, GS = graduate. Omit it to use the student's saved campus (bachelor's when none is saved); " +
+            "pass it when the student says which level or campus they want.",
         ),
       openOnly: z.boolean().default(false).describe("Only sections with an open seat and no waitlist."),
       limit: z.number().int().min(1).max(MAX_SECTION_LIMIT).default(DEFAULT_SECTION_LIMIT),
     }),
     annotations: { readOnlyHint: true, openWorldHint: true },
     scope: "read",
-    handler: async (_auth, { term, subject, courseNumber, level, openOnly, limit }) => {
+    handler: async ({ userId }, { term, subject, courseNumber, level: requested, openOnly, limit }) => {
+      const saved = requested ? null : await getLevelPreference(userId);
+      const level: LevelPreference = requested ?? saved ?? DEFAULT_LEVEL;
+      const levelSource: LevelSource = requested ? "input" : saved ? "preference" : "default";
       const all = (await searchSections({ term, subject, courseNumber, level })).map(compactSection);
       const matching = openOnly ? all.filter((s) => s.open) : all;
+
+      // Only when nobody chose the level: does the same search find Perimeter (or graduate) sections?
+      const elsewhere: { alsoAtAssociateLevel?: number; alsoAtGraduateLevel?: number } = {};
+      if (levelSource === "default") {
+        const search = { term, subject, courseNumber };
+        const [associate, graduate] = await Promise.all([
+          countAtLevel(search, "UA"),
+          all.length === 0 ? countAtLevel(search, "GS") : null,
+        ]);
+        if (associate !== null) elsewhere.alsoAtAssociateLevel = associate;
+        if (graduate !== null) elsewhere.alsoAtGraduateLevel = graduate;
+      }
+
       return text({
         level,
         levelName: LEVEL_NAMES[level],
+        levelSource,
+        ...elsewhere,
         total: matching.length,
         returned: Math.min(limit, matching.length),
         truncated: matching.length > limit,
@@ -651,6 +710,39 @@ export const TOOLS: readonly ToolDefinition[] = [
         removed,
         message: removed ? "Removed from the schedule." : "That section wasn't on the schedule.",
         scheduleUrl: scheduleUrl(term),
+      });
+    },
+  }),
+
+  // ------------------------------------------------------------------------------------------
+  // Account (on-site assistant only: there is no OAuth scope for account settings)
+  // ------------------------------------------------------------------------------------------
+
+  defineTool({
+    name: "set_level_preference",
+    title: "Save campus",
+    description:
+      "Saves the student's campus (degree level) on their PantherWatch account: US = Atlanta campus or online " +
+      "(bachelor's), UA = Perimeter College (associate), GS = graduate. search_sections and the site's course " +
+      "search then use it whenever no level is given. Call it when the student tells you which one they attend, " +
+      "not to look at another level once (pass `level` to search_sections for that). They can change it under " +
+      "Settings → Campus.",
+    inputSchema: z.object({
+      level: z
+        .enum(LEVEL_PREFERENCES)
+        .describe("US = bachelor's (Atlanta campus or online), UA = associate (Perimeter College), GS = graduate."),
+    }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    scope: "site",
+    handler: async ({ userId }, { level }) => {
+      if (!(await setLevelPreference(userId, level))) return toolError("The PantherWatch account wasn't found.");
+      const campus = CAMPUS_OPTIONS.find((option) => option.value === level)?.label ?? LEVEL_NAMES[level];
+      return text({
+        saved: true,
+        level,
+        levelName: LEVEL_NAMES[level],
+        message: `Saved: ${campus}. search_sections uses it from now on when no level is given.`,
+        settingsUrl: absolute("/settings"),
       });
     },
   }),

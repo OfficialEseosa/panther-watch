@@ -154,7 +154,7 @@ const MCP_URL = `${BASE}/api/mcp`;
 const MCP_TOOLS: Array<[name: string, scope: string, description: string]> = [
   ["list_terms", "read", "Terms in GoSolar, registrable ones first."],
   ["search_subjects", "read", "Subject codes matching a word (\"psych\" → PSYC)."],
-  ["search_sections", "read", "Live sections of a subject or course: seats, waitlist, meetings, delivery mode."],
+  ["search_sections", "read", "Live sections of a subject or course at one level (the level given, else the student's saved campus, else bachelor's): seats, waitlist, meetings, delivery mode."],
   ["get_section_details", "read", "Grade history, RateMyProfessors rating and syllabus for one section."],
   ["get_course_requirements", "read", "Prerequisites, corequisites, registration restrictions and catalog description of one section."],
   ["get_syllabus_summary", "read", "An AI summary of one section's posted syllabus: grading weights, exams, attendance, textbook, workload."],

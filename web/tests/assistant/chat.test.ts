@@ -170,7 +170,7 @@ describe("a turn", () => {
     // Cache: frozen system prompt + last tool marked, automatic caching for the conversation.
     expect(body.system).toEqual([{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }]);
     expect(body.cache_control).toEqual({ type: "ephemeral" });
-    expect(body.tools).toHaveLength(13);
+    expect(body.tools).toHaveLength(14);
     expect(body.tools.at(-1).cache_control).toEqual({ type: "ephemeral" });
     expect(body.tools.slice(0, -1).every((t: { cache_control?: unknown }) => !t.cache_control)).toBe(true);
     for (const tool of body.tools) {
@@ -237,10 +237,10 @@ describe("tools", () => {
     expect(events[2].data).toMatchObject({ id: "toolu_1", status: "done" });
     // A new round's text starts a new paragraph.
     expect(textOf(events)).toBe("Let me check.\n\nCRN 81234 has 4 open seats.");
-    // No level from the model: the tool searches bachelor's level (US), not every level.
+    // No level from the model and none saved: the tool searches bachelor's level (US), not every level,
+    // then counts the same course at the associate level once.
     const searches = gs.requests.filter((r) => r.path === "/searchResults/searchResults");
-    expect(searches.length).toBeGreaterThan(0);
-    expect(searches.every((r) => r.query.txt_level === "US")).toBe(true);
+    expect(searches.map((r) => `${r.query.txt_level}:${r.query.pageMaxSize}`)).toEqual(["US:500", "UA:1"]);
 
     expect(claude.requests).toHaveLength(2);
     const second = claude.requests[1].body.messages;
@@ -253,7 +253,14 @@ describe("tools", () => {
     expect(result).toMatchObject({ type: "tool_result", tool_use_id: "toolu_1" });
     expect(result.is_error).toBeUndefined();
     const data = JSON.parse(result.content);
-    expect(data).toMatchObject({ level: "US", levelName: "Bachelor's level", total: 1, sections: [{ crn: "81234", seatsAvailable: 4, open: true }] });
+    expect(data).toMatchObject({
+      level: "US",
+      levelName: "Bachelor's level",
+      levelSource: "default",
+      alsoAtAssociateLevel: 1,
+      total: 1,
+      sections: [{ crn: "81234", seatsAvailable: 4, open: true }],
+    });
     expect(data.resultsUrl).toBe(`${TEST_ORIGIN}/course-results?term=${OPEN}&subjects=CSC&courseNumber=4350&level=US`);
 
     // Usage: both model requests, summed and priced (Haiku 5.5: $0.10 in, $0.50 out, $0.01 read, $0.125 write per MTok).
@@ -281,16 +288,17 @@ describe("tools", () => {
     expect(data.resultsUrl).toBe(`${TEST_ORIGIN}/course-results?term=${OPEN}&subjects=POLS&courseNumber=2401&level=UA`);
   });
 
-  it("search_sections' strict schema: level is an optional US/UA/GS enum whose US default is applied server side", async () => {
+  it("search_sections' strict schema: level is an optional US/UA/GS enum; the fallback is resolved server side", async () => {
     claude.reply({ text: ["ok"] });
     await chat("hi");
     const tool = claude.requests[0].body.tools.find((t: { name: string }) => t.name === "search_sections");
     const { input_schema: schema } = tool;
     expect(schema.properties.level).toMatchObject({ type: "string", enum: ["US", "UA", "GS"] });
-    expect(schema.properties.level.description).toMatch(/^US = bachelor's level \(the default;.*Default: "US"\.$/);
-    // Strict tool use allows optional properties: the default isn't sent, so `level` stays out of required.
+    expect(schema.properties.level.description).toMatch(/^US = bachelor's level .*Omit it to use the student's saved campus/);
+    expect(schema.properties.level.description).not.toContain("Default:");
+    // Strict tool use allows optional properties: `level` stays out of required.
     expect(schema.required).toEqual(["term", "subject"]);
-    expect(SYSTEM_PROMPT).toContain("Search at the bachelor's level unless");
+    expect(SYSTEM_PROMPT).toContain("search_sections searches one level");
   });
 
   it("list_terms marks the term students are registering for as default, not the semester under way", async () => {

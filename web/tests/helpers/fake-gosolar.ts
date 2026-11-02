@@ -65,13 +65,19 @@ export interface FakeGoSolar {
   readonly requests: FakeGoSolarRequest[];
   /**
    * Sections returned for (term, subject, courseNumber). A search with a blank course number
-   * returns every configured section of that subject in the term.
+   * returns every configured section of that subject in the term. With `level` (GoSolar
+   * `txt_level`, e.g. "UA") they exist only at that level: a search with another `txt_level`
+   * skips them, one without `txt_level` (every level, like GoSolar) includes them. Without
+   * `level` they match every search, whatever its level.
    */
-  setSections(term: string, subject: string, courseNumber: string, sections: CourseData[]): void;
+  setSections(term: string, subject: string, courseNumber: string, sections: CourseData[], level?: string): void;
   setTerms(terms: Term[]): void;
   setSubjects(term: string, subjects: Subject[]): void;
-  /** The next `count` searches fail as described, then behaviour returns to normal. */
-  failNextSearches(failure: SearchFailure, count?: number): void;
+  /**
+   * The next `count` searches fail as described, then behaviour returns to normal. With `level`,
+   * only searches with that `txt_level` fail (other searches pass and don't use one up).
+   */
+  failNextSearches(failure: SearchFailure, count?: number, level?: string): void;
   /**
    * Requirement fragments for (term, crn). Missing ones are Banner's "none" fragments, as are
    * all four for an unconfigured section.
@@ -86,6 +92,9 @@ export interface FakeGoSolar {
 
 const sectionKey = (term: string, subject: string, courseNumber: string) =>
   `${term}|${subject.toUpperCase()}|${courseNumber.toUpperCase()}`;
+
+/** Storage key of sections set for one level: the section key plus `#LEVEL`. */
+const LEVEL_MARK = "#";
 
 /**
  * Banner's fragments for a section without that kind of requirement. Prerequisites and
@@ -126,7 +135,7 @@ export async function startFakeGoSolar(): Promise<FakeGoSolar> {
   const sections = new Map<string, CourseData[]>();
   const subjects = new Map<string, Subject[]>();
   let terms: Term[] = [];
-  let failures: SearchFailure[] = [];
+  let failures: Array<{ failure: SearchFailure; level?: string }> = [];
   const requirements = new Map<string, RequirementFragments>();
   let requirementFailures: RequirementFailure[] = [];
   /** JSESSIONID -> { term, affinity cookie value } */
@@ -176,7 +185,8 @@ export async function startFakeGoSolar(): Promise<FakeGoSolar> {
     if (req.method === "GET" && path === "/searchResults/searchResults") {
       const pageOffset = Number(query.pageOffset ?? 0);
       const pageMaxSize = Number(query.pageMaxSize ?? 10);
-      const failure = failures.shift();
+      const failureAt = failures.findIndex((f) => f.level === undefined || f.level === (query.txt_level ?? "").trim());
+      const failure = failureAt >= 0 ? failures.splice(failureAt, 1)[0].failure : undefined;
       if (failure?.kind === "http") {
         send(failure.status, { success: false });
         return;
@@ -196,11 +206,16 @@ export async function startFakeGoSolar(): Promise<FakeGoSolar> {
       const term = query.txt_term ?? "";
       const subject = (query.txt_subject ?? "").toUpperCase();
       const courseNumber = (query.txt_courseNumber ?? "").trim();
-      const matches = courseNumber
-        ? (sections.get(sectionKey(term, subject, courseNumber)) ?? [])
-        : [...sections.entries()]
-            .filter(([key]) => key.startsWith(`${term}|${subject}|`))
-            .flatMap(([, list]) => list);
+      const level = (query.txt_level ?? "").trim();
+      const matches = [...sections.entries()]
+        .filter(([key]) => {
+          const [base, keyLevel] = key.split(LEVEL_MARK);
+          const course = courseNumber
+            ? base === sectionKey(term, subject, courseNumber)
+            : base.startsWith(`${term}|${subject}|`);
+          return course && (!keyLevel || !level || keyLevel === level);
+        })
+        .flatMap(([, list]) => list);
       send(200, {
         success: true,
         totalCount: matches.length,
@@ -277,8 +292,8 @@ export async function startFakeGoSolar(): Promise<FakeGoSolar> {
   return {
     url: `http://127.0.0.1:${port}${SSB_PATH}`,
     requests,
-    setSections(term, subject, courseNumber, list) {
-      sections.set(sectionKey(term, subject, courseNumber), list);
+    setSections(term, subject, courseNumber, list, level) {
+      sections.set(`${sectionKey(term, subject, courseNumber)}${level ? `${LEVEL_MARK}${level}` : ""}`, list);
     },
     setTerms(list) {
       terms = list;
@@ -286,8 +301,8 @@ export async function startFakeGoSolar(): Promise<FakeGoSolar> {
     setSubjects(term, list) {
       subjects.set(term, list);
     },
-    failNextSearches(failure, count = 1) {
-      for (let i = 0; i < count; i++) failures.push(failure);
+    failNextSearches(failure, count = 1, level) {
+      for (let i = 0; i < count; i++) failures.push({ failure, level });
     },
     setRequirements(term, crn, fragments) {
       requirements.set(`${term}|${crn}`, fragments);

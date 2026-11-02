@@ -50,6 +50,13 @@
       "when": 1793638800705,
       "tag": "0006_syllabus_summaries",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793639761258,
+      "tag": "0007_user_level_preference",
+      "breakpoints": true
     }
   ]
 }

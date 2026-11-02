@@ -161,7 +161,7 @@ export async function runTurn({ userId, userName, messages, signal, emit, now = 
   const config = assistantConfig();
   const model = config.model;
   const anthropic = anthropicClient(config);
-  const auth: ToolAuth = { userId, scopes: SCOPES };
+  const auth: ToolAuth = { userId, scopes: SCOPES, site: true };
   const convo = toApiMessages(messages, userName, now);
   const base = {
     model,

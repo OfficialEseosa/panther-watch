@@ -64,6 +64,25 @@ export async function searchSections(
   }
 }
 
+/**
+ * How many sections match (term, subject[, courseNumber][, level]): one GoSolar session and a
+ * one-row page, reading Banner's `totalCount`. For "this course also exists at another level"
+ * hints, where the sections themselves aren't needed.
+ */
+export async function countSections(
+  input: SearchSectionsInput,
+  options: GoSolarOptions | undefined = gosolarOptions(),
+): Promise<number> {
+  const { term, subject, courseNumber, level } = searchSectionsSchema.parse(input);
+  const session = await createGoSolarSession(term, options);
+  try {
+    const result = await session.search({ subject, courseNumber, level, pageOffset: 0, pageMaxSize: 1 });
+    return typeof result.totalCount === "number" ? result.totalCount : result.data.length;
+  } finally {
+    await session.close();
+  }
+}
+
 export const searchCourseListSchema = z
   .object({
     term: termCodeSchema,

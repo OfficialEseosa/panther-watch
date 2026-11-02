@@ -9,6 +9,8 @@ import { parseSearch, type RawSearchParams } from "@/components/courses/params";
 import { RetryButton } from "@/components/courses/RetryButton";
 import { SearchPageFrame } from "@/components/courses/SearchPageFrame";
 import { ErrorMessage } from "@/components/courses/SectionParts";
+import { isLevelPreference, type LevelPreference } from "@/lib/account/levels";
+import { getCurrentUser } from "@/lib/auth/session";
 import { getTerms, type TermInfo } from "@/lib/courses";
 import { canonicalUrl } from "@/lib/site";
 
@@ -21,10 +23,10 @@ export const metadata: Metadata = {
 
 type PageProps = { searchParams: Promise<RawSearchParams> };
 
-/** Terms (request-time: they come from the database cache), then the client form. */
+/** Terms (request-time: they come from the database cache) and the account's campus, then the client form. */
 async function SearchForm({ searchParams }: PageProps) {
   await connection();
-  const [params, terms] = await Promise.all([searchParams, loadTerms()]);
+  const [params, terms, accountLevel] = await Promise.all([searchParams, loadTerms(), loadAccountLevel()]);
   const prefill = parseSearch(params);
   const initial = prefill.term || prefill.subjects.length
     ? {
@@ -47,6 +49,7 @@ async function SearchForm({ searchParams }: PageProps) {
         key={JSON.stringify(initial ?? null)}
         terms={terms}
         initial={initial}
+        accountLevel={accountLevel}
       />
     </>
   );
@@ -58,6 +61,18 @@ async function loadTerms(): Promise<TermInfo[] | null> {
   } catch (error) {
     unstable_rethrow(error);
     console.warn("course search: could not load terms", error instanceof Error ? error.message : error);
+    return null;
+  }
+}
+
+/** The signed-in user's saved campus (Settings > Campus); null for guests, when unset, or on failure. */
+async function loadAccountLevel(): Promise<LevelPreference | null> {
+  try {
+    const user = await getCurrentUser();
+    return isLevelPreference(user?.levelPreference) ? user.levelPreference : null;
+  } catch (error) {
+    unstable_rethrow(error);
+    console.warn("course search: could not load the campus preference", error instanceof Error ? error.message : error);
     return null;
   }
 }

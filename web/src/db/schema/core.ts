@@ -67,6 +67,12 @@ export const users = pgTable(
     name: text("name"),
     pictureUrl: text("picture_url"),
     googleSub: text("google_sub"),
+    /**
+     * GoSolar `txt_level` the student searches by default: US (bachelor's, Atlanta campus and
+     * online), UA (associate, Perimeter College) or GS (graduate). Null = not chosen (the site
+     * and the assistant default to US). Set under Settings > Campus or by the on-site assistant.
+     */
+    levelPreference: text("level_preference"),
     createdAt: timestamptz("created_at").notNull().defaultNow(),
     updatedAt: timestamptz("updated_at")
       .notNull()
@@ -78,6 +84,7 @@ export const users = pgTable(
     uniqueIndex("users_google_sub_key")
       .on(t.googleSub)
       .where(sql`${t.googleSub} IS NOT NULL`),
+    check("users_level_preference_check", sql`${t.levelPreference} IN ('US', 'UA', 'GS')`),
   ],
 );
 

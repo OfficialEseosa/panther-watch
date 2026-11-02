@@ -235,6 +235,12 @@ export const UserIcon = createIcon("user", (
     <path d="M4.5 20v-1c0-3 3.4-5.5 7.5-5.5s7.5 2.5 7.5 5.5v1" />
   </>
 ));
+export const MapPinIcon = createIcon("mapPin", (
+  <>
+    <path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11Z" />
+    <circle cx="12" cy="10" r="2.5" />
+  </>
+));
 export const UsersIcon = createIcon("users", (
   <>
     <circle cx="9" cy="8.5" r="3.5" />

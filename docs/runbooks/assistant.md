@@ -22,6 +22,8 @@ Per message, the cost is also bounded in `web/src/lib/assistant/chat.ts`: 2,048 
 
 **Syllabus summaries** (`get_syllabus_summary`, from the chat or the MCP connector; `web/src/lib/course-meta/syllabus-summary.ts`): one Claude Haiku 5.5 call per new or changed syllabus text, about $0.0013 for a 6-page syllabus (≈5,900 input / 1,450 output tokens, measured 2026-11-02), capped at 4,000 output tokens. Each call is added to today's `assistant_daily` row (tokens and `cost_micro_usd`, `messages` unchanged), so it counts toward `ASSISTANT_GLOBAL_DAILY_USD` but not toward anyone's message count; at the cap, or without `ANTHROPIC_API_KEY`, no summary is generated (stored ones are still served). Summaries are cached in `syllabus_summaries` (migration `0006_syllabus_summaries.sql`), keyed by PDF URL with the extracted text's SHA-256: every call re-reads the PDF and reuses the summary only while the hash matches. To force a fresh summary, `DELETE FROM syllabus_summaries WHERE url = '<pdf url>';`.
 
+**Campus (degree level):** `search_sections` searches the `level` it is given, else the student's `users.level_preference` (Settings → Campus, migration `0007_user_level_preference.sql`), else bachelor's (`US`); only in that last case does it make one extra GoSolar count search at `UA` (plus `GS` when nothing was found) so the assistant can ask "Atlanta/online or Perimeter?" once, and the chat-only tool `set_level_preference` (`scope: "site"`, never served over MCP) saves the answer.
+
 `cost_micro_usd` is an estimate (millionths of a dollar, priced at record time). The Anthropic Console's usage and billing pages are the real bill; a monthly spend limit on the Anthropic organization is a sensible backstop.
 
 ## Checking spend

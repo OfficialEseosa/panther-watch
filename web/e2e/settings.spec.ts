@@ -1,7 +1,7 @@
 import { APP_URL } from "./env";
-import { SEED, addToSchedule, addWatch, db, expect, freshUser, hydrated, login, resetAll, sessionCookie, test } from "./support";
+import { SEED, addToSchedule, addWatch, db, expect, freshUser, hydrated, login, resetAll, sessionCookie, test, toast } from "./support";
 
-/** /settings (pages.md §7): profile, theme, delete account. */
+/** /settings (pages.md §7): profile, theme, campus, delete account. */
 
 const { csc1301 } = SEED;
 
@@ -38,6 +38,31 @@ test("profile shows the account; the theme control applies and persists", async 
   await theme.getByRole("radio", { name: "System" }).check({ force: true });
   await page.emulateMedia({ colorScheme: "dark" });
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+});
+
+test("campus: saved in Settings, and the course search form starts on it over this browser's last level", async ({ page }) => {
+  await login(page.request, freshUser("campus"));
+  // This browser last searched graduate classes; a saved campus still wins.
+  await page.addInitScript(() => window.localStorage.setItem("pantherwatch.preferredLevel", "GS"));
+
+  await page.goto("/settings");
+  const campus = await hydrated(page.getByRole("combobox", { name: "Your campus" }));
+  await expect(campus).toHaveValue("");
+  await campus.selectOption({ label: "Perimeter College (associate)" });
+  await expect(toast(page, "Campus saved")).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("combobox", { name: "Your campus" })).toHaveValue("UA");
+
+  const degree = page.getByRole("combobox", { name: "Choose a degree" });
+  await page.goto("/course-search");
+  await expect(degree).toHaveValue("UA");
+
+  // "Not set" clears it: the form goes back to the level this browser remembers.
+  await page.goto("/settings");
+  await (await hydrated(page.getByRole("combobox", { name: "Your campus" }))).selectOption({ label: "Not set" });
+  await expect(toast(page, "Campus cleared")).toBeVisible();
+  await page.goto("/course-search");
+  await expect(degree).toHaveValue("GS");
 });
 
 test("delete account needs DELETE typed (any case), then signs out and sends the goodbye email", async ({ page, context }) => {

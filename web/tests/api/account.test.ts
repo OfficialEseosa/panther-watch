@@ -9,7 +9,7 @@ vi.mock("next/server", async (importOriginal) => ({
 
 import { setDbForTests } from "@/db";
 import { emailLog, scheduleEntries, terms, users, watchedSections, type User } from "@/db/schema";
-import { DELETE as accountDelete } from "@/app/api/account/route";
+import { DELETE as accountDelete, GET as accountGet, PATCH as accountPatch } from "@/app/api/account/route";
 import { GET as watchesGet } from "@/app/api/watches/route";
 import { deleteAccount } from "@/lib/account";
 import { createMemoryTransport, setDefaultEmailTransport, type MemoryTransport } from "@/lib/email";
@@ -101,6 +101,74 @@ describe("DELETE /api/account", () => {
     const crossOrigin = await call(accountDelete, await apiRequest("/api/account", { method: "DELETE", as: alice, origin: null }));
     expect(crossOrigin.status).toBe(403);
     expect(await testDb.db.select().from(users).where(eq(users.id, alice.id))).toHaveLength(1);
+  });
+});
+
+describe("GET / PATCH /api/account: campus (level preference)", () => {
+  const patch = async (body: unknown, options: { as?: User | null; origin?: string | null } = {}) =>
+    call(
+      accountPatch,
+      await apiRequest("/api/account", {
+        method: "PATCH",
+        as: options.as === null ? undefined : (options.as ?? alice),
+        origin: options.origin,
+        body,
+      }),
+    );
+  const stored = async (user: User = alice) =>
+    (await testDb.db.select({ level: users.levelPreference }).from(users).where(eq(users.id, user.id)))[0]?.level;
+
+  it("GET returns the account with levelPreference null until one is saved; PATCH saves, changes and clears it", async () => {
+    const get = async () => call(accountGet, await apiRequest("/api/account", { as: alice }));
+    const first = await get();
+    expect(first.status).toBe(200);
+    expect(first.headers.get("cache-control")).toBe("private, no-store");
+    expect(await first.json()).toEqual({ email: "alice@student.gsu.test", name: "Alice Panther", levelPreference: null });
+
+    const saved = await patch({ levelPreference: "UA" });
+    expect(saved.status).toBe(200);
+    expect(await saved.json()).toEqual({ levelPreference: "UA" });
+    expect(await stored()).toBe("UA");
+    expect(await (await get()).json()).toMatchObject({ levelPreference: "UA" });
+
+    expect(await (await patch({ levelPreference: "GS" })).json()).toEqual({ levelPreference: "GS" });
+    expect(await stored()).toBe("GS");
+
+    expect(await (await patch({ levelPreference: null })).json()).toEqual({ levelPreference: null });
+    expect(await stored()).toBeNull();
+    // Only the caller's row changes.
+    expect(await stored(bob)).toBeNull();
+  });
+
+  it("PATCH rejects anything but US, UA, GS or null with 400 and changes nothing", async () => {
+    await patch({ levelPreference: "US" });
+    for (const body of [
+      { levelPreference: "LW" },
+      { levelPreference: "us" },
+      { levelPreference: 1 },
+      {},
+      { levelPreference: "UA", email: "x@evil.test" },
+      ["UA"],
+      "{nope",
+      "",
+    ]) {
+      const response = await patch(body);
+      expect(response.status, JSON.stringify(body)).toBe(400);
+      expect((await response.json()).error.code).toBe("invalid_request");
+    }
+    expect(await stored()).toBe("US");
+  });
+
+  it("requires a session (GET and PATCH) and same origin (PATCH)", async () => {
+    expect((await call(accountGet, await apiRequest("/api/account"))).status).toBe(401);
+    expect((await patch({ levelPreference: "UA" }, { as: null })).status).toBe(401);
+    expect((await patch({ levelPreference: "UA" }, { origin: "https://evil.example" })).status).toBe(403);
+    expect((await patch({ levelPreference: "UA" }, { origin: null })).status).toBe(403);
+    expect(await stored()).toBeNull();
+  });
+
+  it("the database refuses a level outside US, UA, GS", async () => {
+    await expect(testDb.db.update(users).set({ levelPreference: "LW" }).where(eq(users.id, alice.id))).rejects.toThrow();
   });
 });
 

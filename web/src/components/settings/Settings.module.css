@@ -111,6 +111,13 @@
   text-underline-offset: 2px;
 }
 
+/* ---- Campus ---- */
+.campusControl {
+  flex: none;
+  width: 300px;
+  max-width: 100%;
+}
+
 /* ---- Notifications ---- */
 .notice {
   display: flex;
@@ -242,5 +249,9 @@
 
   .info {
     max-width: 100%;
+  }
+
+  .campusControl {
+    width: 100%;
   }
 }

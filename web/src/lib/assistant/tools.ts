@@ -127,6 +127,7 @@ const LABELS: Record<string, (input: Record<string, unknown>) => string> = {
   add_to_schedule: (i) =>
     `Adding ${[course(i), crnPart(i) && `(${crnPart(i)})`].filter(Boolean).join(" ") || "a section"} to your schedule`,
   remove_from_schedule: (i) => `Removing ${crnPart(i) || "a section"} from your schedule`,
+  set_level_preference: () => "Saving your campus",
 };
 
 /** "Searching CSC 4350 in Spring 2027": what the UI shows while a tool runs (at most 60 characters). */

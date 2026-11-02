@@ -4,6 +4,7 @@ import { getDb } from "@/db";
 import { emailLog, users } from "@/db/schema";
 import { sendGoodbyeEmail, sendWelcomeEmail, type EmailTransport } from "@/lib/email";
 import { emailBudget } from "@/lib/watcher/budget";
+import { isLevelPreference, type LevelPreference } from "./levels";
 
 export interface DeleteAccountOptions {
   /** Email transport for the goodbye email; defaults to the process-wide one (Resend). */
@@ -125,4 +126,27 @@ export async function deleteAccount(
     );
   }
   return { deleted: true, goodbyeSent };
+}
+
+/** The user's saved campus (degree level), or null when not chosen or the user doesn't exist. */
+export async function getLevelPreference(userId: string): Promise<LevelPreference | null> {
+  const [row] = await getDb()
+    .select({ levelPreference: users.levelPreference })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  return isLevelPreference(row?.levelPreference) ? row.levelPreference : null;
+}
+
+/**
+ * Saves (or, with null, clears) the user's campus. Returns false when the user doesn't exist.
+ * Callers validate `level`; the column's CHECK constraint backs that up.
+ */
+export async function setLevelPreference(userId: string, level: LevelPreference | null): Promise<boolean> {
+  const updated = await getDb()
+    .update(users)
+    .set({ levelPreference: level })
+    .where(eq(users.id, userId))
+    .returning({ id: users.id });
+  return updated.length > 0;
 }

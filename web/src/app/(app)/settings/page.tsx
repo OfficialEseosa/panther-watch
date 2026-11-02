@@ -3,6 +3,7 @@ import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
+import { CampusPreference } from "@/components/settings/CampusPreference";
 import { ConnectedApps } from "@/components/settings/ConnectedApps";
 import { DeleteAccount } from "@/components/settings/DeleteAccount";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -10,8 +11,9 @@ import { ThemeSegmented } from "@/components/theme/ThemeToggle";
 import { Avatar } from "@/components/ui/Avatar";
 import { Banner } from "@/components/ui/Banner";
 import { ButtonAnchor } from "@/components/ui/Button";
-import { LogoutIcon, MailIcon, MoonIcon, PlugIcon, UserIcon, AlertIcon } from "@/components/ui/icons";
+import { LogoutIcon, MailIcon, MapPinIcon, MoonIcon, PlugIcon, UserIcon, AlertIcon } from "@/components/ui/icons";
 import { Skeleton, SkeletonGroup } from "@/components/ui/Skeleton";
+import { isLevelPreference } from "@/lib/account/levels";
 import { requireUser, type CurrentUser } from "@/lib/auth/session";
 import { listConnectedApps } from "@/lib/oauth";
 import ui from "@/components/settings/Settings.module.css";
@@ -21,7 +23,7 @@ export const metadata: Metadata = { title: "Settings", robots: { index: false } 
 
 /**
  * /settings: the original Settings page (old Settings.jsx): one card per section (Profile,
- * Appearance, Notifications, Connected apps, Account actions), each with an icon + title header. The header and
+ * Appearance, Campus, Notifications, Connected apps, Account actions), each with an icon + title header. The header and
  * Appearance are static; the user-dependent sections stream in behind <Suspense>. proxy.ts
  * already sends visitors without a session cookie to "/"; requireUser() handles forged cookies.
  */
@@ -145,6 +147,10 @@ async function AccountSections() {
   }
   return (
     <>
+      <Section icon={<MapPinIcon />} title="Campus">
+        <CampusPreference initial={isLevelPreference(user.levelPreference) ? user.levelPreference : null} />
+      </Section>
+
       <Section icon={<MailIcon />} title="Notifications">
         <div className={ui.notice}>
           <p className={ui.noticeLead}>
@@ -201,6 +207,7 @@ function AccountSkeleton() {
   return (
     <>
       {[
+        { title: "Campus", icon: <MapPinIcon /> },
         { title: "Notifications", icon: <MailIcon /> },
         { title: "Connected apps", icon: <PlugIcon /> },
         { title: "Account actions", icon: <AlertIcon /> },

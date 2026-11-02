@@ -37,6 +37,11 @@ export type CourseSearchFormProps = {
   terms: TermInfo[] | null;
   /** Prefill ("New search" from the results page). */
   initial?: SearchInitial;
+  /**
+   * The signed-in user's saved campus (Settings > Campus): the degree the form starts on, ahead of
+   * the level this browser remembers (which stays the default for guests and unset accounts).
+   */
+  accountLevel?: string | null;
 };
 
 type Errors = { term?: string; subjects?: string; courseNumber?: string };
@@ -52,9 +57,10 @@ function FieldError({ id, children }: { id: string; children: ReactNode }) {
 /**
  * The original course search form: term, degree, subjects and course number in one column, with
  * the solid "Search Classes" button. A real GET form to /course-results, so it works before
- * hydration; once hydrated it validates, remembers the term and level, and navigates.
+ * hydration; once hydrated it validates, remembers the term and level, and navigates. The degree
+ * starts on the account's saved campus when there is one, else the level this browser last used.
  */
-export function CourseSearchForm({ terms, initial }: CourseSearchFormProps) {
+export function CourseSearchForm({ terms, initial, accountLevel }: CourseSearchFormProps) {
   const router = useRouter();
   const id = useId();
   const storedTerm = useStoredValue(COURSE_STORAGE_KEYS.preferredTerm);
@@ -94,7 +100,8 @@ export function CourseSearchForm({ terms, initial }: CourseSearchFormProps) {
     });
     return () => controller.abort();
   }, [unnamed, term]);
-  const level = levelChoice ?? (isLevel(storedLevel) ? storedLevel : "US");
+  // A URL prefill or the user's pick, then the account's campus, then this browser's last level.
+  const level = levelChoice ?? (isLevel(accountLevel) ? accountLevel : isLevel(storedLevel) ? storedLevel : "US");
 
   const errors: Errors = {};
   if (!termCodeSchema.safeParse(term).success) errors.term = "Choose a term.";
