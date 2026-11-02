@@ -1,0 +1,5 @@
+/* /assistant's Chat / Connect panels: the header-to-content rhythm (24px) under the strip.
+   No `display` here, so the inactive panel's `hidden` still hides it. */
+.panel {
+  padding-top: 24px;
+}

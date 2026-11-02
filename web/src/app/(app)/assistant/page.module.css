@@ -111,3 +111,8 @@
   line-height: 1.5;
   color: var(--color-text);
 }
+
+/* The Chat / Connect strip sits right under the heading, as part of the header. */
+.page .header {
+  margin-bottom: 16px;
+}

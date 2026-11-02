@@ -132,7 +132,7 @@ export function ConnectedApps({ apps }: { apps: ConnectedAppView[] }) {
             Use PantherWatch from an AI assistant that supports MCP connectors, such as Claude, ChatGPT or Cursor.
           </p>
         </div>
-        <ButtonLink href="/assistant" variant="secondary" size="sm" trailingIcon={<ArrowRightIcon size={16} />}>
+        <ButtonLink href="/assistant?tab=connect" variant="secondary" size="sm" trailingIcon={<ArrowRightIcon size={16} />}>
           Set it up
         </ButtonLink>
       </div>

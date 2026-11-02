@@ -48,6 +48,10 @@
   color: var(--accent-text);
 }
 
+.placeholderTab {
+  cursor: default;
+}
+
 .icon {
   display: none;
 }
@@ -61,6 +65,23 @@
   .icon {
     display: inline-flex;
   }
+}
+
+/* size="lg": the page-level strip (e.g. /assistant's Chat / Connect), a step up from in-card tabs. */
+.lg {
+  gap: var(--space-2);
+}
+
+.lg .tab {
+  height: 48px;
+  padding: 0 var(--space-4);
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+}
+
+.lg .icon > svg {
+  width: 18px;
+  height: 18px;
 }
 
 .indicator {

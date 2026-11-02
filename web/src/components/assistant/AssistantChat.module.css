@@ -391,6 +391,23 @@
   gap: 10px;
 }
 
+/* Desktop: the live chat fills the window from where it starts (--chat-top, measured by
+   AssistantChat) down to the main column's 56px bottom padding, and the log takes whatever the
+   card has left, so the page itself doesn't scroll. */
+@media (min-width: 900px) {
+  .live {
+    height: max(480px, calc(100dvh - var(--chat-top, 300px) - 56px));
+  }
+
+  .live .log,
+  .live .logActive {
+    flex: 1;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+  }
+}
+
 /* Touch keyboards have no Shift+Enter habit; the key hint is for desktop. */
 @media (pointer: coarse) {
   .keys {

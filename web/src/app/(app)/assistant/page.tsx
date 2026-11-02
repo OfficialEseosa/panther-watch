@@ -4,6 +4,7 @@ import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 import { AssistantSection } from "@/components/assistant/AssistantSection";
+import { AssistantTabs, AssistantTabsFallback } from "@/components/assistant/AssistantTabs";
 import { ClaudeCodeCommand, ConnectButtons, SettingsLink } from "@/components/assistant/ConnectButtons";
 import { ConnectedAppsList, ConnectorUrl } from "@/components/settings/ConnectedApps";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -26,10 +27,12 @@ export const metadata: Metadata = {
 };
 
 /**
- * /assistant: the AI integration for students (non-technical): what it does, the MCP connector
- * URL with Copy, step-by-step setup per assistant (tabs), example prompts, what each permission
- * lets it see, and the connected apps with Disconnect. Guests get the same page plus a sign-in
- * note (connecting needs an account). Everything but the guest note and the app list is static.
+ * /assistant: the AI integration for students (non-technical), in two page-level tabs under the
+ * header (AssistantTabs; ?tab=chat|connect). Chat: the on-page assistant (a sign-in prompt for
+ * guests). Connect: what it does, the MCP connector URL with Copy, step-by-step setup per
+ * assistant (tabs), example prompts, what each permission lets it see, and the connected apps
+ * with Disconnect; guests get a sign-in note on top (connecting needs an account). Both panels
+ * are server-rendered (the inactive one `hidden`), so the Connect content stays indexable.
  *
  * The per-assistant steps were checked against each vendor's docs on 2026-11-01 (Claude:
  * support.claude.com "custom connectors using remote MCP"; ChatGPT: developers.openai.com
@@ -51,89 +54,104 @@ export default function AssistantPage() {
   return (
     <div className={styles.page}>
       <PageHeader
+        className={styles.header}
         title="AI Assistant"
         description="Chat with PantherWatch here, or use it from Claude, ChatGPT or another AI assistant."
+      />
+      <Suspense
+        fallback={
+          <AssistantTabsFallback>
+            <SkeletonGroup label="Loading the assistant">
+              <Skeleton height={320} radius="lg" />
+            </SkeletonGroup>
+          </AssistantTabsFallback>
+        }
       >
-        <Suspense fallback={null}>
-          <GuestNote />
-        </Suspense>
-      </PageHeader>
+        <AssistantTabs chat={<AssistantSection />} connect={<ConnectPanel mcpUrl={mcpUrl} />} />
+      </Suspense>
+    </div>
+  );
+}
 
-      <div className={ui.content}>
-        <AssistantSection />
+/** The Connect tab: everything about using PantherWatch from another assistant. */
+function ConnectPanel({ mcpUrl }: { mcpUrl: string }) {
+  return (
+    <div className={ui.content}>
+      <Suspense fallback={null}>
+        <GuestNote />
+      </Suspense>
 
-        <Section icon={<SparkleIcon />} title="What this does">
-          <p className={styles.lead}>
-            Connect PantherWatch to your AI assistant so you can ask it things like &ldquo;Is CSC 1301 open?&rdquo; or
-            &ldquo;Track section 002 and add it to my schedule.&rdquo; It only does what you allow, and you can
-            disconnect anytime.
-          </p>
-        </Section>
-
-        <Section icon={<LinkIcon />} title="Your connector URL">
-          <p className={ui.description}>You&rsquo;ll paste this into your assistant. It&rsquo;s the same for everyone.</p>
-          <ConnectorUrl mcpUrl={mcpUrl} large />
-        </Section>
-
-        <Section icon={<CheckCircleIcon />} title="How to connect">
-          <Tabs
-            label="Assistant"
-            panelClassName={styles.panel}
-            tabs={[
-              { id: "claude", label: "Claude", panel: <ClaudeSteps /> },
-              { id: "chatgpt", label: "ChatGPT", panel: <ChatGptSteps /> },
-              { id: "cursor", label: "Cursor", panel: <CursorSteps mcpUrl={mcpUrl} /> },
-              { id: "vscode", label: "VS Code", panel: <VsCodeSteps mcpUrl={mcpUrl} /> },
-              { id: "claude-code", label: "Claude Code", panel: <ClaudeCodeSteps mcpUrl={mcpUrl} /> },
-              { id: "other", label: "Other", panel: <OtherSteps /> },
-            ]}
-          />
-        </Section>
-
-        <Section icon={<ChatIcon />} title="Things you can say">
-          <ul className={styles.prompts}>
-            {PROMPTS.map((prompt) => (
-              <li key={prompt} className={styles.prompt}>
-                &ldquo;{prompt}&rdquo;
-              </li>
-            ))}
-          </ul>
-        </Section>
-
-        <Section icon={<LockIcon />} title="What it can see">
-          <ul className={styles.scopes}>
-            <li>
-              <span className={styles.scopeLabel}>{SCOPE_INFO.read.label}</span>{" "}
-              <span className={styles.scopeWhen}>(always)</span>
-              <span className={styles.scopeDescription}>{SCOPE_INFO.read.description}</span>
-            </li>
-            <li>
-              <span className={styles.scopeLabel}>{SCOPE_INFO["watches:write"].label}</span>{" "}
-              <span className={styles.scopeWhen}>(if you allow it)</span>
-              <span className={styles.scopeDescription}>{SCOPE_INFO["watches:write"].description}</span>
-            </li>
-            <li>
-              <span className={styles.scopeLabel}>{SCOPE_INFO["schedule:write"].label}</span>{" "}
-              <span className={styles.scopeWhen}>(if you allow it)</span>
-              <span className={styles.scopeDescription}>{SCOPE_INFO["schedule:write"].description}</span>
-            </li>
-          </ul>
-          <p className={ui.description}>
-            You choose these when you click Allow. It never sees your Google password. See the{" "}
-            <Link href="/privacy">Privacy Policy</Link> for details.
-          </p>
-        </Section>
-
-        <Section icon={<PlugIcon />} title="Connected apps">
-          <Suspense fallback={<AppsSkeleton />}>
-            <Apps />
-          </Suspense>
-        </Section>
-
-        <p className={ui.legal}>
-          Building something? The <Link href="/developers">developer docs</Link> cover the MCP tools and the public API.
+      <Section icon={<SparkleIcon />} title="What this does">
+        <p className={styles.lead}>
+          Connect PantherWatch to your AI assistant so you can ask it things like &ldquo;Is CSC 1301 open?&rdquo; or
+          &ldquo;Track section 002 and add it to my schedule.&rdquo; It only does what you allow, and you can
+          disconnect anytime.
         </p>
-      </div>
+      </Section>
+
+      <Section icon={<LinkIcon />} title="Your connector URL">
+        <p className={ui.description}>You&rsquo;ll paste this into your assistant. It&rsquo;s the same for everyone.</p>
+        <ConnectorUrl mcpUrl={mcpUrl} large />
+      </Section>
+
+      <Section icon={<CheckCircleIcon />} title="How to connect">
+        <Tabs
+          label="Assistant"
+          panelClassName={styles.panel}
+          tabs={[
+            { id: "claude", label: "Claude", panel: <ClaudeSteps /> },
+            { id: "chatgpt", label: "ChatGPT", panel: <ChatGptSteps /> },
+            { id: "cursor", label: "Cursor", panel: <CursorSteps mcpUrl={mcpUrl} /> },
+            { id: "vscode", label: "VS Code", panel: <VsCodeSteps mcpUrl={mcpUrl} /> },
+            { id: "claude-code", label: "Claude Code", panel: <ClaudeCodeSteps mcpUrl={mcpUrl} /> },
+            { id: "other", label: "Other", panel: <OtherSteps /> },
+          ]}
+        />
+      </Section>
+
+      <Section icon={<ChatIcon />} title="Things you can say">
+        <ul className={styles.prompts}>
+          {PROMPTS.map((prompt) => (
+            <li key={prompt} className={styles.prompt}>
+              &ldquo;{prompt}&rdquo;
+            </li>
+          ))}
+        </ul>
+      </Section>
+
+      <Section icon={<LockIcon />} title="What it can see">
+        <ul className={styles.scopes}>
+          <li>
+            <span className={styles.scopeLabel}>{SCOPE_INFO.read.label}</span>{" "}
+            <span className={styles.scopeWhen}>(always)</span>
+            <span className={styles.scopeDescription}>{SCOPE_INFO.read.description}</span>
+          </li>
+          <li>
+            <span className={styles.scopeLabel}>{SCOPE_INFO["watches:write"].label}</span>{" "}
+            <span className={styles.scopeWhen}>(if you allow it)</span>
+            <span className={styles.scopeDescription}>{SCOPE_INFO["watches:write"].description}</span>
+          </li>
+          <li>
+            <span className={styles.scopeLabel}>{SCOPE_INFO["schedule:write"].label}</span>{" "}
+            <span className={styles.scopeWhen}>(if you allow it)</span>
+            <span className={styles.scopeDescription}>{SCOPE_INFO["schedule:write"].description}</span>
+          </li>
+        </ul>
+        <p className={ui.description}>
+          You choose these when you click Allow. It never sees your Google password. See the{" "}
+          <Link href="/privacy">Privacy Policy</Link> for details.
+        </p>
+      </Section>
+
+      <Section icon={<PlugIcon />} title="Connected apps">
+        <Suspense fallback={<AppsSkeleton />}>
+          <Apps />
+        </Suspense>
+      </Section>
+
+      <p className={ui.legal}>
+        Building something? The <Link href="/developers">developer docs</Link> cover the MCP tools and the public API.
+      </p>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
@@ -73,6 +73,34 @@ export function AssistantChat({ userId, appOrigins }: AssistantChatProps) {
     const log = logRef.current;
     if (log && stickRef.current) log.scrollTop = log.scrollHeight;
   }, [chat]);
+
+  // Keep the latest turn in view when the log changes size: shown after starting in the hidden
+  // Connect tab (it had no height), or resized with the window on desktop, where it fills the card.
+  useEffect(() => {
+    const log = logRef.current;
+    if (!log) return;
+    const observer = new ResizeObserver(() => {
+      if (stickRef.current) log.scrollTop = log.scrollHeight;
+    });
+    observer.observe(log);
+    return () => observer.disconnect();
+  }, []);
+
+  // Desktop: the card fills the window below where it starts (CSS reads --chat-top), so the page
+  // doesn't scroll whatever sits above it (an announcement, a two-line description).
+  useLayoutEffect(() => {
+    const card = logRef.current?.closest("section");
+    if (!card) return;
+    const measure = () => {
+      if (!card.offsetParent) return; // in the hidden tab: measured again once it shows
+      card.style.setProperty("--chat-top", `${Math.ceil(card.getBoundingClientRect().top + window.scrollY)}px`);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(document.body);
+    observer.observe(card);
+    return () => observer.disconnect();
+  }, []);
 
   const updateReply = useCallback(
     (id: string, change: (reply: AssistantMessage) => AssistantMessage, persist = false, extra?: Partial<ChatState>) => {
@@ -233,15 +261,6 @@ export function AssistantChat({ userId, appOrigins }: AssistantChatProps) {
     void run(built.messages, reply.id);
   }
 
-  /** Drops the last reply and asks again with the conversation up to the student's message before it. */
-  function regenerate(replyId: string) {
-    if (inFlight || blocked) return;
-    // The button goes away with the reply; keep focus in the conversation rather than on <body>.
-    logRef.current?.focus({ preventScroll: true });
-    refocusRef.current = false;
-    retry(replyId);
-  }
-
   const stop = useCallback(() => abortRef.current?.abort(), []);
 
   const newChat = useCallback(() => {
@@ -270,6 +289,7 @@ export function AssistantChat({ userId, appOrigins }: AssistantChatProps) {
 
   return (
     <ChatShell
+      className={styles.live}
       actions={
         <Button
           variant="ghost"
@@ -322,7 +342,6 @@ export function AssistantChat({ userId, appOrigins }: AssistantChatProps) {
                 message={message}
                 appOrigins={appOrigins}
                 onRetry={message.id === lastId && !blocked ? () => retry(message.id) : undefined}
-                onRegenerate={message.id === lastId && !blocked && !inFlight ? () => regenerate(message.id) : undefined}
               />
             ))}
           </ol>

@@ -321,7 +321,7 @@ export default function DevelopersPage() {
               preferred way for an assistant to use PantherWatch.
             </p>
             <p>
-              Students: the <Link href="/assistant">AI Assistant</Link> page has step-by-step setup for Claude, ChatGPT
+              Students: the <Link href="/assistant?tab=connect">AI Assistant</Link> page has step-by-step setup for Claude, ChatGPT
               and Cursor. This page is the reference for developers.
             </p>
             <Code label="Connector URL">{MCP_URL}</Code>
@@ -691,7 +691,7 @@ export default function DevelopersPage() {
               The <a href="#mcp">MCP connector</a> is the way to connect an assistant: any MCP-capable assistant can
               use it with no setup beyond pasting the URL, and it can act on the student&rsquo;s account. Agents that
               can&rsquo;t use connectors can call the public API above directly. Signed-in students can also chat with
-              PantherWatch&rsquo;s own assistant on the <Link href="/assistant">AI Assistant</Link> page; it uses the
+              PantherWatch&rsquo;s own assistant on the <Link href="/assistant?tab=chat">AI Assistant</Link> page; it uses the
               same tools as the connector and has no API of its own.
             </p>
             <ul>

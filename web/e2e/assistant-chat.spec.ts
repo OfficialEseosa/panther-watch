@@ -220,13 +220,9 @@ test("a tool step shows its label while it runs, then collapses", async ({ page 
   await expect(step).toBeHidden();
 });
 
-test("a quick reply has no working line; Copy copies it and Regenerate asks again", async ({ page, context }) => {
+test("a quick reply has no working line; Copy copies it, and replies have no Regenerate", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: APP_URL });
-  const answers = [
-    "CRN 80001 and CRN 80002 both have open seats.",
-    "You are tracking CSC 4350, CRN 80001.",
-    "You track one class: CSC 4350 (CRN 80001).",
-  ];
+  const answers = ["CRN 80001 and CRN 80002 both have open seats.", "You are tracking CSC 4350, CRN 80001."];
   const bodies: { messages: { role: string; content: string }[] }[] = [];
   await page.route(ENDPOINT, (route) => {
     bodies.push(route.request().postDataJSON());
@@ -256,23 +252,16 @@ test("a quick reply has no working line; Copy copies it and Regenerate asks agai
   await input.fill("What am I tracking?");
   await input.press("Enter");
   await expect(log).toContainText(answers[1]);
-  // Copy on every settled reply; Regenerate only on the last one.
+  // Copy on every settled reply, and no Regenerate (removed: it could be spammed to re-run tools).
   await expect(log.getByRole("button", { name: "Copy" })).toHaveCount(2);
-  await expect(log.getByRole("button", { name: "Regenerate" })).toHaveCount(1);
-
-  await log.getByRole("button", { name: "Regenerate" }).click();
-  await expect(log).toContainText(answers[2]);
-  await expect(log.getByText(answers[1])).toHaveCount(0);
-  await expect.poll(() => bodies.length).toBe(3);
-  // Exactly the conversation up to the student's last message, as the original request sent it.
-  expect(bodies[2]).toEqual(bodies[1]);
-  expect(bodies[2].messages).toEqual([
+  await expect(log.getByRole("button", { name: "Regenerate" })).toHaveCount(0);
+  expect(bodies).toHaveLength(2);
+  expect(bodies[1].messages).toEqual([
     { role: "user", content: QUESTION },
     { role: "assistant", content: answers[0] },
     { role: "user", content: "What am I tracking?" },
   ]);
   await expect(log.locator("ol > li")).toHaveCount(4);
-  await expect(log.getByRole("button", { name: "Regenerate" })).toHaveCount(1);
 });
 
 test("Stop aborts the reply in flight", async ({ page }) => {
@@ -394,7 +383,9 @@ test("an error event can be retried; a disabled assistant says so", async ({ pag
 });
 
 test("guests get a sign-in prompt instead of the chat", async ({ page }) => {
-  await page.goto("/assistant");
+  // Guests open on the Connect tab (assistant-connect.spec.ts); the Chat tab holds the prompt.
+  await page.goto("/assistant?tab=chat");
+  await expect(page.getByRole("tab", { name: "Chat", exact: true })).toHaveAttribute("aria-selected", "true");
   const card = page.getByRole("region", { name: "PantherWatch Assistant" });
   await expect(card.getByText(/Sign in to chat with the PantherWatch Assistant/)).toBeVisible();
   await expect(card.getByRole("link", { name: "Sign in with Google" })).toHaveAttribute("href", "/api/auth/google/login");

@@ -10,7 +10,7 @@ export type TabItem = {
   label: ReactNode;
   /** 16 px icon, shown only at >= 640 px. */
   icon?: ReactNode;
-  /** Panel content. Only the selected panel is mounted. */
+  /** Panel content. Only the selected panel is mounted, unless `keepMounted`. */
   panel: ReactNode;
 };
 
@@ -23,15 +23,35 @@ export type TabsProps = {
   /** Uncontrolled initial id. Defaults to the first tab. */
   defaultValue?: string;
   onValueChange?: (id: string) => void;
+  /** "lg": the page-level strip (taller, larger label), for tabs that split a whole page. */
+  size?: "md" | "lg";
+  /**
+   * Mount every panel and hide the inactive ones with `hidden` instead of unmounting them, so
+   * server-rendered content stays in the HTML and a panel keeps its state while hidden.
+   */
+  keepMounted?: boolean;
   className?: string;
+  listClassName?: string;
   panelClassName?: string;
 };
 
 /**
  * WAI-ARIA tabs (spec.md §2.8) with automatic activation, roving tabindex, ←/→ (wrapping),
- * Home/End, and a sliding indicator (motion.md §4.5). Inactive panels are unmounted.
+ * Home/End, and a sliding indicator (motion.md §4.5). Inactive panels are unmounted, or hidden
+ * with `keepMounted`.
  */
-export function Tabs({ tabs, label, value, defaultValue, onValueChange, className, panelClassName }: TabsProps) {
+export function Tabs({
+  tabs,
+  label,
+  value,
+  defaultValue,
+  onValueChange,
+  size = "md",
+  keepMounted = false,
+  className,
+  listClassName,
+  panelClassName,
+}: TabsProps) {
   const baseId = useId();
   const [internal, setInternal] = useState(defaultValue ?? tabs[0]?.id ?? "");
   const selectedId = value ?? internal;
@@ -85,7 +105,13 @@ export function Tabs({ tabs, label, value, defaultValue, onValueChange, classNam
 
   return (
     <div className={className}>
-      <div ref={listRef} role="tablist" aria-label={label} className={styles.list} onKeyDown={onKeyDown}>
+      <div
+        ref={listRef}
+        role="tablist"
+        aria-label={label}
+        className={cn(styles.list, size === "lg" && styles.lg, listClassName)}
+        onKeyDown={onKeyDown}
+      >
         {tabs.map((tab) => {
           const isSelected = tab.id === selected?.id;
           return (
@@ -111,18 +137,57 @@ export function Tabs({ tabs, label, value, defaultValue, onValueChange, classNam
         })}
         <span className={styles.indicator} aria-hidden="true" />
       </div>
-      {selected ? (
-        <div
-          key={selected.id}
-          role="tabpanel"
-          id={`${baseId}-panel-${selected.id}`}
-          aria-labelledby={`${baseId}-tab-${selected.id}`}
-          tabIndex={0}
-          className={cn(styles.panel, panelClassName)}
-        >
-          {selected.panel}
-        </div>
-      ) : null}
+      {keepMounted
+        ? tabs.map((tab) => (
+            <div
+              key={tab.id}
+              role="tabpanel"
+              id={`${baseId}-panel-${tab.id}`}
+              aria-labelledby={`${baseId}-tab-${tab.id}`}
+              tabIndex={0}
+              hidden={tab.id !== selected?.id}
+              className={cn(styles.panel, panelClassName)}
+            >
+              {tab.panel}
+            </div>
+          ))
+        : selected ? (
+            <div
+              key={selected.id}
+              role="tabpanel"
+              id={`${baseId}-panel-${selected.id}`}
+              aria-labelledby={`${baseId}-tab-${selected.id}`}
+              tabIndex={0}
+              className={cn(styles.panel, panelClassName)}
+            >
+              {selected.panel}
+            </div>
+          ) : null}
+    </div>
+  );
+}
+
+/**
+ * A tab strip's look with nothing selected and nothing to press: the Suspense fallback for Tabs
+ * whose selection waits on the request (the URL, the viewer), so the strip doesn't shift in.
+ */
+export function TabsPlaceholder({
+  tabs,
+  size = "md",
+  className,
+}: {
+  tabs: Array<Pick<TabItem, "id" | "label" | "icon">>;
+  size?: "md" | "lg";
+  className?: string;
+}) {
+  return (
+    <div className={cn(styles.list, size === "lg" && styles.lg, className)} aria-hidden="true">
+      {tabs.map((tab) => (
+        <span key={tab.id} className={cn(styles.tab, styles.placeholderTab)}>
+          {tab.icon ? <span className={styles.icon}>{tab.icon}</span> : null}
+          {tab.label}
+        </span>
+      ))}
     </div>
   );
 }

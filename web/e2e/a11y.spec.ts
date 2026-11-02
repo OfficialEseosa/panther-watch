@@ -8,7 +8,7 @@ import { SEED, addToSchedule, addWatch, expect, freshUser, login, resetAll, skip
  * Fails on serious or critical WCAG 2.x A/AA violations; minor/moderate ones are printed but
  * tolerated. Add new pages to GUEST_PAGES or MEMBER_PAGES.
  */
-const GUEST_PAGES = ["/", "/privacy", "/terms", "/dashboard", "/assistant"];
+const GUEST_PAGES = ["/", "/privacy", "/terms", "/dashboard", "/assistant", "/assistant?tab=chat"];
 
 const { term, csc1301, math2211 } = SEED;
 
@@ -48,7 +48,12 @@ const MEMBER_PAGES: { path: string; ready: (page: Page) => Promise<void> }[] = [
     ready: (page) => expect(page.getByRole("button", { name: "Delete account" })).toBeVisible(),
   },
   {
+    // Members open on the Chat tab.
     path: "/assistant",
+    ready: (page) => expect(page.getByRole("textbox", { name: "Message the PantherWatch Assistant" })).toBeVisible(),
+  },
+  {
+    path: "/assistant?tab=connect",
     ready: (page) => expect(page.getByText("No apps are connected.")).toBeVisible(),
   },
 ];

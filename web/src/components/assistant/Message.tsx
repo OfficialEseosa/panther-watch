@@ -27,12 +27,10 @@ type MessageProps = {
   appOrigins: readonly string[];
   /** Retry this reply (only offered on the last one). */
   onRetry?: () => void;
-  /** Drop this finished reply and ask again (only offered on the last one). */
-  onRegenerate?: () => void;
 };
 
 /** One turn in the log: the student's message (right, tinted) or the assistant's reply (left, with its mark). */
-export function Message({ message, appOrigins, onRetry, onRegenerate }: MessageProps) {
+export function Message({ message, appOrigins, onRetry }: MessageProps) {
   if (message.role === "user") {
     return (
       <li className={cn(styles.row, styles.userRow)}>
@@ -68,7 +66,7 @@ export function Message({ message, appOrigins, onRetry, onRegenerate }: MessageP
           </div>
         ) : null}
         {message.status === "done" || message.status === "stopped" ? (
-          <ReplyActions message={message} onRegenerate={onRegenerate} />
+          <ReplyActions message={message} />
         ) : null}
       </div>
     </li>
@@ -191,14 +189,14 @@ function Elapsed({ startedAt }: { startedAt?: number }) {
   );
 }
 
-/** Copy (the reply's plain text) and, on the last reply, Regenerate. Under settled replies only. */
-function ReplyActions({ message, onRegenerate }: { message: AssistantMessage; onRegenerate?: () => void }) {
+/** Copy (the reply's plain text). Under settled replies only. */
+function ReplyActions({ message }: { message: AssistantMessage }) {
   const toast = useToast();
   const [copied, setCopied] = useState(false);
   const timer = useRef(0);
   const text = plainText(message);
   useEffect(() => () => window.clearTimeout(timer.current), []);
-  if (!text && !onRegenerate) return null;
+  if (!text) return null;
 
   const copy = async () => {
     try {
@@ -213,22 +211,15 @@ function ReplyActions({ message, onRegenerate }: { message: AssistantMessage; on
 
   return (
     <div className={styles.actions}>
-      {text ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          className={styles.action}
-          leadingIcon={copied ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
-          onClick={copy}
-        >
-          {copied ? "Copied" : "Copy"}
-        </Button>
-      ) : null}
-      {onRegenerate ? (
-        <Button variant="ghost" size="sm" className={styles.action} leadingIcon={<RefreshIcon />} onClick={onRegenerate}>
-          Regenerate
-        </Button>
-      ) : null}
+      <Button
+        variant="ghost"
+        size="sm"
+        className={styles.action}
+        leadingIcon={copied ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
+        onClick={copy}
+      >
+        {copied ? "Copied" : "Copy"}
+      </Button>
     </div>
   );
 }

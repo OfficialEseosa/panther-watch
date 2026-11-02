@@ -194,6 +194,10 @@ test("the AI Assistant tab opens /assistant with the connector URL and Copy", as
   await expect(page).toHaveURL(`${APP_URL}/assistant`);
   await expect(page).toHaveTitle("AI Assistant · PantherWatch");
   await expect(page.getByRole("heading", { level: 1, name: "AI Assistant" })).toBeVisible();
+  // Members open on the Chat tab; the connector setup is the Connect tab (?tab=connect).
+  await expect(page.getByRole("tab", { name: "Chat", exact: true })).toHaveAttribute("aria-selected", "true");
+  await (await hydrated(page.getByRole("tab", { name: "Connect", exact: true }))).click();
+  await expect(page).toHaveURL(`${APP_URL}/assistant?tab=connect`);
   await expect(page.getByLabel("Connector URL", { exact: true })).toHaveText(`${new URL(APP_URL).origin}/api/mcp`);
   const copy = page.getByRole("button", { name: "Copy" });
   await (await hydrated(copy)).click();
@@ -202,7 +206,7 @@ test("the AI Assistant tab opens /assistant with the connector URL and Copy", as
   // Steps per assistant, as tabs.
   await expect(page.getByRole("tab", { name: "Claude", exact: true })).toHaveAttribute("aria-selected", "true");
   await page.getByRole("tab", { name: "ChatGPT" }).click();
-  await expect(page.getByRole("tabpanel")).toContainText("Developer mode");
+  await expect(page.getByRole("tabpanel", { name: "ChatGPT" })).toContainText("Developer mode");
   if (testInfo.project.name !== "mobile") {
     await expect(page.locator('aside nav[aria-label="Primary"] a[href="/assistant"]')).toHaveAttribute("aria-current", "page");
   }

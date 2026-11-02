@@ -89,7 +89,7 @@ async function Consent({ searchParams }: PageProps) {
         <p className={styles.lead}>Nothing is waiting to connect.</p>
         <p className={ui.description}>
           To use PantherWatch from an AI assistant, follow the steps on the{" "}
-          <Link href="/assistant">AI Assistant</Link> page. Your assistant then opens this page so you can allow it.
+          <Link href="/assistant?tab=connect">AI Assistant</Link> page. Your assistant then opens this page so you can allow it.
         </p>
       </Card>
     );
