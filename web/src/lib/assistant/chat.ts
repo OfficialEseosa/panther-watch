@@ -223,8 +223,15 @@ export async function runTurn({ userId, userName, messages, signal, emit, now = 
       const code = classify(error, signal);
       if (code === "aborted") return result("aborted");
       if (code === "internal") {
-        const status = error instanceof Anthropic.APIError ? error.status : undefined;
-        console.error("assistant: model request failed", { status, name: error instanceof Error ? error.name : typeof error });
+        const api = error instanceof Anthropic.APIError ? error : undefined;
+        // The message and the API's error body never contain the key; both are needed to tell an
+        // in-stream `error` event (status undefined) from a client-side failure.
+        console.error("assistant: model request failed", {
+          status: api?.status,
+          type: error instanceof Error ? error.constructor.name : typeof error,
+          message: error instanceof Error ? error.message.slice(0, 300) : String(error).slice(0, 300),
+          body: api?.error ? JSON.stringify(api.error).slice(0, 500) : undefined,
+        });
       }
       emit({ event: "error", data: { code, message: ERROR_MESSAGES[code] } });
       return result("error", code);
