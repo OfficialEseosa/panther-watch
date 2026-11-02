@@ -138,6 +138,12 @@ Control endpoints: `POST /__control/reset`, `POST /__control/sections`
   classes → Search tab → CSC 1302 80003 gives the warning toast, conflict outlines and the
   ConflictBanner, and the new blocks' one-shot `data-fresh` highlight appears and clears; Export
   .ics downloads 3 `VEVENT`s; Agenda is the default at 375 px.
+- `assistant-connect.spec.ts`: `/assistant` setup tabs as a guest: "Add to Cursor" is a
+  `cursor://anysphere.cursor-deeplink/mcp/install` link whose base64 `config` decodes to
+  `{ url: <APP_URL>/api/mcp }`; "Add to VS Code" / "VS Code Insiders" are `vscode:` /
+  `vscode-insiders:mcp/install?` links whose JSON is `{ name: "pantherwatch", type: "http", url }`;
+  Claude Code shows `claude mcp add --transport http pantherwatch <url>` and Copy puts it on the
+  clipboard; Claude and ChatGPT link to claude.ai/customize/connectors and chatgpt.com/plugins.
 - `settings.spec.ts`: profile name/email; theme System/Light/Dark applies and persists; delete
   account needs `DELETE` typed (any case), then lands on `/` without a cookie, `/settings` redirects, the
   `goodbye` row is in `email_log`.

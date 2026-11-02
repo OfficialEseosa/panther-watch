@@ -1,0 +1,414 @@
+/* The on-page assistant (/assistant). The card is the page's section card (Settings.module.css);
+   these are the chat's own pieces: the log, the two kinds of turn, tool lines and the composer.
+   Original language throughout: muted surfaces, 1px borders, the small/medium radii, Inter. */
+.card {
+  gap: 16px;
+}
+
+.header {
+  margin-bottom: 0;
+}
+
+.headerActions {
+  display: flex;
+  margin-left: auto;
+}
+
+/* Phones: New chat keeps its name for screen readers but shows only the plus, so the title fits on one line. */
+@media (max-width: 480px) {
+  .newChatText {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* ---- Log ---- */
+.log {
+  min-height: 160px;
+  max-height: min(62dvh, 560px);
+  margin: -4px;
+  padding: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: var(--radius-sm);
+}
+
+.log:has(> .empty) {
+  min-height: 0;
+}
+
+/* Once a conversation exists the log keeps one height, so a streaming reply never pushes the
+   composer (or the page) around: the list scrolls inside the card instead. */
+.logActive {
+  height: min(62dvh, 560px);
+}
+
+.log:focus {
+  outline: none;
+}
+
+.log:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 4px;
+}
+
+.intro {
+  max-width: 68ch;
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--color-text);
+}
+
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.suggestions > li {
+  max-width: 100%;
+}
+
+.messages {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The reply in flight holds room for a few lines, so the first words fill space instead of
+   growing the list; it lets go when the reply settles. */
+.inFlight {
+  min-height: 7.5rem;
+}
+
+/* New turns settle in (motion.md: rise-in; reduced motion keeps only the fade). */
+.row {
+  animation: var(--kf-rise-in) var(--dur) var(--ease-out) both;
+}
+
+.userRow {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.userBubble {
+  max-width: min(85%, 60ch);
+  margin: 0;
+  padding: 10px 14px;
+  background: var(--color-primary-50);
+  border: 1px solid var(--color-primary-100);
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--color-heading);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.assistantRow {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+
+/* The assistant's mark: the EmptyState icon tile, small. */
+.mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--color-primary-100);
+  color: var(--accent-subtle-text);
+}
+
+.reply {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 3px;
+}
+
+.text {
+  max-width: 72ch;
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--color-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.link,
+.appLink {
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* A PantherWatch page: the label from its path plus an arrow, so it reads as "go there". */
+.appLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 600;
+}
+
+.appLink > svg {
+  flex: none;
+}
+
+.tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+}
+
+.tool > svg {
+  flex: none;
+}
+
+.toolRunning {
+  color: var(--color-text);
+}
+
+/* ---- Working state: "Thinking… 4s" in flight, "Worked for 6s" (a fold toggle) once settled ---- */
+.work {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.elapsed {
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.workToggle {
+  margin: -3px -6px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    color var(--transition-base),
+    background var(--transition-base);
+}
+
+.workToggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.workChevron {
+  transition: transform var(--dur) var(--ease-standard);
+}
+
+.workToggle[aria-expanded="true"] .workChevron {
+  transform: rotate(180deg);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .workToggle:hover {
+    background: var(--color-surface-muted);
+    color: var(--color-text);
+  }
+}
+
+/* The step lines fold behind the header: rows 1fr -> 0fr, then hidden from the tree and Tab. */
+.steps {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition:
+    grid-template-rows var(--dur) var(--ease-out),
+    visibility var(--dur);
+}
+
+.steps[data-open] {
+  grid-template-rows: 1fr;
+  visibility: visible;
+}
+
+.stepsClip {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.stepsList {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+/* ---- Actions under a settled reply: quiet ghost buttons (muted text, 7:1 and up) ---- */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin: -2px 0 -4px -8px;
+}
+
+.actions .action {
+  --_h: 28px;
+  --_px: 8px;
+  --_gap: 5px;
+  font-size: 0.8rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .steps,
+  .workChevron,
+  .workToggle {
+    transition: none;
+  }
+}
+
+.meta {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  max-width: 72ch;
+  padding: 10px 12px;
+  background: var(--color-danger-bg);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-sm);
+}
+
+.errorIcon {
+  flex: none;
+  color: var(--color-danger);
+}
+
+.errorText {
+  flex: 1 1 200px;
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--color-text);
+}
+
+.unavailable {
+  margin-top: -4px;
+}
+
+/* ---- Composer (pinned under the log, over the card's rule) ---- */
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.inputRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.inputRow .input {
+  flex: 1;
+  min-height: 44px;
+  max-height: 160px;
+  padding: 10px 12px;
+  field-sizing: content;
+  resize: none;
+}
+
+.inputRow .sendButton {
+  flex: none;
+  min-height: 44px;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.hint,
+.remaining {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+}
+
+.remaining {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* ---- Guest / loading ---- */
+.gate {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Touch keyboards have no Shift+Enter habit; the key hint is for desktop. */
+@media (pointer: coarse) {
+  .keys {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  /* Header, log and composer fit between the top bar and the bottom nav together. */
+  .log {
+    max-height: max(240px, calc(100dvh - 400px));
+  }
+
+  .logActive {
+    height: max(240px, calc(100dvh - 400px));
+  }
+
+  .userBubble {
+    max-width: 92%;
+  }
+}

@@ -1,0 +1,128 @@
+/* AI Assistant pill fill (motion.md 4.20), shared by the sidebar / drawer pill and the More
+   sheet row.
+
+   Inside a clipped box on --liquid-base deepened 30% toward --liquid-c (so the dots read):
+   - .mass: one faint --liquid-c (navy) mass swaying slowly, for depth;
+   - three fields of tiny crisp dots (repeating radial gradients, no blur), far / mid / near:
+     smaller, dimmer and slower at the back, bigger, lighter and faster at the front (parallax).
+     Each field is two boxes: the .dots wrapper bobs on Y (ease-in-out alternate; the mid one
+     also breathes in scale), its ::before flows left to right at a constant speed. The flow
+     distance is a whole number of tiles (see the liquid-flow-* keyframes in motion.css), so the
+     loop wraps seamlessly, and the ::before starts that far left of the box so it always covers it.
+   Compositor-only: every animation is on translate / scale.
+
+   Contrast: every color is at or below --liquid-b in luminance and the layers mix in sRGB, so
+   no point of the fill is lighter than --liquid-b. White on it: 5.3:1; with the hover
+   brightness(1.06): 4.8:1. */
+.fill {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--liquid-base) 70%, var(--liquid-c));
+  pointer-events: none;
+}
+
+.mass {
+  position: absolute;
+  top: -60%;
+  left: 10%;
+  width: 80%;
+  height: 220%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--liquid-c) 0%, var(--liquid-c) 30%, transparent 100%);
+  opacity: 0.75;
+  animation: var(--kf-liquid-sway) var(--dur-liquid-mass) ease-in-out infinite alternate;
+  animation-delay: calc(var(--dur-liquid-mass) * -0.5);
+}
+
+/* Wrapper: taller than the pill so the bob never shows an edge. */
+.dots {
+  position: absolute;
+  inset: -16px 0;
+  animation-name: var(--kf-liquid-bob);
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+/* The dot sheet: --flow-x left of the box (and --flow-y above it), slid right (and down) by
+   exactly that much, then wrapped. --flow-x / --flow-y must match the layer's keyframes. */
+.dots::before {
+  content: "";
+  position: absolute;
+  top: calc(-1 * var(--flow-y, 0px));
+  bottom: 0;
+  left: calc(-1 * var(--flow-x));
+  right: 0;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+/* Far: 1.5 px dots, 14 x 11 px tile, ~8 px/s. */
+.far {
+  animation-duration: calc(var(--dur-liquid-far) * 0.22);
+  animation-delay: calc(var(--dur-liquid-far) * -0.1);
+}
+
+.far::before {
+  --flow-x: 280px;
+  background-image:
+    radial-gradient(circle at 3px 2px, var(--dot) 0 0.75px, transparent 1.25px),
+    radial-gradient(circle at 10px 8px, var(--dot) 0 0.75px, transparent 1.25px);
+  background-size: 14px 11px;
+  --dot: color-mix(in srgb, var(--liquid-a) 85%, transparent);
+  animation-name: var(--kf-liquid-flow-far);
+  animation-duration: var(--dur-liquid-far);
+  animation-delay: calc(var(--dur-liquid-far) * -0.3);
+}
+
+/* Mid: 2 px dots, 24 x 18 px tile, ~11 px/s and slightly downhill; breathes in scale. */
+.mid {
+  animation-name: var(--kf-liquid-bob), var(--kf-liquid-swell);
+  animation-duration: calc(var(--dur-liquid-mid) * 0.21), calc(var(--dur-liquid-mid) * 0.35);
+  animation-delay: calc(var(--dur-liquid-mid) * -0.15), calc(var(--dur-liquid-mid) * -0.2);
+}
+
+.mid::before {
+  --flow-x: 288px;
+  --flow-y: 18px;
+  background-image:
+    radial-gradient(circle at 5px 4px, var(--dot) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 17px 13px, var(--dot) 0 1px, transparent 1.5px);
+  background-size: 24px 18px;
+  --dot: color-mix(in srgb, var(--liquid-a) 50%, var(--liquid-b));
+  animation-name: var(--kf-liquid-flow-mid);
+  animation-duration: var(--dur-liquid-mid);
+  animation-delay: calc(var(--dur-liquid-mid) * -0.6);
+}
+
+/* Near: 3 px dots (and a 2 px one), 40 x 30 px tile, ~15 px/s. */
+.near {
+  animation-duration: calc(var(--dur-liquid-near) * 0.38);
+  animation-direction: alternate-reverse;
+  animation-delay: calc(var(--dur-liquid-near) * -0.25);
+}
+
+.near::before {
+  --flow-x: 320px;
+  background-image:
+    radial-gradient(circle at 8px 7px, var(--dot) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 29px 22px, var(--dot) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 23px 5px, var(--dot) 0 1px, transparent 1.5px);
+  background-size: 40px 30px;
+  --dot: var(--liquid-b);
+  animation-name: var(--kf-liquid-flow-near);
+  animation-duration: var(--dur-liquid-near);
+  animation-delay: calc(var(--dur-liquid-near) * -0.45);
+}
+
+/* Reduced motion: the same dots, standing still. */
+@media (prefers-reduced-motion: reduce) {
+  .mass,
+  .dots,
+  .dots::before {
+    animation: none;
+  }
+}

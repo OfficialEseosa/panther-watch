@@ -205,11 +205,12 @@
   --indicator-contrast: #ffffff;
 
   /* "AI Assistant" nav pill (Sidebar / More sheet): the light theme's brand blues in BOTH themes,
-     so white text keeps its contrast (dark mode lightens --color-primary-400). Worst case, both
-     blobs at their peak over the base: 5.3:1 for white; 4.8:1 with the hover brightness(1.06). */
+     so white text keeps its contrast (dark mode lightens --color-primary-400). --liquid-b is the
+     lightest color anywhere in the moving fill: white on it 5.3:1; 4.8:1 with the hover
+     brightness(1.06). Keep every --liquid-* at or below it in luminance. */
   --liquid-base: #0039a6;
   --liquid-a: #1f5fc3;
-  --liquid-b: #4a80e3;
+  --liquid-b: #2866d4;
   --liquid-c: #0f2f61;
   --liquid-text: #ffffff;
 
@@ -342,10 +343,12 @@
   --dur: 200ms;
   --dur-slow: 300ms;
   --dur-slower: 400ms;
-  /* AI Assistant nav pill drift (motion.md 4.20): three slow, unequal loops so it never repeats visibly. */
-  --dur-liquid-1: 9s;
-  --dur-liquid-2: 11s;
-  --dur-liquid-3: 12s;
+  /* AI Assistant nav pill (motion.md 4.20): one wrap of each dot field (the bob / swell loops
+     derive from these) and one sweep of the navy mass. Unequal, so the mix never visibly repeats. */
+  --dur-liquid-far: 36s;
+  --dur-liquid-mid: 26s;
+  --dur-liquid-near: 21s;
+  --dur-liquid-mass: 13s;
   --stagger: 0ms;
 
   --ease-standard: ease;

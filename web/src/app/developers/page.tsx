@@ -156,12 +156,49 @@ const MCP_TOOLS: Array<[name: string, scope: string, description: string]> = [
   ["search_subjects", "read", "Subject codes matching a word (\"psych\" → PSYC)."],
   ["search_sections", "read", "Live sections of a subject or course: seats, waitlist, meetings, delivery mode."],
   ["get_section_details", "read", "Grade history, RateMyProfessors rating and syllabus for one section."],
+  ["get_course_requirements", "read", "Prerequisites, corequisites, registration restrictions and catalog description of one section."],
   ["list_watches", "read", "The student's tracked sections, optionally with live seats."],
   ["list_schedule", "read", "The student's PantherWatch schedule, by term."],
   ["check_conflicts", "read", "Time clashes between CRNs, from live meeting times."],
   ["add_watch / remove_watch", "watches:write", "Start or stop a seat alert (email when a seat opens)."],
   ["add_to_schedule / remove_from_schedule", "schedule:write", "Edit the schedule; adding reports any clashes."],
 ];
+
+const REQUIREMENTS_RESPONSE = `{
+  "term": "202701",
+  "crn": "19010",
+  "description": "Principles of Computer Science I.\\nPrerequisite: Only for STEM majors and minors. …",
+  "prerequisites": {
+    "text": "(Course or Test: MATHEMATICS 1111 to 1113 Minimum Grade of C May be taken concurrently.) or …",
+    "rule": "Prereq",
+    "tree": {
+      "type": "or",
+      "children": [
+        { "type": "course", "subject": "MATH", "subjectDescription": "MATHEMATICS", "courseNumber": "1111",
+          "courseNumberTo": "1113", "minimumGrade": "C", "concurrent": true },
+        …,
+        { "type": "and", "children": [ … ] }
+      ]
+    },
+    "items": [ { "subject": "MATH", "courseNumber": "1111", "courseNumberTo": "1113", "minimumGrade": "C", … }, … ]
+  },
+  "corequisites": [
+    { "subject": "CSC", "subjectDescription": "COMPUTER SCIENCE", "courseNumber": "1301L",
+      "title": "PRINCIPLES COMPUTER SCI LAB I" }
+  ],
+  "restrictions": {
+    "mustBe": [
+      { "kind": "major", "label": "Fields of Study (Major, Minor or Concentration)",
+        "values": ["Computer Science (CSC)", "Data Science (DSCI)", …] }
+    ],
+    "mustNotBe": [
+      { "kind": "level", "label": "Levels", "values": ["Undergrad Associate Semester (UA)"] },
+      …
+    ],
+    "specialApprovals": [],
+    "other": []
+  }
+}`;
 
 const SECTIONS = [
   { id: "mcp", title: "Connect an AI assistant (MCP)" },
@@ -171,6 +208,7 @@ const SECTIONS = [
   { id: "subjects", title: "Find subjects" },
   { id: "search", title: "Search sections" },
   { id: "meta", title: "Grades, ratings and syllabus" },
+  { id: "requirements", title: "Prerequisites and restrictions" },
   { id: "batch", title: "Batch meta (same-origin only)" },
   { id: "errors", title: "Errors" },
   { id: "caching", title: "Caching" },
@@ -524,6 +562,30 @@ export default function DevelopersPage() {
             <Code label="Response 200 (trimmed)">{META_RESPONSE}</Code>
           </Section>
 
+          <Section id="requirements" title="Prerequisites and restrictions">
+            <Endpoint method="GET" path="/api/courses/requirements?term&crn" />
+            <Params
+              rows={[
+                ["term", true, "6-digit term code."],
+                ["crn", true, "5-digit CRN of the section."],
+              ]}
+            />
+            <ul>
+              <li>
+                <code>prerequisites</code> is <code>null</code> when there are none. <code>text</code> is GoSolar&rsquo;s
+                wording; <code>tree</code> nests <code>and</code>/<code>or</code> groups of <code>course</code>,{" "}
+                <code>test</code> and <code>other</code> (e.g. student attributes) nodes; <code>items</code> lists
+                every course once.
+              </li>
+              <li>
+                <code>restrictions</code>: the student must match one value of each <code>mustBe</code> group and none
+                of the <code>mustNotBe</code> ones. <code>description</code> is the catalog text, or <code>null</code>.
+              </li>
+            </ul>
+            <Code label="Request">{`curl "${BASE}/api/courses/requirements?term=202701&crn=19010"`}</Code>
+            <Code label="Response 200 (trimmed)">{REQUIREMENTS_RESPONSE}</Code>
+          </Section>
+
           <Section id="batch" title="Batch meta (same-origin only)">
             <Endpoint method="POST" path="/api/courses/meta/batch" />
             <p>
@@ -566,6 +628,14 @@ export default function DevelopersPage() {
                   <tr>
                     <td>
                       <code>/api/courses/subjects</code>
+                    </td>
+                    <td>
+                      <code>public, s-maxage=3600, stale-while-revalidate=86400</code>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <code>/api/courses/requirements</code>
                     </td>
                     <td>
                       <code>public, s-maxage=3600, stale-while-revalidate=86400</code>
@@ -620,7 +690,9 @@ export default function DevelopersPage() {
             <p>
               The <a href="#mcp">MCP connector</a> is the way to connect an assistant: any MCP-capable assistant can
               use it with no setup beyond pasting the URL, and it can act on the student&rsquo;s account. Agents that
-              can&rsquo;t use connectors can call the public API above directly.
+              can&rsquo;t use connectors can call the public API above directly. Signed-in students can also chat with
+              PantherWatch&rsquo;s own assistant on the <Link href="/assistant">AI Assistant</Link> page; it uses the
+              same tools as the connector and has no API of its own.
             </p>
             <ul>
               <li>

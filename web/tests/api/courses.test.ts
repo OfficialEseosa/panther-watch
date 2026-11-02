@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/headers", async () => (await import("../helpers/session")).nextHeadersMock);
@@ -42,6 +43,7 @@ vi.mock("@/lib/course-meta", async (importOriginal) => {
 import { setDbForTests } from "@/db";
 import { GET as metaGet, OPTIONS as metaOptions } from "@/app/api/courses/meta/route";
 import { POST as metaBatch } from "@/app/api/courses/meta/batch/route";
+import { GET as requirementsGet, OPTIONS as requirementsOptions } from "@/app/api/courses/requirements/route";
 import { GET as searchGet, OPTIONS as searchOptions } from "@/app/api/courses/search/route";
 import { GET as subjectsGet, OPTIONS as subjectsOptions } from "@/app/api/courses/subjects/route";
 import { GET as termsGet, OPTIONS as termsOptions } from "@/app/api/courses/terms/route";
@@ -179,6 +181,67 @@ describe("GET /api/courses/subjects", () => {
   });
 });
 
+describe("GET /api/courses/requirements", () => {
+  const fixture = (name: string) => readFileSync(new URL(`../fixtures/gosolar/${name}`, import.meta.url), "utf8");
+
+  it("returns the parsed requirements of one section, cached at the CDN for an hour", async () => {
+    gs.setSubjects("202701", [
+      { code: "CSC", description: "COMPUTER SCIENCE" },
+      { code: "MATH", description: "MATHEMATICS" },
+    ]);
+    gs.setRequirements("202701", "19010", {
+      prerequisites: fixture("prerequisites-csc1301.html"),
+      corequisites: fixture("corequisites-csc1301.html"),
+      restrictions: fixture("restrictions-csc1301.html"),
+      description: fixture("description-csc1301.html"),
+    });
+
+    const { response, body } = await get(requirementsGet, "/api/courses/requirements?term=202701&crn=19010");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("public, s-maxage=3600, stale-while-revalidate=86400");
+    expect(body).toMatchObject({
+      term: "202701",
+      crn: "19010",
+      description: expect.stringMatching(/^Principles of Computer Science I\.\n/),
+      prerequisites: {
+        rule: "Prereq",
+        items: expect.arrayContaining([
+          { subject: "MATH", subjectDescription: "MATHEMATICS", courseNumber: "1111", courseNumberTo: "1113", minimumGrade: "C", concurrent: true },
+        ]),
+      },
+      corequisites: [{ subject: "CSC", subjectDescription: "COMPUTER SCIENCE", courseNumber: "1301L", title: "PRINCIPLES COMPUTER SCI LAB I" }],
+      restrictions: { mustBe: [expect.objectContaining({ kind: "major" })], specialApprovals: [] },
+    });
+    const posts = gs.requests.filter((r) => r.path.startsWith("/searchResults/get"));
+    expect(posts).toHaveLength(4);
+  });
+
+  it.each([
+    ["missing crn", "/api/courses/requirements?term=202701"],
+    ["bad crn", "/api/courses/requirements?term=202701&crn=1901"],
+    ["bad term", "/api/courses/requirements?term=2027&crn=19010"],
+  ])("rejects %s with 400 before calling GoSolar", async (_label, path) => {
+    const { response, body } = await get(requirementsGet, path);
+    expect(response.status).toBe(400);
+    expect(body).toMatchObject({ error: { code: "invalid_request" } });
+    expect(gs.requests).toHaveLength(0);
+  });
+
+  it("maps a GoSolar failure to 502 without leaking details", async () => {
+    gs.failNextRequirements({ kind: "affinity" });
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const { response, body } = await get(requirementsGet, "/api/courses/requirements?term=202701&crn=19010");
+      expect(response.status).toBe(502);
+      expect(body).toEqual({ error: { code: "upstream_unavailable", message: expect.any(String) } });
+      expect(response.headers.get("cache-control")).toBe("private, no-store");
+      expect(JSON.stringify(body)).not.toMatch(/affinity|BIGip|cookie|stack|at /i);
+    } finally {
+      errors.mockRestore();
+    }
+  });
+});
+
 describe("course meta", () => {
   it("GET /api/courses/meta returns grades, rating and syllabus", async () => {
     const { response, body } = await get(
@@ -264,6 +327,7 @@ describe("CORS on the public read endpoints", () => {
       [subjectsGet, "/api/courses/subjects?term=202701&q=comp", 200],
       [searchGet, "/api/courses/search?term=202701&subject=CSC&courseNumber=1301", 200],
       [metaGet, "/api/courses/meta?term=202701&subject=CSC&courseNumber=1301&crn=80001", 200],
+      [requirementsGet, "/api/courses/requirements?term=202701&crn=80001", 200],
       [searchGet, "/api/courses/search?term=2027&subject=CSC", 400],
     ];
     for (const [handler, path, status] of cases) {
@@ -285,6 +349,7 @@ describe("CORS on the public read endpoints", () => {
     ["subjects", subjectsOptions],
     ["search", searchOptions],
     ["meta", metaOptions],
+    ["requirements", requirementsOptions],
   ])("OPTIONS /api/courses/%s answers the preflight", (_name, options) => {
     const response = options();
     expect(response.status).toBe(204);

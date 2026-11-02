@@ -12,6 +12,7 @@ import { playExit } from "@/lib/ui/motion";
 import { AccountMenu, AccountMenuFallback } from "./AccountMenu";
 import { AnimatedIcon } from "./AnimatedIcon";
 import { Brand } from "./Brand";
+import { LiquidFill } from "./LiquidFill";
 import { ADMIN_NAV, ASSISTANT_NAV, isActive, PRIMARY_NAV, SETTINGS_NAV, type NavItem } from "./nav";
 import { useViewer } from "./ViewerContext";
 import styles from "./Sidebar.module.css";
@@ -47,7 +48,7 @@ function SideNavLink({
   /** Drawer: always show labels, no rail tooltips. */
   expanded: boolean;
   onNavigate?: () => void;
-  /** The AI Assistant pill: brand-blue blobs drifting behind a white label (motion.md 4.20). */
+  /** The AI Assistant pill: brand blues flowing behind a white label (motion.md 4.20). */
   liquid?: boolean;
 }) {
   const active = isActive(item, pathname);
@@ -60,13 +61,7 @@ function SideNavLink({
       aria-current={active ? "page" : undefined}
       onClick={onNavigate}
     >
-      {liquid ? (
-        <span className={styles.liquidBg} aria-hidden="true">
-          <span className={styles.blob} />
-          <span className={styles.blob} />
-          <span className={styles.blob} />
-        </span>
-      ) : null}
+      {liquid ? <LiquidFill className={styles.liquidBg} /> : null}
       <AnimatedIcon active={active} playKey={pathname} className={styles.icon}>
         <Icon />
       </AnimatedIcon>

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -21,6 +22,9 @@ import { TEST_ORIGIN } from "../helpers/session";
 
 /** Open for registration and not expired (Spring 2027 alerts run until 2027-03-01). */
 const OPEN = "202701";
+
+/** HTML live GoSolar sent for Spring 2027 sections (captured 2026-11-01). */
+const fixture = (name: string) => readFileSync(new URL(`../fixtures/gosolar/${name}`, import.meta.url), "utf8");
 
 let testDb: TestDatabase;
 let gs: FakeGoSolar;
@@ -146,6 +150,7 @@ describe("tools", () => {
         "add_to_schedule",
         "add_watch",
         "check_conflicts",
+        "get_course_requirements",
         "get_section_details",
         "list_schedule",
         "list_terms",
@@ -164,10 +169,11 @@ describe("tools", () => {
 
   it("list_terms: registrable terms first, from the terms cache", async () => {
     const { data } = await callTool(await mcp(), "list_terms");
+    const status = expect.stringMatching(/^(upcoming|in_progress|past)$/);
     expect(data).toEqual({
       terms: [
-        { code: OPEN, name: "Spring Semester 2027", registrationOpen: true },
-        { code: "202705", name: "Summer Semester 2027", registrationOpen: false },
+        { code: OPEN, name: "Spring Semester 2027", registrationOpen: true, status, default: true },
+        { code: "202705", name: "Summer Semester 2027", registrationOpen: false, status },
       ],
     });
   });
@@ -224,6 +230,81 @@ describe("tools", () => {
 
     const open = await callTool(await mcp(), "search_sections", { term: OPEN, subject: "CSC", courseNumber: "1301", openOnly: true, limit: 1 });
     expect(open.data).toMatchObject({ total: 2, returned: 1, truncated: true });
+  });
+
+  it("get_course_requirements: GoSolar's prerequisite wording, a flat course list, corequisites and restrictions", async () => {
+    gs.setSubjects(OPEN, [
+      { code: "CSC", description: "COMPUTER SCIENCE" },
+      { code: "DSCI", description: "DATA SCIENCE" },
+      { code: "MATH", description: "MATHEMATICS" },
+    ]);
+    // CSC 2720's nested AND/OR prerequisites, with CSC 1301's corequisite, restrictions and description.
+    gs.setRequirements(OPEN, "19633", {
+      prerequisites: fixture("prerequisites-csc2720.html"),
+      corequisites: fixture("corequisites-csc1301.html"),
+      restrictions: fixture("restrictions-csc1301.html"),
+      description: fixture("description-csc1301.html"),
+    });
+    const client = await mcp();
+    const { isError, data } = await callTool(client, "get_course_requirements", { term: OPEN, crn: "19633", subject: "csc", courseNumber: "2720" });
+    expect(isError).toBe(false);
+    expect(data).toMatchObject({ term: OPEN, crn: "19633" });
+    expect(data!.sectionUrl).toBe(`${TEST_ORIGIN}/course-results?term=${OPEN}&subjects=CSC&courseNumber=2720&crn=19633`);
+
+    const description = data!.description as string;
+    expect(description.startsWith("Principles of Computer Science I.")).toBe(true);
+    expect(description).toBe(description.trim());
+
+    const prerequisites = data!.prerequisites as { text: string; rule: string; items: unknown[] };
+    expect(Object.keys(prerequisites).sort()).toEqual(["items", "rule", "text"]); // no tree
+    expect(prerequisites.rule).toBe("Prereq");
+    expect(prerequisites.text).toContain("COMPUTER SCIENCE 1302");
+    expect(prerequisites.text).toMatch(/\) and \(/);
+    expect(prerequisites.items).toEqual([
+      { subject: "CSC", courseNumber: "1302", minimumGrade: "C", concurrent: false },
+      { subject: "DSCI", courseNumber: "1302", minimumGrade: "C", concurrent: false },
+      { subject: "CSC", courseNumber: "1302L", minimumGrade: "C", concurrent: false },
+      { subject: "CSC", courseNumber: "1302K", minimumGrade: "C", concurrent: false },
+      { subject: "MATH", courseNumber: "2211", courseNumberTo: "2212", minimumGrade: "C", concurrent: true },
+      { subject: "MATH", courseNumber: "2211", courseNumberTo: "2212", minimumGrade: "K", concurrent: false },
+      { subject: "MATH", courseNumber: "2201", courseNumberTo: "2202", minimumGrade: "C", concurrent: true },
+      { subject: "CSC", courseNumber: "2510", minimumGrade: "C", concurrent: false },
+      { subject: "MATH", courseNumber: "2420", minimumGrade: "C", concurrent: false },
+    ]);
+    expect(data!.corequisites).toEqual([{ subject: "CSC", courseNumber: "1301L", title: "Principles Computer Sci Lab I" }]);
+    expect(data!.restrictions).toEqual({
+      mustBe: [
+        {
+          kind: "major",
+          label: "Fields of Study (Major, Minor or Concentration)",
+          values: expect.arrayContaining(["Computer Science (CSC)", "Data Sci & Geographic Info Sci (DSG)", "Physics (PHY)"]),
+        },
+      ],
+      mustNotBe: [
+        { kind: "level", label: "Levels", values: ["Undergrad Associate Semester (UA)"] },
+        { kind: "other", label: "Cohorts", values: ["P:Online Only-No Immunizations (OL)"] },
+      ],
+      specialApprovals: [],
+      other: [],
+    });
+    expect(data).not.toHaveProperty("unparsed");
+
+    // Without subject and course number: sectionUrl comes from the tracked list, or is left out.
+    await testDb.db.insert(watchedSections).values({ userId: alice.id, term: OPEN, crn: "19633", subject: "CSC", courseNumber: "2720" });
+    const tracked = await callTool(client, "get_course_requirements", { term: OPEN, crn: "19633" });
+    expect(tracked.data!.sectionUrl).toBe(data!.sectionUrl);
+    const unknown = await callTool(client, "get_course_requirements", { term: OPEN, crn: "19999" });
+    expect(unknown.isError).toBe(false);
+    expect(unknown.data).toMatchObject({ crn: "19999", description: null, prerequisites: null, corequisites: [] });
+    expect(unknown.data).not.toHaveProperty("sectionUrl");
+  });
+
+  it("get_course_requirements: a GoSolar error page is a tool error naming GoSolar", async () => {
+    gs.failNextRequirements({ kind: "html", body: "<html><body><h1>Service Unavailable</h1></body></html>" }, 4);
+    const { isError, text } = await callTool(await mcp(), "get_course_requirements", { term: OPEN, crn: "19010" });
+    expect(isError).toBe(true);
+    expect(text).toContain("GoSolar");
+    expect(text).toContain("not responding");
   });
 
   it("add_watch: creates the row; an open section reports openNow with the UI's message; re-adding changes nothing", async () => {

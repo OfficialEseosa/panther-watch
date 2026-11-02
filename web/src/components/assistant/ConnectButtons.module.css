@@ -1,0 +1,30 @@
+/* /assistant one-click setup: install buttons, settings links and the Claude Code command.
+   Buttons are the shared Button; the command row matches the connector URL row
+   (settings/ConnectedApps.module.css .urlRow). */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 4px;
+}
+
+.commandRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 4px;
+  padding: 10px 10px 10px 14px;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.command {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--color-heading);
+  overflow-wrap: anywhere;
+}

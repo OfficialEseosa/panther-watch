@@ -7,7 +7,7 @@ import { SiteFooter } from "./SiteFooter";
 import { SkipLink } from "./SkipLink";
 import styles from "./LegalLayout.module.css";
 
-export const LEGAL_LAST_UPDATED = "October 25, 2026";
+export const LEGAL_LAST_UPDATED = "November 1, 2026";
 /** Owner's chosen contact address (audit: intentional). */
 export const LEGAL_CONTACT_EMAIL = "raphaelomorose@gmail.com";
 

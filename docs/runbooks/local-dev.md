@@ -30,6 +30,7 @@ What you get:
   ```
 
 - **Env:** `web/.env.local` is read first. `JWT_SECRET`, `CRON_SECRET` and `E2E_TEST_SECRET` are generated into it on the first run. Real `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` are used if present there, otherwise dummies (Google sign-in then fails, but the links above work). The seeded account is bound to `google_sub` `local:raphaelomorose@gmail.com`, so a real Google sign-in with that email reports an account conflict until you reset the data. `DATABASE_URL`, `RESEND_*`, `APP_URL` and `ADMIN_EMAILS` are always forced to the local values, so a Supabase URL in `.env.local` is never used. A `GOSOLAR_BASE_URL` in `.env.local` makes it refuse to start. Because `E2E_TEST_SECRET` now lives in `.env.local`, plain `npm run dev` also serves the `/api/test` routes. They're still local only.
+- **AI assistant chat:** off unless `web/.env.local` has `ANTHROPIC_API_KEY` (see section 3), in which case the chat at the top of http://localhost:3000/assistant works for the signed-in account.
 
 **Stop:** press Ctrl+C (or Ctrl+Break). That stops `next dev`, the fake Resend and Postgres (`pg_ctl stop`). On Windows, cmd may ask "Terminate batch job (Y/N)?" afterwards; either answer is fine. If a crash leaves Postgres running, the next `npm run dev:local` reuses it and stops it on exit.
 
@@ -125,8 +126,12 @@ Never point local dev or tests at the Supabase project.
 | `CRON_SECRET` | `openssl rand -hex 32` |
 | `APP_URL` | `http://localhost:3000` |
 | `ADMIN_EMAILS` | your Google account email |
+| `ANTHROPIC_API_KEY` | optional: a Claude API key, to try the on-site assistant (below) |
+| `ASSISTANT_MODEL`, `ASSISTANT_*_DAILY_*` | optional: leave blank for the defaults (`claude-haiku-5-5`; 40 / 800 messages, $3 a day) |
 
-All of them except `ADMIN_EMAILS` and `DATABASE_CA_CERT` are required. `src/lib/env.ts` validates on the first request and names every missing variable. `vercel env pull .env.local --environment=development` can seed the file, but Secret-type values come back as placeholders that you replace by hand.
+All of them except `ADMIN_EMAILS`, `DATABASE_CA_CERT` and the assistant variables are required. `src/lib/env.ts` validates on the first request and names every missing variable. `vercel env pull .env.local --environment=development` can seed the file, but Secret-type values come back as placeholders that you replace by hand.
+
+**Trying the assistant chat locally.** Put a Claude API key in `web/.env.local` (`ANTHROPIC_API_KEY=sk-ant-...`, from console.anthropic.com), restart `npm run dev` (or `npm run dev:local`, which passes it through), sign in and open http://localhost:3000/assistant. Without the key the page shows a "not available" card instead. Every message is a real, billed API call (about $0.001 on the default Haiku model), and its tools run against your local database and the real GoSolar as the signed-in user. The daily caps count in the local `assistant_usage` / `assistant_daily` tables (migration `0004_assistant.sql`); to reset them, `DELETE FROM assistant_usage; DELETE FROM assistant_daily;`. The test suite never calls Anthropic (`tests/setup.ts` drops the variables and tests use `tests/helpers/fake-anthropic.ts`), and the e2e specs mock the chat route.
 
 ## 4. Google OAuth client for localhost
 

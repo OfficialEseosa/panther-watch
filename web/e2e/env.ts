@@ -45,5 +45,7 @@ export const APP_ENV: Record<string, string> = {
   ADMIN_EMAILS: ADMIN_EMAIL,
   GOSOLAR_BASE_URL,
   E2E_TEST_SECRET,
+  // Not a real key: it only turns the on-page assistant on. Specs mock POST /api/assistant/chat.
+  ANTHROPIC_API_KEY: "e2e-anthropic-key-not-real",
   NEXT_TELEMETRY_DISABLED: "1",
 };

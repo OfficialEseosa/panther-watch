@@ -8,6 +8,11 @@
  *   them it answers `{success:true, data:null}`, exactly like a search that landed on a node
  *   that never saw the declaration.
  * - `GET /classSearch/getTerms` and `GET /classSearch/get_subject` serve configured lists.
+ * - `POST /searchResults/getSectionPrerequisites`, `getCorequisites`, `getRestrictions` and
+ *   `getCourseDescription` (form `term=&courseReferenceNumber=`) serve the HTML fragments set
+ *   with `setRequirements`, or Banner's "No ... information available." ones. Like the search,
+ *   they need both cookies of a declaration of that term; without them they answer
+ *   `{success:true, data:null}` (an assumption: live GoSolar was not probed without a session).
  *
  *   const gs = await startFakeGoSolar();
  *   gs.setSections("202608", "CSC", "1301", [makeSection({ courseReferenceNumber: "80001" })]);
@@ -32,10 +37,26 @@ export interface FakeGoSolarRequest {
   /** Raw request body (form-encoded for the term declaration). */
   body: string;
   status: number;
+  /** Client socket port: equal ports mean one TCP connection. */
+  remotePort: number | undefined;
 }
 
 /** How the next search(es) should fail, to test error handling. */
 export type SearchFailure = { kind: "http"; status: number } | { kind: "affinity" };
+
+/** How the next requirement-fragment request(s) should fail. `hang` never answers. */
+export type RequirementFailure =
+  | SearchFailure
+  | { kind: "html"; status?: number; body: string }
+  | { kind: "hang" };
+
+/** HTML fragments of the four per-section requirement endpoints, as GoSolar sends them. */
+export interface RequirementFragments {
+  prerequisites?: string;
+  corequisites?: string;
+  restrictions?: string;
+  description?: string;
+}
 
 export interface FakeGoSolar {
   /** Base URL to pass as `GoSolarOptions.baseUrl` (ends in /StudentRegistrationSsb/ssb). */
@@ -51,6 +72,13 @@ export interface FakeGoSolar {
   setSubjects(term: string, subjects: Subject[]): void;
   /** The next `count` searches fail as described, then behaviour returns to normal. */
   failNextSearches(failure: SearchFailure, count?: number): void;
+  /**
+   * Requirement fragments for (term, crn). Missing ones are Banner's "none" fragments, as are
+   * all four for an unconfigured section.
+   */
+  setRequirements(term: string, crn: string, fragments: RequirementFragments): void;
+  /** The next `count` requirement-fragment requests fail as described. */
+  failNextRequirements(failure: RequirementFailure, count?: number): void;
   /** Clears configuration, failures and the request log. */
   reset(): void;
   close(): Promise<void>;
@@ -59,11 +87,48 @@ export interface FakeGoSolar {
 const sectionKey = (term: string, subject: string, courseNumber: string) =>
   `${term}|${subject.toUpperCase()}|${courseNumber.toUpperCase()}`;
 
+/**
+ * Banner's fragments for a section without that kind of requirement. Prerequisites and
+ * corequisites are live (2026-11); every probed section had restrictions and a description, so
+ * those two follow Banner's template wording and are not verified.
+ */
+export const EMPTY_REQUIREMENT_FRAGMENTS: Required<RequirementFragments> = {
+  prerequisites:
+    `<section aria-labelledby="preReqs">
+    <h3>Catalog Prerequisites</h3>
+        No prerequisite information available.
+</section>`,
+  corequisites:
+    `<section aria-labelledby="coReqs">
+    <h3>Corequisites</h3>
+        No corequisite course information available.
+</section>`,
+  restrictions:
+    `<section aria-labelledby="restrictions">
+
+    <div class="infoicon"><span class="status-bold">Not all restrictions are applicable.</span></div> <br/>
+</section>`,
+  description:
+    `<section aria-labelledby="courseDescription">
+    <!--when there is no course or section description, provide the no information message-->
+    No course description information available.
+</section>`,
+};
+
+const REQUIREMENT_PATHS: Record<string, keyof RequirementFragments> = {
+  "/searchResults/getSectionPrerequisites": "prerequisites",
+  "/searchResults/getCorequisites": "corequisites",
+  "/searchResults/getRestrictions": "restrictions",
+  "/searchResults/getCourseDescription": "description",
+};
+
 export async function startFakeGoSolar(): Promise<FakeGoSolar> {
   const sections = new Map<string, CourseData[]>();
   const subjects = new Map<string, Subject[]>();
   let terms: Term[] = [];
   let failures: SearchFailure[] = [];
+  const requirements = new Map<string, RequirementFragments>();
+  let requirementFailures: RequirementFailure[] = [];
   /** JSESSIONID -> { term, affinity cookie value } */
   const sessions = new Map<string, { term: string; affinity: string }>();
   const requests: FakeGoSolarRequest[] = [];
@@ -82,6 +147,7 @@ export async function startFakeGoSolar(): Promise<FakeGoSolar> {
       cookies,
       body,
       status: 200,
+      remotePort: req.socket.remotePort,
     };
     requests.push(entry);
 
@@ -147,6 +213,42 @@ export async function startFakeGoSolar(): Promise<FakeGoSolar> {
       return;
     }
 
+    const fragmentKind = REQUIREMENT_PATHS[path];
+    if (req.method === "POST" && fragmentKind) {
+      const form = new URLSearchParams(body);
+      const term = form.get("term") ?? "";
+      const crn = form.get("courseReferenceNumber") ?? "";
+      const failure = requirementFailures.shift();
+      if (failure?.kind === "hang") return; // never answered; close() destroys the socket
+      if (failure?.kind === "http") {
+        send(failure.status, { success: false });
+        return;
+      }
+      if (failure?.kind === "html") {
+        entry.status = failure.status ?? 200;
+        res.statusCode = entry.status;
+        res.setHeader("Content-Type", "text/html;charset=UTF-8");
+        res.end(failure.body);
+        return;
+      }
+      const session = sessions.get(cookies[SESSION_COOKIE] ?? "");
+      const affinityOk =
+        failure?.kind !== "affinity" &&
+        session !== undefined &&
+        cookies[AFFINITY_COOKIE] === session.affinity &&
+        session.term === term;
+      if (!affinityOk) {
+        send(200, { success: true, data: null });
+        return;
+      }
+      const html =
+        requirements.get(`${term}|${crn}`)?.[fragmentKind] ?? EMPTY_REQUIREMENT_FRAGMENTS[fragmentKind];
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "text/html;charset=UTF-8");
+      res.end(html);
+      return;
+    }
+
     if (req.method === "GET" && path === "/classSearch/getTerms") {
       send(200, page(terms, query));
       return;
@@ -187,11 +289,19 @@ export async function startFakeGoSolar(): Promise<FakeGoSolar> {
     failNextSearches(failure, count = 1) {
       for (let i = 0; i < count; i++) failures.push(failure);
     },
+    setRequirements(term, crn, fragments) {
+      requirements.set(`${term}|${crn}`, fragments);
+    },
+    failNextRequirements(failure, count = 1) {
+      for (let i = 0; i < count; i++) requirementFailures.push(failure);
+    },
     reset() {
       sections.clear();
       subjects.clear();
       terms = [];
       failures = [];
+      requirements.clear();
+      requirementFailures = [];
       sessions.clear();
       requests.length = 0;
     },

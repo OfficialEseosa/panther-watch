@@ -20,7 +20,7 @@ The old SPA project (`frontend-web/`) keeps running untouched until the domain m
 
 ## 2. Environment variables
 
-Set these in Settings → **Environment Variables**. Mark every one **Sensitive** except `APP_URL` and `ADMIN_EMAILS`. The schema lives in `web/src/lib/env.ts`, with an example in `web/.env.example`. If any variable is missing or invalid, the first request that reads env fails with an error that names every bad variable.
+Set these in Settings → **Environment Variables**. Mark every one **Sensitive** except `APP_URL`, `ADMIN_EMAILS` and the `ASSISTANT_*` knobs. The schema lives in `web/src/lib/env.ts`, with an example in `web/.env.example`. If any variable is missing or invalid, the first request that reads env fails with an error that names every bad variable.
 
 | Name | Production value | Preview value | Notes |
 |---|---|---|---|
@@ -33,6 +33,11 @@ Set these in Settings → **Environment Variables**. Mark every one **Sensitive*
 | `CRON_SECRET` | `openssl rand -hex 32` | a different value | Must equal the Vault secret `pantherwatch_cron_secret` (`supabase-cron.sql`). Vercel also sends this value automatically as `Authorization: Bearer <CRON_SECRET>` on its own cron invocations (https://vercel.com/docs/cron-jobs/manage-cron-jobs#securing-cron-jobs). |
 | `APP_URL` | `https://pantherwatch.app` | the stable URL being tested | No trailing slash (it is stripped anyway). Used to build the OAuth redirect URI `${APP_URL}/api/auth/google/callback`. Until the domain moves, set it to the project's `https://<project>.vercel.app` (cutover step 4). |
 | `ADMIN_EMAILS` | copy from the Koyeb service env | same | Comma-separated, case-insensitive. |
+| `ANTHROPIC_API_KEY` | Claude API key (console.anthropic.com → API keys) | unset (assistant off), or a separate key | **Optional.** Turns on the on-site assistant (`/assistant` chat, `POST /api/assistant/chat`). Unset or blank: the route answers 503 `disabled`, the page shows a "not available" card, and the rest of the site is unaffected. Billed per token; the caps below bound the spend. |
+| `ASSISTANT_MODEL` | unset (`claude-haiku-5-5`) | unset | Optional. `claude-haiku-5-5`, `claude-sonnet-5-5` or `claude-opus-5-5`; any other value fails env validation and breaks **every** request that reads env, not just the chat. |
+| `ASSISTANT_USER_DAILY_MESSAGES` | unset (40) | unset | Optional. Messages per user per day. |
+| `ASSISTANT_GLOBAL_DAILY_MESSAGES` | unset (800) | unset | Optional. Messages per day, whole site. |
+| `ASSISTANT_GLOBAL_DAILY_USD` | unset (3) | unset | Optional. Estimated API spend per day in US dollars, whole site. All three caps reset at midnight Eastern; see `assistant.md`. |
 
 CLI alternative, run from `web/`. These commands only manage env vars; deploy through git push, not `vercel deploy`.
 
@@ -51,6 +56,8 @@ vercel env update APP_URL production                      # change a value later
 Env changes apply only to **new** deployments. Redeploy after editing (Deployments → ⋯ → Redeploy).
 
 The MCP connector (`/api/mcp`, OAuth under `/api/oauth/*` and `/.well-known/*`) needs **no new variables**: its issuer and resource URLs come from `APP_URL`, so `APP_URL` must be the exact origin users paste (`https://www.pantherwatch.app/api/mcp` in production). It needs migration `0003_oauth.sql` (`npm run db:migrate`) before the deploy that ships it. Deployment Protection doesn't affect it on the production domain; on preview URLs an MCP client can't reach it (Vercel's login page answers first), so test the connector on production or with a local client.
+
+The on-site assistant needs only `ANTHROPIC_API_KEY` (the `ASSISTANT_*` defaults are fine) and migration `0004_assistant.sql` (`assistant_usage`, `assistant_daily`) before the deploy that ships it. **To turn it off**, delete `ANTHROPIC_API_KEY` (or set it blank) and redeploy; nothing else depends on it. If previews share the production database, they also share its daily caps and spend counters. Budget, spend queries and model changes: [`assistant.md`](assistant.md).
 
 ## 3. `web/vercel.json`
 
@@ -120,6 +127,7 @@ Monthly allowance: 1M invocations, **4 CPU-hours Active CPU**, **360 GB-hrs Prov
 
 - **Provisioned Memory is the binding limit.** It's billed for the whole time a request is in flight, including time spent waiting on GoSolar. 360 GB-hr at 2 GB is 180 instance-hours ≈ 648,000 s/month. The watcher runs 20 × 24 × 30 = 14,400 times a month, so at 38 s per run it uses ~547,000 s, about 84% of the allowance. Concurrent requests on one instance share that memory bill.
 - **Active CPU (4 h)** is shared with page rendering. Keep pages mostly static or client-rendered.
+- The assistant chat route (`maxDuration = 60`) holds a function for the whole streamed reply, usually a few seconds and at most 60 s per message, so its Provisioned Memory cost is bounded by the daily message caps (800 site-wide by default).
 - Runtime logs on Hobby cover only the last hour. Use the `cron.job_run_details` and `net._http_response` queries in `supabase-cron.sql` for history.
 
 Check weekly, and daily during the first week after cutover, under the **Usage** tab (account level):

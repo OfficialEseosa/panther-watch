@@ -11,6 +11,8 @@ uses Supabase Postgres through the transaction pooler.
 | Google sign-in, sessions | `src/lib/auth`, `src/app/api/auth` |
 | Shared HTTP helpers (CSRF, cron auth) | `src/lib/http.ts` |
 | MCP connector: OAuth server, MCP tools | `src/lib/oauth`, `src/lib/mcp`, `src/app/api/oauth`, `src/app/api/mcp`, `src/app/.well-known` |
+| Tool registry shared by MCP and the on-site assistant | `src/lib/tools/registry.ts` |
+| On-site assistant (Anthropic API chat) | `src/lib/assistant`, `src/app/api/assistant/chat`, `src/components/assistant` |
 | Signed-out gate for app pages | `src/proxy.ts` |
 
 ## Run
@@ -39,6 +41,9 @@ variable fails the first request that needs it, and the error names every bad va
 | `CRON_SECRET` | yes | `Authorization: Bearer <secret>` for cron-triggered routes, at least 32 characters. |
 | `APP_URL` | yes | Public origin only (`scheme://host[:port]`), e.g. `http://localhost:3000`. A path is rejected. |
 | `ADMIN_EMAILS` | no | Comma-separated admin emails, case-insensitive. |
+| `ANTHROPIC_API_KEY` | no | Claude API key for the on-site assistant. Unset or blank turns it off: `POST /api/assistant/chat` answers 503 and `/assistant` shows a "not available" card. |
+| `ASSISTANT_MODEL` | no | `claude-haiku-5-5` (default), `claude-sonnet-5-5` or `claude-opus-5-5`. Any other value fails env validation, which breaks every request that reads env. |
+| `ASSISTANT_USER_DAILY_MESSAGES` / `ASSISTANT_GLOBAL_DAILY_MESSAGES` / `ASSISTANT_GLOBAL_DAILY_USD` | no | Assistant daily caps: messages per user (default 40), messages site-wide (800), estimated spend site-wide in US dollars (3). Reset at midnight Eastern. See `docs/runbooks/assistant.md`. |
 
 ### Database TLS
 
@@ -116,7 +121,8 @@ Connected apps has a short card linking there plus the same app list.
   clients). `withMcpAuth` requires `Authorization: Bearer <access token>`; without a valid one
   it answers 401 with `WWW-Authenticate: Bearer ... resource_metadata="${APP_URL}/.well-known/oauth-protected-resource/api/mcp"`.
 - **Tools** (`src/lib/mcp/tools.ts`): `list_terms`, `search_subjects`, `search_sections`,
-  `get_section_details`, `list_watches`, `list_schedule`, `check_conflicts` (scope `read`);
+  `get_section_details`, `get_course_requirements`, `list_watches`, `list_schedule`,
+  `check_conflicts` (scope `read`);
   `add_watch`, `remove_watch` (`watches:write`); `add_to_schedule`, `remove_from_schedule`
   (`schedule:write`). They call the same library functions as the routes (`addWatch` keeps the
   track-while-open rule; `add_to_schedule` adds even on a clash and reports it). A missing
@@ -143,6 +149,24 @@ Connected apps has a short card linking there plus the same app list.
   nothing left.
 - **Scopes**: `read` (always granted), `watches:write`, `schedule:write`.
 - No new environment variables: issuer and resource URLs derive from `APP_URL`.
+
+## On-site assistant
+
+The chat at the top of `/assistant` (signed-in users) is PantherWatch Assistant, Claude called
+through the Anthropic API from `POST /api/assistant/chat` (`src/app/api/assistant/chat/route.ts`,
+logic in `src/lib/assistant/`). It runs the same tools as the MCP connector
+(`src/lib/tools/registry.ts`), as the signed-in user with every scope, and streams the reply as
+server-sent events (`text`, `tool`, `done`, `error`). The server keeps no conversation: the
+browser holds it in sessionStorage (cleared by New chat and sign-out) and sends the history
+with each turn (at most 30 messages, 24,000 characters).
+
+- **Cost controls** (`src/lib/assistant/budget.ts`, `chat.ts`): one turn in flight per user and 10
+  a minute (in memory, per instance); daily caps per user, site-wide and on estimated spend, in
+  `assistant_usage` / `assistant_daily` (migration `0004_assistant.sql`), reset at midnight
+  Eastern; 2,048 output tokens per model request, at most 6 tool rounds per turn, prompt caching.
+- **Off switch:** without `ANTHROPIC_API_KEY` the route answers 503 `disabled` and the page shows
+  a "not available" card. Budget, spend queries and model changes:
+  [`docs/runbooks/assistant.md`](../docs/runbooks/assistant.md).
 
 ## Testing
 

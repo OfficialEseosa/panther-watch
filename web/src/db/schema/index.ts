@@ -13,6 +13,7 @@ import type {
 
 export * from "./core";
 export * from "./course-meta";
+export * from "./assistant";
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;

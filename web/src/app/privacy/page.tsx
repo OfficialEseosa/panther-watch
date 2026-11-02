@@ -11,6 +11,7 @@ const SECTIONS = [
   { id: "how-we-use", title: "How we use your information" },
   { id: "course-data", title: "Course and instructor data" },
   { id: "sharing", title: "How we share information" },
+  { id: "assistant", title: "AI assistant" },
   { id: "retention", title: "Data retention" },
   { id: "choices", title: "Your choices and rights" },
   { id: "cookies", title: "Cookies and local storage" },
@@ -52,6 +53,11 @@ export default function PrivacyPolicyPage() {
             pick for them.
           </li>
           <li>
+            <strong>Assistant usage.</strong> If you use the AI assistant, a daily count of the messages you sent, the
+            amount of text the AI model processed for them, and its estimated cost, so we can enforce usage limits. We
+            don&rsquo;t keep the conversation itself (see &ldquo;AI assistant&rdquo; below).
+          </li>
+          <li>
             <strong>Email activity.</strong> Records of the emails we send you (recipient address, subject, type and
             time), so we can avoid duplicate or failed messages and stay within sending limits.
           </li>
@@ -67,6 +73,7 @@ export default function PrivacyPolicyPage() {
           <li>To sign you in and maintain your account.</li>
           <li>To let you track sections and email you when seats or waitlist spots open.</li>
           <li>To save your schedule so it&rsquo;s the same on every device you sign in on.</li>
+          <li>To answer your questions in the AI assistant, when you choose to use it.</li>
           <li>To send service messages, such as a welcome email or an account-deletion confirmation.</li>
           <li>To operate, secure, debug, and improve the Service.</li>
         </ul>
@@ -95,6 +102,10 @@ export default function PrivacyPolicyPage() {
             <strong>Resend</strong> &mdash; to deliver seat alerts and account emails.
           </li>
           <li>
+            <strong>Anthropic</strong> &mdash; to generate the AI assistant&rsquo;s replies, only when you use it (see
+            below).
+          </li>
+          <li>
             <strong>Our hosting and database providers</strong> &mdash; to run the application, store its data, and
             measure performance.
           </li>
@@ -110,6 +121,37 @@ export default function PrivacyPolicyPage() {
         </p>
       </LegalSection>
 
+      <LegalSection id="assistant" title="AI assistant">
+        <p>
+          The AI Assistant page has a built-in chat for signed-in users, powered by Anthropic&rsquo;s Claude models. It
+          can search classes, check seats, and read or change your tracked classes and schedule when you ask it to.
+          When you send a message, we send Anthropic what it needs to write the reply:
+        </p>
+        <ul>
+          <li>Your messages and the assistant&rsquo;s earlier replies in the same conversation.</li>
+          <li>
+            The results of the lookups the assistant makes for you, which can include your tracked classes, your
+            schedule, and course search results (sections, seats, instructors, grade history and ratings).
+          </li>
+          <li>Your first name and today&rsquo;s date.</li>
+          <li>Your PantherWatch account ID, a random identifier that isn&rsquo;t your name or email address.</li>
+        </ul>
+        <p>
+          Anthropic processes this information to generate replies under its commercial API terms. PantherWatch does
+          not store your conversations on its servers; we keep only the daily usage counts described above. Please
+          don&rsquo;t put passwords, student ID numbers or other sensitive information in your messages.
+        </p>
+        <p>
+          Your conversation is kept in your browser&rsquo;s session storage, so it survives a page reload. It stays in
+          that browser tab until you click New chat or sign out, or close the tab.
+        </p>
+        <p>
+          If you connect your own AI assistant instead (Settings &rarr; Connected apps), what it reads from
+          PantherWatch is processed by that assistant and its provider under their own terms and privacy policy, not
+          by PantherWatch&rsquo;s built-in chat.
+        </p>
+      </LegalSection>
+
       <LegalSection id="retention" title="Data retention">
         <p>
           We keep your account information for as long as your account is active. Tracked classes are tied to an
@@ -117,9 +159,9 @@ export default function PrivacyPolicyPage() {
           months after the term begins). You can stop tracking a class at any time.
         </p>
         <p>
-          You can delete your account from the Settings page. Doing so removes your profile, tracked classes and
-          schedules from our database. Delivery records of emails we already sent are kept without a link to your
-          account, so we can troubleshoot delivery.
+          You can delete your account from the Settings page. Doing so removes your profile, tracked classes,
+          schedules and assistant usage counts from our database. Delivery records of emails we already sent are kept
+          without a link to your account, so we can troubleshoot delivery.
         </p>
       </LegalSection>
 
@@ -153,7 +195,9 @@ export default function PrivacyPolicyPage() {
         </p>
         <p>
           We keep a few preferences in your browser&rsquo;s local storage, such as your theme and the announcements
-          you&rsquo;ve dismissed. They stay on your device. We do not use advertising or cross-site tracking cookies.
+          you&rsquo;ve dismissed. They stay on your device. If you use the AI assistant, your conversation is kept in
+          your browser&rsquo;s session storage until you start a new chat, sign out, or close the tab. We do not use
+          advertising or cross-site tracking cookies.
         </p>
       </LegalSection>
 

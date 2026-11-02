@@ -200,7 +200,7 @@ test("the AI Assistant tab opens /assistant with the connector URL and Copy", as
   await expect(page.getByRole("button", { name: "Copied!" })).toBeVisible();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(`${new URL(APP_URL).origin}/api/mcp`);
   // Steps per assistant, as tabs.
-  await expect(page.getByRole("tab", { name: "Claude" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Claude", exact: true })).toHaveAttribute("aria-selected", "true");
   await page.getByRole("tab", { name: "ChatGPT" }).click();
   await expect(page.getByRole("tabpanel")).toContainText("Developer mode");
   if (testInfo.project.name !== "mobile") {

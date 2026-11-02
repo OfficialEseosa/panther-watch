@@ -9,6 +9,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { ChevronRightIcon, LockIcon, LogoutIcon, MoreIcon } from "@/components/ui/icons";
 import { cn } from "@/lib/ui/cn";
 import { AnimatedIcon } from "./AnimatedIcon";
+import { LiquidFill } from "./LiquidFill";
 import { ADMIN_NAV, ASSISTANT_NAV, isActive, PRIMARY_NAV, SETTINGS_NAV, SIGN_IN_HREF, type NavItem } from "./nav";
 import { useSignOut } from "./useSignOut";
 import { useViewer } from "./ViewerContext";
@@ -40,6 +41,7 @@ function SheetLink({ item, onNavigate, liquid = false }: { item: NavItem; onNavi
         aria-current={isActive(item, pathname) ? "page" : undefined}
         onClick={onNavigate}
       >
+        {liquid ? <LiquidFill className={styles.liquidFill} /> : null}
         <Icon className={styles.rowIcon} />
         <span className={styles.rowLabel}>{item.label}</span>
         <ChevronRightIcon size={16} className={styles.rowChevron} />

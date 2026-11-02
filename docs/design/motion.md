@@ -199,7 +199,7 @@ Summary first, details below. "Initial load" means the first document render (SS
 | 4.16 | Menus, listbox, tooltip | Open popover | `rise-in` (`--move-xs`, direction away from trigger) | `--dur-fast` / `--ease-out`; close instant | Fade only |
 | 4.17 | Sticky filter bar shadow | Bar becomes stuck | `transition: box-shadow, border-color` | `--dur-fast` / `--ease-standard` | Same (no movement) |
 | 4.18 | Buttons / IconButtons / Chips | Hover, press, pressed-state change | `transition` on background-color, border-color, color; `:active` scale | `--dur-fast`; press `--dur-instant` | No scale |
-| 4.20 | AI Assistant nav pill | Always (the sidebar item) | Three blurred blobs, `liquid-drift-1/2/3` on `transform`, `will-change: transform` | `--dur-liquid-1/2/3` (9 / 11 / 12 s) ease-in-out loops | Static gradient, no blobs |
+| 4.20 | AI Assistant nav pill | Always (sidebar / drawer pill, More sheet row) | Three tiny-dot fields (`liquid-flow-far/mid/near`, linear, on `translate`) with `liquid-bob` / `liquid-swell`, over one faint navy mass (`liquid-sway`) | `--dur-liquid-far/mid/near` (36 / 26 / 21 s per wrap), `--dur-liquid-mass` (13 s) | The same dots, static |
 
 ### 4.1 Page enter
 
@@ -521,14 +521,32 @@ Used by the `Stat` component (spec.md §2.19) on the Dashboard and Admin › Sta
 
 ### 4.20 AI Assistant nav pill
 
-The sidebar's "AI Assistant" item is a rounded pill in the brand blues (`--liquid-*`, the same in
-both themes) with three soft blurred blobs drifting inside it: `primary-500` at 0.7, `primary-400`
-at 0.45 and `primary-700` at 0.6 over `primary-600`. Each blob loops on `transform` only
-(translate + scale) at 9, 11 and 12 s, so the pattern never visibly repeats; hover is
-`filter: brightness(1.06)` on the blob layer. White label: 5.3:1 at the brightest point (4.8:1
-hovered). The 4 px "you are here" bar sits outside the pill, at the sidebar's edge. The More sheet
-row is the static gradient. Under reduced motion the blobs are removed and the pill is a static
-gradient.
+The "AI Assistant" item (sidebar and rail, the drawer, and the More sheet row) is a rounded pill
+in the brand blues (`--liquid-*`, the same in both themes) filled by `LiquidFill`
+(`components/shell/LiquidFill.tsx`): many tiny dots flowing through it like particles carried in
+liquid, behind a white label.
+
+- **Ground:** `--liquid-base` deepened 30% toward `--liquid-c`, with one faint `--liquid-c` mass
+  (opacity 0.75) swaying side to side (`liquid-sway`, 13 s, ease-in-out alternate) for depth.
+- **Dots:** three fields of crisp repeating radial-gradient dots (no blur), back to front:
+  far 1.5 px on a 14 x 11 px tile in `--liquid-a` at 85%, ~8 px/s; mid 2 px on 24 x 18 px,
+  halfway between `--liquid-a` and `--liquid-b`, ~11 px/s and slightly downhill; near 3 px (plus a
+  2 px) on 40 x 30 px in `--liquid-b`, ~15 px/s. All flow left to right at a constant speed
+  (linear). Each field's wrapper also bobs ±5 px vertically (ease-in-out alternate, unequal
+  periods), and the mid one breathes in scale (1 to 1.1), so it reads as flow rather than a
+  conveyor belt.
+- **Seamless loop:** each `liquid-flow-*` distance is a whole number of that field's tiles
+  (far 20 x 14 px, mid 12 x 24 px across and 1 x 18 px down, near 8 x 40 px), and the dot sheet
+  starts that far left of (and above) the box, so the wrap is invisible and the sheet always
+  covers the pill. The fill is clipped (`overflow: hidden`), so nothing overflows the page.
+- **Cost:** only `translate`, `scale` and `opacity` animate.
+- **Contrast:** no color in the fill is lighter than `--liquid-b` (#2866d4) and the layers mix in
+  sRGB, so white is at least 5.3:1 everywhere (4.8:1 under the hover `brightness(1.06)` on the
+  fill), measured on screen at the brightest pixel over 20 s.
+- **States:** the 4 px "you are here" bar sits outside the sidebar pill, at the sidebar's edge;
+  in the More sheet it is a white inset bar drawn above the fill. Hover is `brightness(1.06)` on
+  the fill.
+- **Reduced motion:** every fill animation is off; the pill shows the same dots, standing still.
 
 ### 4.19 Deliberately not animated
 

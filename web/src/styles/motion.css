@@ -142,19 +142,33 @@
   to { opacity: 0; transform: scale(1.5); }
 }
 
-/* AI Assistant nav pill (motion.md 4.20): soft blobs drifting inside the pill. Transform only. */
-@keyframes liquid-drift-1 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(60%, 15%) scale(1.25); }
+/* AI Assistant nav pill (motion.md 4.20): dot fields flowing left to right over a faint
+   swaying mass, all on translate / scale (LiquidFill.module.css). Each liquid-flow-* distance is
+   a whole number of its layer's dot tiles, so the linear loop wraps seamlessly:
+   far 20 x 14 px, mid 12 x 24 px across and 1 x 18 px down, near 8 x 40 px. */
+@keyframes liquid-flow-far {
+  from { translate: 0 0; }
+  to { translate: 280px 0; }
 }
-@keyframes liquid-drift-2 {
-  0%, 100% { transform: translate(0, 0) scale(1.1); }
-  50% { transform: translate(-55%, -20%) scale(0.9); }
+@keyframes liquid-flow-mid {
+  from { translate: 0 0; }
+  to { translate: 288px 18px; }
 }
-@keyframes liquid-drift-3 {
-  0%, 100% { transform: translate(0, 0) scale(0.95); }
-  33% { transform: translate(35%, -25%) scale(1.15); }
-  66% { transform: translate(-30%, 20%) scale(1); }
+@keyframes liquid-flow-near {
+  from { translate: 0 0; }
+  to { translate: 320px 0; }
+}
+@keyframes liquid-bob {
+  from { translate: 0 -5px; }
+  to { translate: 0 5px; }
+}
+@keyframes liquid-swell {
+  from { scale: 1; }
+  to { scale: 1.1; }
+}
+@keyframes liquid-sway {
+  from { translate: -35% 0; }
+  to { translate: 35% 0; }
 }
 
 /* ---------- keyframe aliases for CSS Modules (see the header comment) ---------- */
@@ -195,9 +209,12 @@
   --kf-icon-pulse-h: icon-pulse-h;
   --kf-icon-ring: icon-ring;
   --kf-icon-ring-h: icon-ring-h;
-  --kf-liquid-drift-1: liquid-drift-1;
-  --kf-liquid-drift-2: liquid-drift-2;
-  --kf-liquid-drift-3: liquid-drift-3;
+  --kf-liquid-flow-far: liquid-flow-far;
+  --kf-liquid-flow-mid: liquid-flow-mid;
+  --kf-liquid-flow-near: liquid-flow-near;
+  --kf-liquid-bob: liquid-bob;
+  --kf-liquid-swell: liquid-swell;
+  --kf-liquid-sway: liquid-sway;
 }
 
 /* ---------- theme switch: suppress component transitions for the swap ---------- */

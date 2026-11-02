@@ -86,6 +86,60 @@ export async function getJson(
   }
 }
 
+/** Accept header of Banner's HTML fragment endpoints (`searchResults/getSectionPrerequisites` etc.). */
+export const GOSOLAR_HTML_HEADERS = {
+  Accept: "text/html, */*; q=0.01",
+  "X-Requested-With": "XMLHttpRequest",
+} as const;
+
+/**
+ * POST a form and return the body text; non-2xx becomes a GoSolarError. Timeouts and socket
+ * errors are wrapped in a GoSolarError too (status null, original error as `cause`).
+ */
+export async function postFormText(
+  url: string,
+  form: Record<string, string>,
+  options: ResolvedOptions,
+  extra: { headers?: Record<string, string>; dispatcher?: Dispatcher } = {},
+): Promise<string> {
+  try {
+    const response = await options.fetchImpl(url, {
+      method: "POST",
+      headers: {
+        ...GOSOLAR_HTML_HEADERS,
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        ...extra.headers,
+      },
+      body: new URLSearchParams(form).toString(),
+      signal: AbortSignal.timeout(options.timeoutMs),
+      dispatcher: extra.dispatcher,
+    });
+    const text = await response.text();
+    if (!response.ok) {
+      throw new GoSolarError(`GoSolar responded ${response.status}`, response.status, url);
+    }
+    return text;
+  } catch (error) {
+    throw asGoSolarError(error, url);
+  }
+}
+
+/** Leaves GoSolarErrors as they are; wraps timeouts, aborts and socket errors in one. */
+export function asGoSolarError(error: unknown, url: string): unknown {
+  if (error instanceof GoSolarError) return error;
+  if (error instanceof Error) {
+    const network =
+      error.name === "TimeoutError" ||
+      error.name === "AbortError" ||
+      (error instanceof TypeError && error.message === "fetch failed");
+    if (network) {
+      const what = error.name === "TimeoutError" ? "timed out" : "failed";
+      return new GoSolarError(`GoSolar request ${what}`, null, url, { cause: error });
+    }
+  }
+  return error;
+}
+
 export function buildUrl(baseUrl: string, path: string, params: [string, string][]): string {
   const query = new URLSearchParams(params).toString();
   return `${baseUrl}${path}${query ? `?${query}` : ""}`;

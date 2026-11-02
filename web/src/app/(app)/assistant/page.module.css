@@ -38,6 +38,14 @@
   color: var(--color-heading);
 }
 
+/* "Or do it by hand:" between the one-click steps and the manual ones. */
+.byHandLabel {
+  margin: 14px 0 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-heading);
+}
+
 .note {
   margin-top: 12px;
   font-size: 0.85rem;

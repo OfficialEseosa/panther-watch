@@ -13,6 +13,12 @@ export {
   type SectionMetaInput,
 } from "./meta";
 export {
+  getSectionRequirements,
+  sectionRequirementsSchema,
+  type SectionRequirements,
+  type SectionRequirementsInput,
+} from "./requirements";
+export {
   getTerms,
   searchCourseList,
   searchCourseListSchema,

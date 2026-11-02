@@ -175,11 +175,14 @@
   color: inherit;
 }
 
-/* AI Assistant row: the sidebar pill's colors as a static gradient (no drifting blobs in the
-   sheet). White on it: 6.0:1 at the lightest stop. Current page: a white 4 px bar (the blue --indicator would vanish on it). */
+/* AI Assistant row: the sidebar pill's flowing fill (LiquidFill, motion.md 4.20) behind a white
+   label. White on the lightest point of the fill: 5.3:1 (4.8:1 hovered). Current page: a white
+   4 px bar (the blue --indicator would vanish on it), drawn above the fill. */
 .row.liquidRow {
+  position: relative;
+  isolation: isolate;
   margin-bottom: var(--space-1);
-  background: linear-gradient(120deg, var(--liquid-base) 30%, var(--liquid-a));
+  background: var(--liquid-base);
   color: var(--liquid-text);
   font-weight: var(--weight-semibold);
 }
@@ -190,11 +193,28 @@
 }
 
 .row.liquidRow[aria-current="page"] {
+  box-shadow: none;
+}
+
+.row.liquidRow[aria-current="page"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
   box-shadow: inset 4px 0 0 var(--liquid-text);
+  pointer-events: none;
+}
+
+.liquidFill {
+  transition: filter var(--transition-base);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .row.liquidRow:hover {
-    background: linear-gradient(120deg, var(--liquid-base) 20%, var(--liquid-a));
+    background: var(--liquid-base);
+  }
+
+  .row.liquidRow:hover .liquidFill {
+    filter: brightness(1.06);
   }
 }

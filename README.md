@@ -2,7 +2,9 @@
 
 Course tracking for Georgia State University students. Search GoSolar sections with live seat
 counts, see grade distributions and per-professor GPA from past terms, build a weekly schedule,
-and get an email when a full class opens a seat.
+and get an email when a full class opens a seat. Signed-in students can also ask a built-in AI
+assistant (`/assistant`, Claude via the Anthropic API) or connect their own assistant over MCP;
+both use the same tool registry (`web/src/lib/tools/registry.ts`).
 
 ## Repo layout
 
@@ -14,7 +16,7 @@ and get an email when a full class opens a seat.
 | `web/tests/`, `web/e2e/` | Integration tests (Vitest + PGlite) and end-to-end tests (Playwright) |
 | `docs/audit-2026-10/` | The audits that planned the October 2026 rewrite, and the decisions taken |
 | `docs/design/` | Design spec, page specs, motion spec, design tokens |
-| `docs/runbooks/` | Local dev, Vercel setup, Supabase cron, production cutover |
+| `docs/runbooks/` | Local dev, Vercel setup, Supabase cron, production cutover, AI assistant budget and models |
 | `docker-compose.yml` | Local Postgres for development |
 
 ## Quick start
@@ -75,6 +77,9 @@ Integration and end-to-end tests come first; unit tests are kept for pure parsin
   ([`docs/runbooks/supabase-cron.sql`](docs/runbooks/supabase-cron.sql)). Vercel's daily cron is
   only a backup trigger for cleanup.
 - **Email:** Resend, from `class.pantherwatch.app`.
+- **AI assistant:** the on-site chat calls the Anthropic API with `ANTHROPIC_API_KEY` (unset =
+  feature off). Daily message and spend caps reset at midnight Eastern
+  ([`docs/runbooks/assistant.md`](docs/runbooks/assistant.md)).
 - **Grades:** new terms are uploaded through the admin grade upload (GSU's APEX source is
   behind a Cloudflare challenge, so there is no grades scraper).
 - **Cutover** from the old stack, with backup and rollback steps:

@@ -3,7 +3,7 @@ import type { GradeDistributionResponse, ProfessorRating } from "@/lib/course-me
 import type { SectionMeta } from "@/lib/courses";
 import { decodeEntities } from "@/lib/email/escape";
 import { creditsLabel, instructorsOf, partOfTermName, titleCase } from "@/lib/format";
-import type { CourseData } from "@/lib/gosolar";
+import type { CourseData, CourseRef, SectionRequirements } from "@/lib/gosolar";
 import { effectiveSeatsAvailable, sectionIsOpen } from "@/lib/gosolar/seats";
 import { WEEK_DAYS, type WeekDay } from "@/lib/schedule/conflicts";
 
@@ -175,5 +175,48 @@ export function compactMeta(meta: SectionMeta) {
         : { found: false }
       : null,
     syllabusUrl: meta.syllabus?.url ?? null,
+  };
+}
+
+/** Subject code, or Banner's subject name when the code couldn't be resolved. */
+const subjectOf = (ref: CourseRef) => (ref.subject ? { subject: ref.subject } : { subject: null, subjectName: ref.subjectDescription });
+
+/**
+ * Requirements for get_course_requirements: GoSolar's own prerequisite wording plus a flat course
+ * list (the and/or tree is left out; `text` carries the grouping), corequisites and restrictions.
+ * Unparsed fragments are passed through so nothing is lost.
+ */
+export function compactRequirements(req: SectionRequirements) {
+  const { prerequisites: pre, restrictions } = req;
+  const group = ({ kind, label, values }: { kind: string; label: string; values: string[] }) => ({ kind, label, values });
+  return {
+    term: req.term,
+    crn: req.crn,
+    description: req.description?.trim() || null,
+    prerequisites: pre
+      ? {
+          text: pre.text,
+          rule: pre.rule,
+          items: pre.items.map((item) => ({
+            ...subjectOf(item),
+            courseNumber: item.courseNumber,
+            ...(item.courseNumberTo ? { courseNumberTo: item.courseNumberTo } : {}),
+            ...(item.minimumGrade ? { minimumGrade: item.minimumGrade } : {}),
+            ...(item.concurrent !== undefined ? { concurrent: item.concurrent } : {}),
+          })),
+        }
+      : null,
+    corequisites: req.corequisites.map((c) => ({
+      ...subjectOf(c),
+      courseNumber: c.courseNumber,
+      ...(c.title ? { title: titleCase(c.title) } : {}),
+    })),
+    restrictions: {
+      mustBe: restrictions.mustBe.map(group),
+      mustNotBe: restrictions.mustNotBe.map(group),
+      specialApprovals: restrictions.specialApprovals,
+      other: restrictions.other,
+    },
+    ...(req.unparsed ? { unparsed: req.unparsed } : {}),
   };
 }

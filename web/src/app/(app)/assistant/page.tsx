@@ -3,6 +3,8 @@ import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
+import { AssistantSection } from "@/components/assistant/AssistantSection";
+import { ClaudeCodeCommand, ConnectButtons, SettingsLink } from "@/components/assistant/ConnectButtons";
 import { ConnectedAppsList, ConnectorUrl } from "@/components/settings/ConnectedApps";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { SIGN_IN_HREF } from "@/components/shell/nav";
@@ -30,8 +32,10 @@ export const metadata: Metadata = {
  * note (connecting needs an account). Everything but the guest note and the app list is static.
  *
  * The per-assistant steps were checked against each vendor's docs on 2026-11-01 (Claude:
- * support.claude.com "custom connectors using remote MCP"; ChatGPT: developer mode connectors;
- * Cursor: cursor.com/docs/context/mcp). Menus move between versions; keep them short.
+ * support.claude.com "custom connectors using remote MCP"; ChatGPT: developers.openai.com
+ * apps-sdk "connect ChatGPT"; Cursor: cursor.com/docs/context/mcp). Menus move between versions;
+ * keep them short. Cursor and VS Code have install links (ConnectButtons); Claude and ChatGPT
+ * have no link that pre-fills a connector, so their first step links to the right screen.
  */
 /**
  * The connector URL: mcpResourceUrl()'s value, but from APP_URL read raw (like sitemap.ts), since
@@ -48,7 +52,7 @@ export default function AssistantPage() {
     <div className={styles.page}>
       <PageHeader
         title="AI Assistant"
-        description="Use PantherWatch from Claude, ChatGPT or another AI assistant."
+        description="Chat with PantherWatch here, or use it from Claude, ChatGPT or another AI assistant."
       >
         <Suspense fallback={null}>
           <GuestNote />
@@ -56,6 +60,8 @@ export default function AssistantPage() {
       </PageHeader>
 
       <div className={ui.content}>
+        <AssistantSection />
+
         <Section icon={<SparkleIcon />} title="What this does">
           <p className={styles.lead}>
             Connect PantherWatch to your AI assistant so you can ask it things like &ldquo;Is CSC 1301 open?&rdquo; or
@@ -77,6 +83,8 @@ export default function AssistantPage() {
               { id: "claude", label: "Claude", panel: <ClaudeSteps /> },
               { id: "chatgpt", label: "ChatGPT", panel: <ChatGptSteps /> },
               { id: "cursor", label: "Cursor", panel: <CursorSteps mcpUrl={mcpUrl} /> },
+              { id: "vscode", label: "VS Code", panel: <VsCodeSteps mcpUrl={mcpUrl} /> },
+              { id: "claude-code", label: "Claude Code", panel: <ClaudeCodeSteps mcpUrl={mcpUrl} /> },
               { id: "other", label: "Other", panel: <OtherSteps /> },
             ]}
           />
@@ -156,10 +164,16 @@ function Section({ icon, title, children }: { icon: ReactNode; title: string; ch
   );
 }
 
-function Steps({ children, note }: { children: ReactNode; note?: ReactNode }) {
+function Steps({ children, note, byHand }: { children: ReactNode; note?: ReactNode; byHand?: ReactNode }) {
   return (
     <>
       <ol className={styles.steps}>{children}</ol>
+      {byHand ? (
+        <>
+          <p className={styles.byHandLabel}>Or do it by hand:</p>
+          <ol className={styles.steps}>{byHand}</ol>
+        </>
+      ) : null}
       <p className={styles.note}>
         {note ? <>{note} </> : null}Steps may differ slightly by version.
       </p>
@@ -167,24 +181,24 @@ function Steps({ children, note }: { children: ReactNode; note?: ReactNode }) {
   );
 }
 
+const SIGN_IN_STEP = (
+  <li>
+    Sign in to PantherWatch when asked, then click <strong>Allow</strong>.
+  </li>
+);
+
 function ClaudeSteps() {
   return (
-    <Steps note="Works on claude.ai and the desktop app. Free plans can add one custom connector.">
+    <Steps note="Works on claude.ai and the desktop app (Customize, then Connectors). Free plans can add one custom connector.">
       <li>
-        In Claude, open <strong>Customize</strong>, then <strong>Connectors</strong>.
+        Open Claude&rsquo;s connector settings.
+        <SettingsLink href="https://claude.ai/customize/connectors">Open Claude connectors</SettingsLink>
       </li>
       <li>
-        Click <strong>+ Add</strong>, then <strong>Add custom connector</strong>.
+        Click <strong>+ Add</strong>, then <strong>Add custom connector</strong>. Name it <strong>PantherWatch</strong>,
+        paste the URL, and click <strong>Continue</strong>, then <strong>Add</strong>.
       </li>
-      <li>
-        Name it <strong>PantherWatch</strong>, paste the URL, and click <strong>Continue</strong>.
-      </li>
-      <li>
-        Keep the sign-in settings Claude suggests and click <strong>Add</strong>.
-      </li>
-      <li>
-        Sign in to PantherWatch when asked, then click <strong>Allow</strong>.
-      </li>
+      {SIGN_IN_STEP}
       <li>
         In a chat, turn PantherWatch on from the <strong>+</strong> menu under <strong>Connectors</strong>.
       </li>
@@ -194,26 +208,19 @@ function ClaudeSteps() {
 
 function ChatGptSteps() {
   return (
-    <Steps note="Custom connectors need ChatGPT's developer mode, which only some plans have.">
+    <Steps note="Custom MCP servers depend on your ChatGPT plan and workspace. If you don't see the option, turn on Developer mode in Settings first.">
       <li>
-        In ChatGPT, open <strong>Settings</strong>, then <strong>Apps &amp; Connectors</strong>.
+        Open ChatGPT&rsquo;s plugins page.
+        <SettingsLink href="https://chatgpt.com/plugins">Open ChatGPT plugins</SettingsLink>
       </li>
       <li>
-        Under <strong>Advanced settings</strong>, turn on <strong>Developer mode</strong>.
+        Click <strong>+</strong>, then <strong>Add custom MCP server</strong>. Name it <strong>PantherWatch</strong>,
+        paste the URL, and choose <strong>OAuth</strong>.
       </li>
       <li>
-        Back in Apps &amp; Connectors, click <strong>Create</strong>.
+        Confirm the warning and click <strong>Create</strong>.
       </li>
-      <li>
-        Name it <strong>PantherWatch</strong>, paste the URL as the MCP server URL, and choose{" "}
-        <strong>OAuth</strong>.
-      </li>
-      <li>
-        Confirm you trust it and click <strong>Create</strong>.
-      </li>
-      <li>
-        Sign in to PantherWatch when asked, then click <strong>Allow</strong>.
-      </li>
+      {SIGN_IN_STEP}
     </Steps>
   );
 }
@@ -225,24 +232,68 @@ function CursorSteps({ mcpUrl }: { mcpUrl: string }) {
   }
 }`;
   return (
-    <Steps>
+    <Steps
+      byHand={
+        <>
+          <li>
+            In Cursor, open <strong>Settings</strong>, then <strong>MCP</strong> (or <strong>Tools &amp; MCP</strong>),
+            and click <strong>Add a custom MCP server</strong>.
+          </li>
+          <li>
+            Add PantherWatch to mcp.json like this, save it, and click <strong>Connect</strong>:
+            <pre className={styles.code}>
+              <code>{config}</code>
+            </pre>
+          </li>
+        </>
+      }
+    >
       <li>
-        In Cursor, open <strong>Settings</strong>, then <strong>MCP</strong> (or <strong>Tools &amp; MCP</strong>).
-      </li>
-      <li>
-        Click <strong>Add a custom MCP server</strong>. Cursor opens a file called mcp.json.
-      </li>
-      <li>
-        Add PantherWatch like this, then save the file:
-        <pre className={styles.code}>
-          <code>{config}</code>
-        </pre>
+        On the computer with Cursor, click the button, then <strong>Install</strong> in Cursor.
+        <ConnectButtons app="cursor" mcpUrl={mcpUrl} />
       </li>
       <li>
         Next to PantherWatch, click <strong>Connect</strong>.
       </li>
+      {SIGN_IN_STEP}
+    </Steps>
+  );
+}
+
+function VsCodeSteps({ mcpUrl }: { mcpUrl: string }) {
+  return (
+    <Steps
+      note="PantherWatch works in Copilot Chat's agent mode."
+      byHand={
+        <>
+          <li>
+            In VS Code, run <strong>MCP: Add Server</strong> from the Command Palette and choose <strong>HTTP</strong>.
+          </li>
+          <li>
+            Paste the URL and name it <strong>pantherwatch</strong>.
+          </li>
+        </>
+      }
+    >
       <li>
-        Sign in to PantherWatch in your browser, then click <strong>Allow</strong>.
+        On the computer with VS Code, click the button, then <strong>Install</strong> in VS Code.
+        <ConnectButtons app="vscode" mcpUrl={mcpUrl} />
+      </li>
+      {SIGN_IN_STEP}
+    </Steps>
+  );
+}
+
+function ClaudeCodeSteps({ mcpUrl }: { mcpUrl: string }) {
+  return (
+    <Steps note="Already added PantherWatch on claude.ai? Claude Code picks it up when you're signed in with the same account.">
+      <li>
+        In a terminal, run:
+        <ClaudeCodeCommand mcpUrl={mcpUrl} />
+      </li>
+      <li>
+        In Claude Code, type <strong>/mcp</strong>, pick <strong>pantherwatch</strong>, and sign in to PantherWatch,
+        then click <strong>Allow</strong>.
       </li>
     </Steps>
   );

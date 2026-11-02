@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
+import { clearStoredChats } from "@/components/assistant/chatStore";
 import { useToast } from "@/components/ui/Toast";
 
 /**
@@ -23,6 +24,7 @@ export function useSignOut() {
       });
       // The route answers 303 -> "/"; with redirect: "manual" that is an opaque redirect.
       if (!response.ok && response.type !== "opaqueredirect") throw new Error(`logout ${response.status}`);
+      clearStoredChats(); // the on-page assistant's conversation (sessionStorage)
       router.replace("/");
       router.refresh();
     } catch {

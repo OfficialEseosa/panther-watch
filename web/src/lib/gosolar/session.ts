@@ -5,6 +5,7 @@ import {
   GOSOLAR_HEADERS,
   buildUrl,
   getJson,
+  postFormText,
   resolveOptions,
   type GoSolarOptions,
   type ResolvedOptions,
@@ -27,7 +28,8 @@ import type { SearchParams, SearchResponse, SearchResult } from "./types";
  * A new Agent with `connections: 1` guarantees the declaration opens a brand-new socket
  * (so the F5 issues the cookie) and the search reuses that same socket (or, if the server
  * closed it, a new one carrying the cookie). Never run concurrent searches on one session,
- * and always close it.
+ * and always close it. (`postFragment` calls may overlap: they only read, and undici queues
+ * them on the one socket.)
  */
 export class GoSolarSession implements AsyncDisposable {
   private closed = false;
@@ -66,6 +68,24 @@ export class GoSolarSession implements AsyncDisposable {
       throw new GoSolarAffinityError(url, cookieNames(this.cookies));
     }
     return { ...body, data: (body.data ?? []).map(decodeStrings) };
+  }
+
+  /**
+   * POSTs a form (e.g. `term` + `courseReferenceNumber`) to one of Banner's HTML fragment
+   * endpoints on this session's connection and cookies, and returns the raw HTML. Non-2xx,
+   * timeouts and socket errors throw GoSolarError; validating the body is up to the caller.
+   */
+  async postFragment(path: string, form: Record<string, string>): Promise<string> {
+    const url = `${this.options.baseUrl}${path}`;
+    return postFormText(url, form, this.options, {
+      headers: { Cookie: this.cookies },
+      dispatcher: this.agent,
+    });
+  }
+
+  /** Cookie names this session sends (for error messages). */
+  cookieNames(): string[] {
+    return cookieNames(this.cookies);
   }
 
   /**
