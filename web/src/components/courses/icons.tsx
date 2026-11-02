@@ -76,6 +76,16 @@ const PATHS = {
     </>
   ),
   bookmark: <path d="M8 4.75h8a1 1 0 0 1 1 1v12.8l-5-2.7-5 2.7v-12.8a1 1 0 0 1 1-1z" />,
+  checklist: (
+    <>
+      <rect x="5" y="4.5" width="14" height="16" rx="1.8" />
+      <path d="M9.5 3.5h5v2.5h-5z" />
+      <path d="M8.5 11.5 9.8 12.8l2.2-2.3" />
+      <path d="M13.5 12h2.5" />
+      <path d="M8.5 16 9.8 17.3l2.2-2.3" />
+      <path d="M13.5 16.5h2.5" />
+    </>
+  ),
   external: (
     <>
       <path d="M14 4h6v6" />

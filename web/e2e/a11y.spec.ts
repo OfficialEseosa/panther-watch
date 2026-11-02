@@ -36,6 +36,11 @@ const MEMBER_PAGES: { path: string; ready: (page: Page) => Promise<void> }[] = [
     ready: (page) => expect(page.getByRole("list", { name: "Sections" }).getByRole("article")).toHaveCount(2),
   },
   {
+    // The detail dialog's Requirements tab (CRN 80001 has every kind: chips, lists, prose).
+    path: `/course-results?term=${term}&subjects=CSC&courseNumber=1301&crn=${csc1301.open}&tab=requirements`,
+    ready: (page) => expect(page.getByRole("dialog").getByRole("tabpanel")).toContainText("Must not be"),
+  },
+  {
     path: "/tracked-classes",
     ready: (page) => expect(page.getByRole("article")).toHaveCount(1),
   },

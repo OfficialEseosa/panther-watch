@@ -70,6 +70,9 @@ export const fake = {
   /** The next `count` GoSolar section searches fail ("affinity": success:true with data:null). */
   failSearches: (failure: { kind: "affinity" } | { kind: "http"; status?: number }, count = 1) =>
     fakeCall("/__control/fail-searches", { method: "POST", body: { ...failure, count } }),
+  /** The next `count` GoSolar requirement-fragment requests fail (one is enough to fail a lookup). */
+  failRequirements: (failure: { kind: "affinity" } | { kind: "http"; status?: number }, count = 1) =>
+    fakeCall("/__control/fail-requirements", { method: "POST", body: { ...failure, count } }),
   requests: async () =>
     (await fakeCall<{ requests: { method: string; path: string; query: Record<string, string>; status: number }[] }>("/__control/requests"))
       .requests,

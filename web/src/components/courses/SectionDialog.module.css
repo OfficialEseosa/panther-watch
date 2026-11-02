@@ -842,6 +842,84 @@
   border-radius: var(--radius-md);
 }
 
+/* ---- requirements (the grade-history blocks, header tags and overview labels, reused) ---- */
+.reqProseGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.reqProse {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+
+.reqNone {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.reqChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A header .tag that wraps when a value is longer than the pane. */
+.reqChip {
+  height: auto;
+  min-height: 1.6rem;
+  padding-block: 0.3rem;
+  line-height: 1.3;
+  white-space: normal;
+}
+
+.reqGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* The overview's "Instructor" label. */
+.reqSubhead {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.reqGroupList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reqGroupLabel {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-heading);
+}
+
+.reqNote {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
 /* On narrow screens the sidebar becomes an equal-width strip above the pane. */
 @media (max-width: 640px) {
   .main {

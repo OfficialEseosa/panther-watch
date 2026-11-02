@@ -15,6 +15,7 @@ Signed-in students can also chat with PantherWatch Assistant, the built-in assis
 ## Pages
 
 - [Course search](https://www.pantherwatch.app/course-search): search GSU sections by term, subject and course number.
+- Prerequisites, corequisites and restrictions in each section's Requirements tab (the course detail dialog on the results page).
 - [AI Assistant](https://www.pantherwatch.app/assistant): the built-in chat for signed-in students, and how to connect PantherWatch to Claude, ChatGPT, Cursor or another MCP assistant, step by step.
 - [Privacy Policy](https://www.pantherwatch.app/privacy)
 - [Terms of Service](https://www.pantherwatch.app/terms)

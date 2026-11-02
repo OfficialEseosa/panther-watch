@@ -207,9 +207,9 @@ const SIGN_IN_STEP = (
 
 function ClaudeSteps() {
   return (
-    <Steps note="Works on claude.ai and the desktop app (Customize, then Connectors). Free plans can add one custom connector.">
+    <Steps note="Add it on claude.ai or the desktop app (Customize, then Connectors); the mobile apps can't add connectors, but can use one you've added. Free plans can add one custom connector. On a Team or Enterprise plan an owner has to add it.">
       <li>
-        Open Claude&rsquo;s connector settings.
+        On a computer, open Claude&rsquo;s connector settings.
         <SettingsLink href="https://claude.ai/customize/connectors">Open Claude connectors</SettingsLink>
       </li>
       <li>
@@ -226,9 +226,9 @@ function ClaudeSteps() {
 
 function ChatGptSteps() {
   return (
-    <Steps note="Custom MCP servers depend on your ChatGPT plan and workspace. If you don't see the option, turn on Developer mode in Settings first.">
+    <Steps note="Custom MCP servers can only be added on the ChatGPT website, not in the mobile or desktop apps, and depend on your plan and workspace. If you don't see the option, turn on Developer mode in Settings first; on a Business or Enterprise workspace an admin may need to allow it.">
       <li>
-        Open ChatGPT&rsquo;s plugins page.
+        On a computer, open ChatGPT&rsquo;s plugins page at chatgpt.com.
         <SettingsLink href="https://chatgpt.com/plugins">Open ChatGPT plugins</SettingsLink>
       </li>
       <li>

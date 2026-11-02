@@ -20,6 +20,10 @@
  *   POST /__control/fail-searches { kind: "affinity" | "http", status?, count? }
  *                                 the next `count` (default 1) section searches fail: "affinity"
  *                                 answers success:true/data:null (F5 affinity lost), "http" the status
+ *   POST /__control/fail-requirements { kind: "affinity" | "http", status?, count? }
+ *                                 the same for the next `count` requirement-fragment requests
+ *                                 (getSectionPrerequisites, getCorequisites, getRestrictions,
+ *                                 getCourseDescription); one failed fragment fails the lookup
  *
  * Seed (term 202701, Spring 2027), with fixed meeting times so schedule specs can assert the grid:
  *   CSC 1301  CRN 80001 open (3 seats)  Mon/Wed 9:00-9:50 AM
@@ -27,19 +31,40 @@
  *   CSC 1302  CRN 80003 open (3 seats)  Mon/Wed 9:30-10:20 AM (overlaps 80001)
  *   MATH 2211 CRN 80010 open (3 seats)  Tue/Thu 10:00-10:50 AM
  * Terms 202701 and 202608 (view only).
+ *
+ * Requirements (the four searchResults fragments): CRN 80001 serves the captured CSC 1301
+ * fixtures (tests/fixtures/gosolar: MATH prerequisites, the CSC 1301L corequisite, major and
+ * level/cohort restrictions, the catalog description); every other CRN gets Banner's "none" ones.
  */
+import { readFileSync } from "node:fs";
 import { createServer, request as httpRequest, type IncomingMessage, type ServerResponse } from "node:http";
+import path from "node:path";
 import type { CourseData } from "@/lib/gosolar";
 import {
   makeClosedSection,
   makeSection,
   makeTerm,
   startFakeGoSolar,
+  type RequirementFailure,
+  type RequirementFragments,
   type SearchFailure,
 } from "../tests/helpers/fake-gosolar";
 import { GOSOLAR_PORT } from "./env";
 
 const SEED_TERM = "202701";
+
+/** The integration tests' captured GoSolar fragments, read once at startup. */
+const fixture = (name: string) => readFileSync(path.join(__dirname, "..", "tests", "fixtures", "gosolar", name), "utf8");
+
+/** CRN -> requirement fragments for SEED_TERM. */
+const SEED_REQUIREMENTS: Record<string, RequirementFragments> = {
+  "80001": {
+    prerequisites: fixture("prerequisites-csc1301.html"),
+    corequisites: fixture("corequisites-csc1301.html"),
+    restrictions: fixture("restrictions-csc1301.html"),
+    description: fixture("description-csc1301.html"),
+  },
+};
 
 type SectionKey = `${string}|${string}|${string}`;
 const keyOf = (term: string, subject: string, courseNumber: string): SectionKey =>
@@ -143,6 +168,7 @@ async function main(): Promise<void> {
       const [term, subject, courseNumber] = key.split("|");
       gs.setSections(term, subject, courseNumber, list);
     }
+    for (const [crn, fragments] of Object.entries(SEED_REQUIREMENTS)) gs.setRequirements(SEED_TERM, crn, fragments);
   };
   const reset = () => {
     sections = seedSections();
@@ -281,6 +307,18 @@ async function main(): Promise<void> {
                 : null;
           if (!failure) return sendJson(res, 400, { error: 'kind must be "affinity" or "http"' });
           gs.failNextSearches(failure, input.count ?? 1);
+          return sendJson(res, 200, { ok: true });
+        }
+        case "POST /__control/fail-requirements": {
+          const input = JSON.parse(body.toString("utf8") || "{}") as { kind?: string; status?: number; count?: number };
+          const failure: RequirementFailure | null =
+            input.kind === "affinity"
+              ? { kind: "affinity" }
+              : input.kind === "http"
+                ? { kind: "http", status: input.status ?? 500 }
+                : null;
+          if (!failure) return sendJson(res, 400, { error: 'kind must be "affinity" or "http"' });
+          gs.failNextRequirements(failure, input.count ?? 1);
           return sendJson(res, 200, { ok: true });
         }
         case "POST /resend/emails": {

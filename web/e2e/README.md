@@ -86,11 +86,15 @@ behind a front server on the fixed port. Seed, restored by every reset:
 - `202701` CSC 1301: CRN `80001` open (3 seats, Mon/Wed 9:00–9:50 AM), CRN `80002` closed
   (Mon/Wed 11:00 AM–12:15 PM). CSC 1302: CRN `80003` open (Mon/Wed 9:30–10:20 AM, overlaps 80001).
   MATH 2211: CRN `80010` open (Tue/Thu 10:00–10:50 AM). Subjects CSC and MATH.
+- Requirements: CRN `80001` serves the captured CSC 1301 fragments from `tests/fixtures/gosolar`
+  (prerequisites, the CSC 1301L corequisite, restrictions, description); every other CRN gets
+  Banner's "none" fragments.
 
 Control endpoints: `POST /__control/reset`, `POST /__control/sections`
 `{ subject, courseNumber, crn, seatsAvailable?, waitCount? }`, `POST /__control/fail-searches`
 `{ kind: "affinity" | "http", status?, count? }` (the next section searches fail; "affinity" answers
-`success:true, data:null`), `GET /__control/emails` (what the fake Resend received),
+`success:true, data:null`), `POST /__control/fail-requirements` (the same for the next requirement
+fragments), `GET /__control/emails` (what the fake Resend received),
 `GET /__control/requests` (GoSolar requests). Use the `fake` helpers in `support.ts`.
 
 ## Coverage
@@ -126,7 +130,9 @@ Control endpoints: `POST /__control/reset`, `POST /__control/sections`
   shows the new results with the old `?q=` filter, edit form and URL state gone; the title opens
   the dialog with `?crn=80001`, tabs switch (`?tab=`), Back closes it; `?crn=` is pushed only after
   the open morph and dropped after the close (Close button, Escape), and a tab picked before the
-  push lands on the dialog's entry; a `?crn=` deep link; Watch
+  push lands on the dialog's entry; a `?crn=` deep link; the Requirements tab (description,
+  prerequisite chips, the corequisite, must-not-be restrictions, the GoSolar note; the empty
+  states for a section with none; an upstream failure shows Retry and the retry loads); Watch
   on / off and Add to schedule as a member (visible "Watching" / "Added" labels that the names follow, `aria-pressed` state), checked through
   `/api/watches` and `/api/schedule`; the guest sign-in toast.
 - `tracked-classes.spec.ts`: two watches with live seats, open first; the All/Open/Full

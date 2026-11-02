@@ -2,7 +2,8 @@
 
 Course tracking for Georgia State University students. Search GoSolar sections with live seat
 counts, see grade distributions and per-professor GPA from past terms, build a weekly schedule,
-and get an email when a full class opens a seat. Signed-in students can also ask a built-in AI
+and get an email when a full class opens a seat. Prerequisites, corequisites and restrictions are in
+each section's Requirements tab. Signed-in students can also ask a built-in AI
 assistant (`/assistant`, Claude via the Anthropic API) or connect their own assistant over MCP;
 both use the same tool registry (`web/src/lib/tools/registry.ts`).
 

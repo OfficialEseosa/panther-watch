@@ -3,12 +3,13 @@
  * Client-safe: only type imports from server modules. Every call takes an optional AbortSignal.
  */
 import type { SectionMeta } from "@/lib/courses/meta";
+import type { SectionRequirements } from "@/lib/courses/requirements";
 import type { TermInfo } from "@/lib/courses/terms";
 import type { CourseData, Subject } from "@/lib/gosolar/types";
 import type { Watch, WatchDetailsItem } from "@/lib/watches";
 import { del, getJson, postJson, query } from "./http";
 
-export type { CourseData, SectionMeta, Subject, TermInfo, Watch, WatchDetailsItem };
+export type { CourseData, SectionMeta, SectionRequirements, Subject, TermInfo, Watch, WatchDetailsItem };
 
 // ---------------------------------------------------------------- courses
 
@@ -30,6 +31,11 @@ export const META_BATCH_MAX = 50;
 
 export function fetchBatchMeta(items: MetaItem[], signal?: AbortSignal) {
   return postJson<{ items: SectionMeta[] }>("/api/courses/meta/batch", { items }, signal);
+}
+
+/** Prerequisites, corequisites, restrictions and description of one section (public, CDN-cached). */
+export function fetchSectionRequirements(term: string, crn: string, signal?: AbortSignal) {
+  return getJson<SectionRequirements>(`/api/courses/requirements?${query({ term, crn })}`, signal);
 }
 
 // ---------------------------------------------------------------- watches

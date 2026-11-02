@@ -20,7 +20,7 @@ import {
   termCodeSchema,
 } from "@/lib/courses/validation";
 
-export const DIALOG_TABS = ["overview", "grades", "ratings", "syllabus"] as const;
+export const DIALOG_TABS = ["overview", "grades", "ratings", "syllabus", "requirements"] as const;
 export type DialogTab = (typeof DIALOG_TABS)[number];
 
 export const isDialogTab = (value: unknown): value is DialogTab =>
@@ -214,7 +214,7 @@ export function filterParams(filters: Filters): Record<string, string | null> {
   };
 }
 
-/** The dialog deep link: `?crn=12345[&term=202608][&tab=grades]` (also `?course=`). */
+/** The dialog deep link: `?crn=12345[&term=202608][&tab=grades|requirements|...]` (also `?course=`). */
 export function parseDialog(params: RawSearchParams): { crn: string | null; term: string | null; tab: DialogTab } {
   const raw = pick(params, "crn", "course");
   const crn = raw && crnSchema.safeParse(raw).success ? raw : null;

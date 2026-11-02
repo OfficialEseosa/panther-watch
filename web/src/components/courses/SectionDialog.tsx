@@ -6,9 +6,10 @@ import type { KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode, RefOb
 import { GRADE_KEYS, type GradeAggregate, type GradeDistributionResponse } from "@/lib/course-meta/grades/types";
 import type { ProfessorRating } from "@/lib/course-meta/rmp";
 import type { SectionMeta } from "@/lib/courses/meta";
+import type { Corequisite, PrerequisiteCourse, RestrictionGroup } from "@/lib/gosolar/requirements-html";
 import { cn } from "@/lib/ui/cn";
 import { animateClose, animateOpen, morphTarget, releaseCards, type MotionRun } from "./dialogMotion";
-import { instructorOf, instructorsOf, keyOf, plural } from "@/lib/format";
+import { instructorOf, instructorsOf, keyOf, plural, titleCase } from "@/lib/format";
 import { courseHeading, creditsValue } from "./CourseCard";
 import {
   foldText,
@@ -25,6 +26,7 @@ import { GradeBar } from "./GradeBar";
 import { OldIcon, type OldIconName } from "./icons";
 import { EnrollmentStatus, MeetingTimes } from "./SectionParts";
 import type { DialogTab } from "./useCourseDialog";
+import { useSectionRequirements, type RequirementsState } from "./useSectionRequirements";
 import styles from "./SectionDialog.module.css";
 
 export type SectionDialogProps = {
@@ -65,6 +67,7 @@ const SECTIONS: Array<{ id: DialogTab; label: string; icon: OldIconName }> = [
   { id: "grades", label: "Grade history", icon: "analytics" },
   { id: "ratings", label: "Professor ratings", icon: "people" },
   { id: "syllabus", label: "Syllabus", icon: "bookmark" },
+  { id: "requirements", label: "Requirements", icon: "checklist" },
 ];
 
 /**
@@ -346,6 +349,7 @@ function DialogContent({
             {tab === "grades" ? <GradesSection section={section} state={meta} currentInstructors={currentInstructors} /> : null}
             {tab === "ratings" ? <RatingsSection section={section} state={meta} /> : null}
             {tab === "syllabus" ? <SyllabusSection section={section} state={meta} /> : null}
+            {tab === "requirements" ? <RequirementsSection section={section} /> : null}
           </div>
         </div>
       </div>
@@ -364,8 +368,20 @@ function EmptyState({ icon, title, text, action }: { icon: OldIconName; title: s
   );
 }
 
-/** What a meta-backed section shows before its data: a loading line, or the failure with Retry. */
-function MetaPending({ state, icon, loading }: { state: MetaState; icon: OldIconName; loading: string }) {
+/** What a lazily loaded section shows before its data: a loading line, or the failure with Retry. */
+function MetaPending({
+  state,
+  icon,
+  loading,
+  errorTitle = "Couldn't load this section's details",
+  errorText = "Grades, ratings and the syllabus didn't load. This usually clears in a moment.",
+}: {
+  state: Pick<MetaState, "failed" | "onRetry">;
+  icon: OldIconName;
+  loading: string;
+  errorTitle?: string;
+  errorText?: string;
+}) {
   if (!state.failed) {
     return (
       <div role="status">
@@ -377,8 +393,8 @@ function MetaPending({ state, icon, loading }: { state: MetaState; icon: OldIcon
     <div role="alert">
       <EmptyState
         icon={icon}
-        title="Couldn't load this section's details"
-        text="Grades, ratings and the syllabus didn't load. This usually clears in a moment."
+        title={errorTitle}
+        text={errorText}
         action={
           state.onRetry ? (
             <button type="button" className={styles.retry} onClick={state.onRetry}>
@@ -799,5 +815,163 @@ function SyllabusSection({ section, state }: { section: Section; state: MetaStat
       </a>
       <iframe className={styles.pdf} src={url} title={`Syllabus for ${courseHeading(section)}`} referrerPolicy="no-referrer" />
     </div>
+  );
+}
+
+// ------------------------------------------------------------------ requirements
+
+/** "MATH 1111–1113, C or better, may be concurrent". */
+function prerequisiteLabel(item: PrerequisiteCourse): string {
+  const subject = item.subject ?? titleCase(item.subjectDescription);
+  const number = item.courseNumberTo ? `${item.courseNumber}–${item.courseNumberTo}` : item.courseNumber;
+  const parts = [`${subject} ${number}`];
+  if (item.minimumGrade) parts.push(`${item.minimumGrade} or better`);
+  if (item.concurrent) parts.push("may be concurrent");
+  return parts.join(", ");
+}
+
+/** "CSC 1301L Principles Computer Sci Lab I". */
+function corequisiteLabel(item: Corequisite): string {
+  const subject = item.subject ?? titleCase(item.subjectDescription);
+  return item.title ? `${subject} ${item.courseNumber} ${titleCase(item.title)}` : `${subject} ${item.courseNumber}`;
+}
+
+function Chips({ items, label }: { items: readonly string[]; label: string }) {
+  return (
+    <ul className={styles.reqChips} aria-label={label}>
+      {items.map((item, i) => (
+        <li key={`${item}-${i}`} className={cn(styles.tag, styles.reqChip)}>
+          {item}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function RestrictionGroups({ title, groups }: { title: string; groups: ReadonlyArray<Pick<RestrictionGroup, "label" | "values">> }) {
+  if (groups.length === 0) return null;
+  return (
+    <div className={styles.reqGroup}>
+      <h4 className={styles.reqSubhead}>{title}</h4>
+      <ul className={styles.reqGroupList}>
+        {groups.map((group, i) => (
+          <li key={`${group.label}-${i}`}>
+            <span className={styles.reqGroupLabel}>{group.label}</span>
+            <Chips items={group.values} label={`${title}: ${group.label}`} />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function RequirementsBlock({ title, children }: { title: string; children: ReactNode }) {
+  const id = useId();
+  return (
+    <section className={styles.block} aria-labelledby={id}>
+      <h3 id={id} className={styles.blockTitle}>
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+/** Lazy: the Requirements tab only mounts this when it is open, so the fetch starts then. */
+function RequirementsSection({ section }: { section: Section }) {
+  if (!section.term || !section.courseReferenceNumber) {
+    return <EmptyState icon="checklist" title="Requirements aren't available" text="GoSolar didn't identify this section." />;
+  }
+  return <RequirementsLoader term={section.term} crn={section.courseReferenceNumber} />;
+}
+
+function RequirementsLoader({ term, crn }: { term: string; crn: string }) {
+  return <RequirementsDetails state={useSectionRequirements(term, crn)} />;
+}
+
+function RequirementsDetails({ state }: { state: RequirementsState }) {
+  if (state.status === "loading") return <MetaPending state={{ failed: false }} icon="checklist" loading="Loading requirements…" />;
+  if (state.status === "failed") {
+    return (
+      <MetaPending
+        state={{ failed: true, onRetry: state.retry }}
+        icon="checklist"
+        loading="Loading requirements…"
+        errorTitle="Couldn't load the requirements"
+        errorText="GoSolar didn't answer. This usually clears in a moment."
+      />
+    );
+  }
+  const { description, prerequisites, corequisites, restrictions, unparsed } = state.requirements;
+  const paragraphs = (description ?? "")
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const anyRestriction =
+    restrictions.mustBe.length > 0 ||
+    restrictions.mustNotBe.length > 0 ||
+    restrictions.specialApprovals.length > 0 ||
+    restrictions.other.length > 0;
+  return (
+    <>
+      <RequirementsBlock title="Description">
+        {paragraphs.length ? (
+          <div className={styles.reqProseGroup}>
+            {paragraphs.map((text, i) => (
+              <p key={i} className={styles.reqProse}>
+                {text}
+              </p>
+            ))}
+          </div>
+        ) : (
+          <p className={styles.reqNone}>No description posted</p>
+        )}
+      </RequirementsBlock>
+
+      <RequirementsBlock title="Prerequisites">
+        {prerequisites ? (
+          <>
+            <p className={styles.reqProse}>{prerequisites.text}</p>
+            {prerequisites.items.length ? (
+              <Chips items={prerequisites.items.map(prerequisiteLabel)} label="Prerequisite courses" />
+            ) : null}
+          </>
+        ) : (
+          <p className={styles.reqNone}>No prerequisites listed</p>
+        )}
+      </RequirementsBlock>
+
+      <RequirementsBlock title="Corequisites">
+        {corequisites.length ? (
+          <Chips items={corequisites.map(corequisiteLabel)} label="Corequisite courses" />
+        ) : unparsed?.corequisites ? null : (
+          <p className={styles.reqNone}>No corequisites listed</p>
+        )}
+        {unparsed?.corequisites ? <p className={styles.reqProse}>{unparsed.corequisites}</p> : null}
+      </RequirementsBlock>
+
+      <RequirementsBlock title="Restrictions">
+        {anyRestriction ? (
+          <>
+            <RestrictionGroups title="Must be" groups={restrictions.mustBe} />
+            <RestrictionGroups title="Must not be" groups={restrictions.mustNotBe} />
+            {restrictions.specialApprovals.length ? (
+              <div className={styles.reqGroup}>
+                <h4 className={styles.reqSubhead}>Special approvals</h4>
+                <Chips items={restrictions.specialApprovals} label="Special approvals" />
+              </div>
+            ) : null}
+            <RestrictionGroups title="Other" groups={restrictions.other} />
+          </>
+        ) : unparsed?.restrictions ? null : (
+          <p className={styles.reqNone}>No restrictions listed</p>
+        )}
+        {unparsed?.restrictions ? <p className={styles.reqProse}>{unparsed.restrictions}</p> : null}
+      </RequirementsBlock>
+
+      <p className={styles.reqNote}>
+        From GoSolar. PantherWatch doesn&rsquo;t know what you&rsquo;ve taken, so eligibility is checked at registration.
+      </p>
+    </>
   );
 }

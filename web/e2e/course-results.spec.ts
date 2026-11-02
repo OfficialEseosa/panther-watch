@@ -150,6 +150,71 @@ test("a deep link opens the dialog", async ({ page }) => {
   await expect(page.getByRole("dialog", { name: /CSC 1301\), section 002$/ })).toBeVisible();
 });
 
+/** GoSolar requirement-fragment requests the fake has seen (four per lookup). */
+const requirementCalls = async () => (await fake.requests()).filter((r) => r.path.startsWith("/searchResults/get")).length;
+
+test("the Requirements tab shows GoSolar's prerequisites, corequisites, restrictions and description", async ({ page }) => {
+  await page.goto(RESULTS);
+  await (await hydrated(card(page, OPEN).getByRole("link", { name: "Computer Science (CSC 1301), section 001" }))).click();
+  const dialog = page.getByRole("dialog", { name: /CSC 1301\), section 001$/ });
+  await expect(dialog).toBeVisible();
+  // Lazy: nothing is asked of GoSolar until the tab opens.
+  expect(await requirementCalls()).toBe(0);
+
+  await dialog.getByRole("tab", { name: "Requirements" }).click();
+  await expect(dialog.getByRole("tab", { name: "Requirements" })).toHaveAttribute("aria-selected", "true");
+  await expect(page).toHaveURL(/[?&]tab=requirements/);
+  const panel = dialog.getByRole("tabpanel");
+
+  await expect(panel.getByRole("region", { name: "Description" })).toContainText(
+    "This course is an introduction to the fundamental principles of programming",
+  );
+  const prerequisites = panel.getByRole("region", { name: "Prerequisites" });
+  await expect(prerequisites).toContainText("Course or Test: MATHEMATICS 1111 to 1113");
+  await expect(prerequisites.getByRole("list", { name: "Prerequisite courses" }).getByRole("listitem").first()).toHaveText(
+    "MATH 1111\u20131113, C or better, may be concurrent",
+  );
+  await expect(panel.getByRole("region", { name: "Corequisites" }).getByRole("listitem")).toHaveText([
+    "CSC 1301L Principles Computer Sci Lab I",
+  ]);
+  const restrictions = panel.getByRole("region", { name: "Restrictions" });
+  await expect(restrictions.getByRole("list", { name: /^Must be: Fields of Study/ })).toContainText("Computer Science (CSC)");
+  await expect(restrictions.getByRole("list", { name: "Must not be: Levels" }).getByRole("listitem")).toHaveText([
+    "Undergrad Associate Semester (UA)",
+  ]);
+  await expect(panel.getByText(/^From GoSolar\. PantherWatch doesn.t know what you.ve taken, so eligibility is checked at registration\.$/)).toBeVisible();
+  expect(await requirementCalls()).toBe(4);
+
+  // Cached per section: back to Overview and again costs no GoSolar requests.
+  await dialog.getByRole("tab", { name: "Overview" }).click();
+  await dialog.getByRole("tab", { name: "Requirements" }).click();
+  await expect(prerequisites.getByRole("list", { name: "Prerequisite courses" })).toBeVisible();
+  expect(await requirementCalls()).toBe(4);
+});
+
+test("a section without requirements shows the empty states", async ({ page }) => {
+  await page.goto(`${RESULTS}&crn=${csc1301.closed}&tab=requirements`);
+  const panel = page.getByRole("dialog", { name: /CSC 1301\), section 002$/ }).getByRole("tabpanel");
+  await expect(panel.getByRole("region", { name: "Description" })).toContainText("No description posted");
+  await expect(panel.getByRole("region", { name: "Prerequisites" })).toContainText("No prerequisites listed");
+  await expect(panel.getByRole("region", { name: "Corequisites" })).toContainText("No corequisites listed");
+  await expect(panel.getByRole("region", { name: "Restrictions" })).toContainText("No restrictions listed");
+  await expect(panel.getByRole("list")).toHaveCount(0);
+});
+
+test("a GoSolar failure in the Requirements tab shows Retry, and the retry loads them", async ({ page }) => {
+  await fake.failRequirements({ kind: "http", status: 500 });
+  await page.goto(`${RESULTS}&crn=${csc1301.open}&tab=requirements`);
+  const panel = page.getByRole("dialog", { name: /CSC 1301\), section 001$/ }).getByRole("tabpanel");
+  const alert = panel.getByRole("alert");
+  await expect(alert).toContainText("Couldn't load the requirements");
+  await alert.getByRole("button", { name: "Retry" }).click();
+  await expect(panel.getByRole("alert")).toHaveCount(0);
+  await expect(panel.getByRole("region", { name: "Corequisites" }).getByRole("listitem")).toHaveText([
+    "CSC 1301L Principles Computer Sci Lab I",
+  ]);
+});
+
 test("members can watch and schedule from a card", async ({ page }) => {
   await login(page.request, freshUser("results"));
   await page.goto(RESULTS);
