@@ -163,7 +163,7 @@ describe("a turn", () => {
     const { body, headers, url } = claude.requests[0];
     expect(headers.get("authorization")).toBe(`Bearer ${DUMMY_KEY}`);
     expect(url).toContain("/v1/messages");
-    expect(body).toMatchObject({ model: "claude-haiku-5-5", max_tokens: 2048, stream: true, output_config: { effort: "medium" } });
+    expect(body).toMatchObject({ model: "claude-haiku-5-5", max_tokens: 4096, stream: true, output_config: { effort: "low" } });
     expect(body).not.toHaveProperty("thinking");
     expect(body).not.toHaveProperty("temperature");
     expect(body).not.toHaveProperty("tool_choice");
@@ -212,6 +212,13 @@ describe("a turn", () => {
     const { body, headers } = claude.requests[0];
     expect(body).toMatchObject({ model: "claude-sonnet-5-5", output_config: { effort: "low" }, fallbacks: "default" });
     expect(headers.get("anthropic-beta")).toContain("server-side-fallback-2026-07-01");
+  });
+
+  it("ASSISTANT_EFFORT overrides the effort", async () => {
+    setAssistantConfigForTests({ apiKey: DUMMY_KEY, fetch: claude.fetch, effort: "high" });
+    claude.reply({ text: ["ok"] });
+    await chat("hi");
+    expect(claude.requests[0].body).toMatchObject({ model: "claude-haiku-5-5", output_config: { effort: "high" } });
   });
 });
 

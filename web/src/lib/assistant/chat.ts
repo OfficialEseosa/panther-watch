@@ -4,7 +4,7 @@ import { SCOPES } from "@/lib/oauth/scopes";
 import type { ToolAuth } from "@/lib/tools/registry";
 import { anthropicClient, assistantConfig } from "./config";
 import { prefetch } from "./prefetch";
-import { addUsage, costMicroUsd, ZERO_USAGE, type AssistantModel, type TokenUsage } from "./pricing";
+import { addUsage, costMicroUsd, ZERO_USAGE, type AssistantEffort, type AssistantModel, type TokenUsage } from "./pricing";
 import { contextNote, SYSTEM_PROMPT } from "./prompt";
 import {
   elapsed,
@@ -23,11 +23,11 @@ import { apiTools, toolLabel, toolResultText } from "./tools";
  * the signed-in user with every scope. Streams text deltas and tool progress through `emit` as
  * they happen; the caller (the chat route) owns the SSE framing, the budget and the final `done`.
  *
- * Cost controls in here: max_tokens 2048 per model request, low effort (medium on Haiku, whose
- * levels run lower), at most MAX_TOOL_ROUNDS tool rounds per turn (the request after the last
- * round forbids tools, so the turn always ends in an answer), tool results capped in size, and
- * prompt caching (tools + system prompt are a byte-stable prefix; automatic caching covers the
- * growing conversation, which tool rounds re-read).
+ * Cost controls in here: max_tokens 2048 per model request, low effort (ASSISTANT_EFFORT), at
+ * most MAX_TOOL_ROUNDS tool rounds per turn (the request after the last round forbids tools, so
+ * the turn always ends in an answer), tool results capped in size, and prompt caching (tools +
+ * system prompt are a byte-stable prefix; automatic caching covers the growing conversation,
+ * which tool rounds re-read).
  *
  * Latency: when the latest message names courses, src/lib/assistant/prefetch.ts searches them
  * before the first model request, so "Which CSC 4350 sections are open?" takes one model request
@@ -35,7 +35,7 @@ import { apiTools, toolLabel, toolResultText } from "./tools";
  */
 
 export const MAX_TOOL_ROUNDS = 6;
-const MAX_TOKENS = 2048;
+const MAX_TOKENS = 4096;
 /** Sonnet and Opus decline some requests for policy reasons; the server-side fallback retries those. */
 const FALLBACK_BETA = "server-side-fallback-2026-07-01";
 
@@ -80,7 +80,13 @@ export const ERROR_MESSAGES: Record<Exclude<ErrorCode, "budget">, string> = {
 
 const MAX_TOKENS_NOTE = "\n\n(I ran out of room for this answer. Ask me to continue, or narrow the question.)";
 
-const effortFor = (model: AssistantModel): "low" | "medium" => (model === "claude-haiku-5-5" ? "medium" : "low");
+/**
+ * ASSISTANT_EFFORT when set, else low on every model. On Haiku, low measured faster than medium
+ * (first text 3.0 s vs 3.5 s for "Which CSC 4350 sections are open?") with the same tool calls
+ * and facts; medium/high spent enough on thinking to hit max_tokens on long answers
+ * (docs/runbooks/assistant.md, "Effort").
+ */
+const effortFor = (configured: AssistantEffort | null): AssistantEffort => configured ?? "low";
 const supportsFallback = (model: AssistantModel) => model !== "claude-haiku-5-5";
 
 /** The client's conversation as API messages; the context note leads the first user message. */
@@ -141,6 +147,9 @@ function accountFor(usage: Usage | undefined, model: string): { usage: TokenUsag
   };
   return { usage: u, cost: costMicroUsd(model, u) };
 }
+
+/** Thinking tokens within a response's output tokens (null when the API doesn't report them). */
+const thinkingTokens = (usage: Usage | undefined): number | null => usage?.output_tokens_details?.thinking_tokens ?? null;
 
 /**
  * The assistant content to send back next round. After a mid-output fallback, blocks before the
@@ -216,7 +225,7 @@ async function turn(
     max_tokens: MAX_TOKENS,
     system: [{ type: "text" as const, text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" as const } }],
     tools: apiTools(),
-    output_config: { effort: effortFor(model) },
+    output_config: { effort: effortFor(config.effort) },
     cache_control: { type: "ephemeral" as const },
     metadata: { user_id: userId },
     ...(supportsFallback(model) ? { betas: [FALLBACK_BETA], fallbacks: "default" as const } : {}),
@@ -272,7 +281,7 @@ async function turn(
       const partial = accountFor(stream.currentMessage?.usage, stream.currentMessage?.model ?? model);
       usage = addUsage(usage, partial.usage);
       costMicro += partial.cost;
-      trace.models.push({ ms: elapsed(requestStarted), ...partial.usage, stop: "error" });
+      trace.models.push({ ms: elapsed(requestStarted), ...partial.usage, thinking: thinkingTokens(stream.currentMessage?.usage), stop: "error" });
       const code = classify(error, signal);
       if (code === "aborted") return result("aborted");
       if (code === "internal") {
@@ -293,7 +302,7 @@ async function turn(
     const spent = accountFor(message.usage, message.model ?? model);
     usage = addUsage(usage, spent.usage);
     costMicro += spent.cost;
-    trace.models.push({ ms: elapsed(requestStarted), ...spent.usage, stop: message.stop_reason ?? null });
+    trace.models.push({ ms: elapsed(requestStarted), ...spent.usage, thinking: thinkingTokens(message.usage), stop: message.stop_reason ?? null });
 
     if (message.stop_reason === "refusal") {
       emit({ event: "error", data: { code: "refusal", message: ERROR_MESSAGES.refusal } });

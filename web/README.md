@@ -57,6 +57,7 @@ variable fails the first request that needs it, and the error names every bad va
 | `ADMIN_EMAILS` | no | Comma-separated admin emails, case-insensitive. |
 | `ANTHROPIC_API_KEY` | no | Claude API key for the on-site assistant. Unset or blank turns it off: `POST /api/assistant/chat` answers 503 and `/assistant` shows a "not available" card. |
 | `ASSISTANT_MODEL` | no | `claude-haiku-5-5` (default), `claude-sonnet-5-5` or `claude-opus-5-5`. Any other value fails env validation, which breaks every request that reads env. |
+| `ASSISTANT_EFFORT` | no | `low` (default), `medium` or `high`: the assistant's thinking effort (`output_config.effort`) on every model. Any other value fails env validation. See `docs/runbooks/assistant.md`, "Effort". |
 | `ASSISTANT_USER_DAILY_MESSAGES` / `ASSISTANT_GLOBAL_DAILY_MESSAGES` / `ASSISTANT_GLOBAL_DAILY_USD` | no | Assistant daily caps: messages per user (default 40), messages site-wide (800), estimated spend site-wide in US dollars (3). Reset at midnight Eastern. See `docs/runbooks/assistant.md`. |
 | `ASSISTANT_PREFETCH` | no | `on` (default) or `off`: whether the assistant searches the courses a message names ("CSC 4350") before its first model request. |
 

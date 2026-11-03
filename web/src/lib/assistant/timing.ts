@@ -13,6 +13,8 @@ export interface ModelTiming {
   ms: number;
   input: number;
   output: number;
+  /** Thinking tokens within `output` (null when the API doesn't report them). */
+  thinking: number | null;
   cacheRead: number;
   cacheWrite: number;
   stop: string | null;

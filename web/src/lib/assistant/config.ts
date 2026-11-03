@@ -1,7 +1,7 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "@/lib/env";
-import type { AssistantModel } from "./pricing";
+import type { AssistantEffort, AssistantModel } from "./pricing";
 
 /**
  * Assistant settings, from env (see src/lib/env.ts). Tests override them, including the HTTP
@@ -11,6 +11,8 @@ export interface AssistantConfig {
   /** Null turns the assistant off. */
   apiKey: string | null;
   model: AssistantModel;
+  /** output_config.effort; null uses the per-model default (src/lib/assistant/chat.ts). */
+  effort: AssistantEffort | null;
   userDailyMessages: number;
   globalDailyMessages: number;
   globalDailyUsd: number;
@@ -37,6 +39,7 @@ export function assistantConfig(): AssistantConfig {
   return {
     apiKey: env.ANTHROPIC_API_KEY ?? null,
     model: env.ASSISTANT_MODEL,
+    effort: env.ASSISTANT_EFFORT ?? null,
     userDailyMessages: env.ASSISTANT_USER_DAILY_MESSAGES,
     globalDailyMessages: env.ASSISTANT_GLOBAL_DAILY_MESSAGES,
     globalDailyUsd: env.ASSISTANT_GLOBAL_DAILY_USD,

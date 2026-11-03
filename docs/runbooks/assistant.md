@@ -63,11 +63,25 @@ Set `ASSISTANT_MODEL` and redeploy. Only these values are accepted, because only
 
 | `ASSISTANT_MODEL` | Rough cost per message | Notes |
 |---|---|---|
-| `claude-haiku-5-5` (default) | ≈ $0.001 (measured) | Runs at effort `medium`. 800 messages ≈ $0.80, so the message caps bind long before the $3 spend cap. |
-| `claude-sonnet-5-5` | ≈ $0.02 (measured) | Runs at effort `low`, with Anthropic's server-side refusal fallback. $3 buys about 150 messages a day, so the spend cap binds before the 800-message cap. |
+| `claude-haiku-5-5` (default) | ≈ $0.0005 for a one-search answer, ≈ $0.004 for a professor comparison (measured at effort `low`) | 800 messages cost about $0.40 to $3.50 depending on the mix, so on a day of mostly professor comparisons the $3 spend cap can bind before the message cap. |
+| `claude-sonnet-5-5` | ≈ $0.02 (measured) | With Anthropic's server-side refusal fallback. $3 buys about 150 messages a day, so the spend cap binds before the 800-message cap. |
 | `claude-opus-5-5` | not measured; its token prices are 2× Sonnet's | Same settings as Sonnet. |
 
 **Any other value fails env validation, and that breaks every request that reads env (the whole site), not just the chat.** Check the spelling before you redeploy. When you change the model, revisit `ASSISTANT_GLOBAL_DAILY_USD` (and the per-user cap) for the new cost per message. If Anthropic's prices change, update `PRICES` in `pricing.ts`; a model missing from that table is priced at its most expensive row.
+
+## Effort
+
+`ASSISTANT_EFFORT` (`low`, `medium` or `high`; blank means `low`) sets `output_config.effort` on every model request. Claude Haiku 5.5 always thinks before it answers (thinking can't be turned off usefully: `thinking: {type: "disabled"}` is accepted but then skips tool calls the prompt asks for, and `between_tools` is Sonnet 5.5 only), so effort is the latency knob. Change it and redeploy; any other value fails env validation for the whole site.
+
+Measured locally on Haiku on 2026-11-02 (medians of 3 new chats each; first text / total, in seconds):
+
+| Question | `low` | `medium` | `high` (1 run) |
+|---|---|---|---|
+| Which CSC 4350 sections are open? | 3.0 / 4.4 | 3.5 / 4.9 | 6.7 / 8.0 |
+| Can I take CSC 2720 and what do I need first? | 4.8 / 7.9 | 6.8 / 8.6 | 10.9 / 12.6, cut off |
+| What am I tracking? | 1.9 / 2.8 | 2.6 / 3.7 | 2.4 / 3.2 |
+
+Every level made the same tool calls for the same path (search, then section details and syllabi for a professor comparison; search, then requirements) and quoted the same seats, grades and ratings. `medium` and `high` spent enough output on thinking that a long answer (a professor comparison, the requirements answer) ran into the then 2048-token `max_tokens` and was cut off; `max_tokens` is now 4096 (at most about $0.001 more per request on Haiku), which the measured comparisons fit inside. Per-request thinking tokens are in the `assistant.turn` log (`modelRequests[].thinking`). Raise effort only if answers get worse (missed tool calls, wrong ranking); expect slower first words and more cut-off answers.
 
 ## Raising or lowering caps
 

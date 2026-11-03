@@ -15,6 +15,8 @@ export interface Price {
 
 export const ASSISTANT_MODELS = ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"] as const;
 export type AssistantModel = (typeof ASSISTANT_MODELS)[number];
+/** The output_config.effort levels ASSISTANT_EFFORT accepts. */
+export type AssistantEffort = "low" | "medium" | "high";
 
 const PRICES: Record<string, Price> = {
   // Prompts of 100K tokens or fewer; HAIKU_LONG applies above that.

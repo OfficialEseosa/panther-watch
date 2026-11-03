@@ -45,6 +45,11 @@ const schema = z.object({
   ASSISTANT_MODEL: blankAsUndefined(
     z.enum(["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"]).default("claude-haiku-5-5"),
   ),
+  /**
+   * Assistant thinking effort (output_config.effort) on every model: low, medium or high.
+   * Unset means low (src/lib/assistant/chat.ts).
+   */
+  ASSISTANT_EFFORT: blankAsUndefined(z.enum(["low", "medium", "high"]).optional()),
   /** Assistant messages one user may send per day (America/New_York). */
   ASSISTANT_USER_DAILY_MESSAGES: blankAsUndefined(z.coerce.number().int().min(0).default(40)),
   /** Assistant messages the whole site may send per day. */
