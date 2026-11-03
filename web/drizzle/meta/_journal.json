@@ -57,6 +57,13 @@
       "when": 1793639761258,
       "tag": "0007_user_level_preference",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793676767137,
+      "tag": "0008_catalog_courses",
+      "breakpoints": true
     }
   ]
 }

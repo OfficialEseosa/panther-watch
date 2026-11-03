@@ -10,7 +10,14 @@ import {
   type GoSolarOptions,
   type ResolvedOptions,
 } from "./http";
-import type { SearchParams, SearchResponse, SearchResult } from "./types";
+import type {
+  CatalogSearchParams,
+  CatalogSearchResponse,
+  CatalogSearchResult,
+  SearchParams,
+  SearchResponse,
+  SearchResult,
+} from "./types";
 
 /**
  * Why every session owns a dedicated single-connection Agent:
@@ -71,6 +78,43 @@ export class GoSolarSession implements AsyncDisposable {
   }
 
   /**
+   * One page of Banner's course catalog search ("Browse Course Catalog", not sections) for
+   * several subjects at once. Needs a session declared with `mode: "courseSearch"`.
+   *
+   * Banner keeps the FIRST catalog search of a session as that session's search: a later call
+   * with other subjects (or a level) on the same session answers with the first search's
+   * courses again, and neither `courseSearch/resetDataForm` nor `classSearch/resetDataForm`
+   * clears it (verified live 2026-11-02). Paging the same search (only `pageOffset` changes)
+   * works. So: one subject list per session, then close it.
+   */
+  async searchCatalog(params: CatalogSearchParams): Promise<CatalogSearchResult> {
+    const query: [string, string][] = [
+      ["txt_subject", params.subjects.join(",")],
+      ["txt_term", this.term],
+      ["startDatepicker", ""],
+      ["endDatepicker", ""],
+      ["pageOffset", String(params.pageOffset ?? 0)],
+      ["pageMaxSize", String(params.pageMaxSize ?? 500)],
+      ["sortColumn", "subjectDescription"],
+      ["sortDirection", "asc"],
+    ];
+    const url = buildUrl(this.options.baseUrl, "/courseSearchResults/courseSearchResults", query);
+    const body = (await getJson(url, this.options, {
+      headers: { Cookie: this.cookies },
+      dispatcher: this.agent,
+    })) as CatalogSearchResponse | null;
+
+    if (!body) throw new GoSolarError("GoSolar catalog search returned an empty body", 200, url);
+    if (body.success !== true) {
+      throw new GoSolarError("GoSolar catalog search returned success:false", 200, url);
+    }
+    if (body.data === null) {
+      throw new GoSolarAffinityError(url, cookieNames(this.cookies));
+    }
+    return { ...body, data: (body.data ?? []).map(decodeStrings) };
+  }
+
+  /**
    * POSTs a form (e.g. `term` + `courseReferenceNumber`) to one of Banner's HTML fragment
    * endpoints on this session's connection and cookies, and returns the raw HTML. Non-2xx,
    * timeouts and socket errors throw GoSolarError; validating the body is up to the caller.
@@ -103,14 +147,23 @@ export class GoSolarSession implements AsyncDisposable {
   }
 }
 
+export interface SessionMode {
+  /**
+   * "courseSearch" declares the term for Banner's course catalog search (`searchCatalog`)
+   * instead of the class (section) search.
+   */
+  mode?: "courseSearch";
+}
+
 /** Declares `term` on a fresh connection and returns a session pinned to that GoSolar node. */
 export async function createGoSolarSession(
   term: string,
   options?: GoSolarOptions,
+  { mode }: SessionMode = {},
 ): Promise<GoSolarSession> {
   const resolved = resolveOptions(options);
   const agent = resolved.agentFactory();
-  const url = `${resolved.baseUrl}/term/search`;
+  const url = `${resolved.baseUrl}/term/search${mode ? `?mode=${mode}` : ""}`;
 
   try {
     const response = await resolved.fetchImpl(url, {

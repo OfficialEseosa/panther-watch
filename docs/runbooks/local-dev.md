@@ -160,7 +160,7 @@ rm -rf .next/dev                # PowerShell: Remove-Item -Recurse -Force .next\
 npm run dev
 ```
 
-The cron routes (`/api/cron/watch|cleanup|grades|syllabi`) are POST with `Authorization: Bearer <CRON_SECRET>`. This is what `app.trigger_cron()` sends from Supabase.
+The cron routes (`/api/cron/watch|cleanup|grades|syllabi|catalog`) are POST with `Authorization: Bearer <CRON_SECRET>`. This is what `app.trigger_cron()` sends from Supabase.
 
 bash / Git Bash:
 

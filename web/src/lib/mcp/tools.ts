@@ -41,7 +41,9 @@ export function registerTools(server: McpServer): void {
 export const SERVER_INSTRUCTIONS =
   "PantherWatch: Georgia State University (GSU) course search, seat alerts and schedule planning for the signed-in " +
   "student. Start with list_terms to get term codes. search_sections reads live GoSolar data; call it once per " +
-  "subject and filter locally instead of polling. get_course_requirements gives a section's prerequisites, " +
+  "subject and filter locally instead of polling. When the student names a course by title or nickname instead " +
+  "of a code (\"calculus 2\"), call find_courses to get its subject and course number, and ask which one they " +
+  "mean when its confidence is ambiguous. get_course_requirements gives a section's prerequisites, " +
   "corequisites and registration restrictions; PantherWatch doesn't know what the student has taken. To tell the " +
   "student when a seat opens, use add_watch (email alerts) rather than checking seats repeatedly. The schedule is " +
   "a plan inside PantherWatch: it never registers the student in GoSolar. PantherWatch is not affiliated with " +

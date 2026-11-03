@@ -67,6 +67,9 @@ export interface GoSolarStats {
 
 const statsStore = new AsyncLocalStorage<GoSolarStats>();
 
+/** `POST /term/search`, with or without `?mode=courseSearch`. */
+const TERM_DECLARATION = /\/term\/search(\?|$)/;
+
 /** Runs `work`, counting its GoSolar requests into `gosolar` (readable while it runs, too). */
 export async function measureGoSolar<T>(
   work: () => Promise<T>,
@@ -83,7 +86,7 @@ function measured(fetchImpl: FetchLike): FetchLike {
     if (!stats) return fetchImpl(url, init);
     const started = performance.now();
     stats.requests++;
-    if (url.endsWith("/term/search")) stats.sessions++;
+    if (TERM_DECLARATION.test(url)) stats.sessions++;
     const settle = () => {
       stats.ms += performance.now() - started;
     };

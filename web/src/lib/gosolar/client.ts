@@ -86,6 +86,22 @@ export async function getSubjects(
   return ((await getJson(url, resolved)) as Subject[] | null) ?? [];
 }
 
+/**
+ * Every subject of the course catalog for `term` (`GET /courseSearch/get_subject`): a longer list
+ * than the class search's (`getSubjects`), since it includes subjects with no sections that term
+ * and some retired ones (live 2026-11-02: 248 vs 173). Descriptions read "CSC - COMPUTER SCIENCE".
+ */
+export async function getCatalogSubjects(term: string, options?: GoSolarOptions): Promise<Subject[]> {
+  const resolved = resolveOptions(options);
+  const url = buildUrl(resolved.baseUrl, "/courseSearch/get_subject", [
+    ["searchTerm", ""],
+    ["term", term],
+    ["offset", "1"],
+    ["max", "2000"],
+  ]);
+  return ((await getJson(url, resolved)) as Subject[] | null) ?? [];
+}
+
 export interface CourseGroup {
   subject: string;
   courseNumber: string;

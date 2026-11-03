@@ -4,13 +4,13 @@
 
 Course data is available as a public JSON API (no key, CORS-enabled). Use it instead of scraping the results pages, and keep to at most 1 request per second.
 
-AI assistants and agents that support MCP connectors (for example Claude, ChatGPT or Cursor) should connect to https://www.pantherwatch.app/api/mcp (remote MCP server, OAuth): the student allows it once, and the assistant can search courses, read prerequisites and restrictions, summarize a section's syllabus (grading, exams, attendance, textbook), check conflicts, track sections and edit the student's schedule.
+AI assistants and agents that support MCP connectors (for example Claude, ChatGPT or Cursor) should connect to https://www.pantherwatch.app/api/mcp (remote MCP server, OAuth): the student allows it once, and the assistant can find a course by name ("calculus 2" → MATH 2212), search courses, read prerequisites and restrictions, summarize a section's syllabus (grading, exams, attendance, textbook), check conflicts, track sections and edit the student's schedule.
 
 Signed-in students can also chat with PantherWatch Assistant, the built-in assistant at https://www.pantherwatch.app/assistant. It uses the same tools as the MCP connector; it has no public API.
 
 ## Docs
 
-- [Developers](https://www.pantherwatch.app/developers): the MCP connector (URL, scopes, tools) and the public API (terms, subjects, section search, grades/ratings/syllabus), with example responses, caching and fair use.
+- [Developers](https://www.pantherwatch.app/developers): the MCP connector (URL, scopes, tools) and the public API (terms, subjects, course catalog lookup by name, section search, grades/ratings/syllabus), with example responses, caching and fair use.
 
 ## Pages
 

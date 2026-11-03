@@ -119,7 +119,7 @@ curl -s -o /dev/null -w '%{http_code}\n' "$HOST/"                               
 curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' "$HOST/tracked-classes" # 307 -> $HOST/ (signed out)
 curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' "$HOST/api/auth/google/login"
 #   302 -> https://accounts.google.com/o/oauth2/v2/auth?...redirect_uri=<HOST>/api/auth/google/callback...
-for p in watch cleanup grades syllabi; do                                        # all 401 without the secret
+for p in watch cleanup grades syllabi catalog; do                                       # all 401 without the secret
   curl -s -o /dev/null -w "$p %{http_code}\n" -X POST "$HOST/api/cron/$p"; done
 curl -s -o /dev/null -w '%{http_code}\n' -X POST -H "Authorization: Bearer $CRON_SECRET" "$HOST/api/cron/syllabi"  # 202
 curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $CRON_SECRET" "$HOST/api/cron/cleanup"          # 202/200 (GET, as Vercel cron sends)
@@ -166,7 +166,7 @@ Koyeb was paused in step 2. Check it before step 8, because Spring's `CourseWatc
 ## 8. Enable the pg_cron jobs
 
 - [ ] Supabase Dashboard → SQL Editor → paste `docs/runbooks/supabase-cron.sql`, replace `<PASTE_CRON_SECRET>` with Vercel's `CRON_SECRET`, and Run. Don't save the snippet with the secret in it. Delete the snippet, or re-run it with the placeholder restored.
-- [ ] `select jobname, schedule, active from cron.job where jobname like 'pantherwatch-%';` returns 4 active jobs: `watch`, `cleanup`, `syllabi` and `purge-cron-history`. There is no `grades` job (APEX is Cloudflare-blocked; see the comment in `supabase-cron.sql`).
+- [ ] `select jobname, schedule, active from cron.job where jobname like 'pantherwatch-%';` returns 5 active jobs: `watch`, `cleanup`, `syllabi`, `catalog` and `purge-cron-history`. There is no `grades` job (APEX is Cloudflare-blocked; see the comment in `supabase-cron.sql`).
 - [ ] `show cron.timezone;` returns GMT/UTC.
 
 ## 9. Verify the first watcher runs

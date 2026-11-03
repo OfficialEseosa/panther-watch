@@ -11,10 +11,12 @@ vi.mock("next/server", async (importOriginal) => ({
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { setDbForTests } from "@/db";
 import { scheduleEntries, terms, users, watchedSections, type User } from "@/db/schema";
+import { resetCatalogCacheForTests } from "@/lib/course-meta/catalog-lookup";
 import { setGoSolarOptionsForTests } from "@/lib/courses";
 import type { CourseData, MeetingTime } from "@/lib/gosolar";
 import { disconnectApp } from "@/lib/oauth";
 import { resetRateLimits, toolLimiter } from "@/lib/oauth/rate-limit";
+import { seedCatalog } from "../helpers/catalog-fixture";
 import { createTestDb, seedUser, truncateAll, type TestDatabase } from "../helpers/db";
 import { makeClosedSection, makeSection, startFakeGoSolar, type FakeGoSolar } from "../helpers/fake-gosolar";
 import { appFetch, connect, MCP_URL, REDIRECT, register, type RegisteredClient, type Tokens } from "../helpers/oauth";
@@ -50,6 +52,7 @@ beforeEach(async () => {
   await truncateAll(testDb.db);
   gs.reset();
   resetRateLimits();
+  resetCatalogCacheForTests();
   await testDb.db.insert(terms).values([
     { code: OPEN, description: "Spring Semester 2027", viewOnly: false },
     { code: "202705", description: "Summer Semester 2027 (View Only)", viewOnly: true },
@@ -150,6 +153,7 @@ describe("tools", () => {
         "add_to_schedule",
         "add_watch",
         "check_conflicts",
+        "find_courses",
         "get_course_requirements",
         "get_section_details",
         "get_syllabus_summary",
@@ -179,6 +183,54 @@ describe("tools", () => {
         { code: "202705", name: "Summer Semester 2027", registrationOpen: false, status },
       ],
     });
+  });
+
+  const codes = (data: Record<string, unknown> | null): string[] =>
+    ((data?.candidates ?? []) as Array<{ subject: string; courseNumber: string }>).map((c) => `${c.subject} ${c.courseNumber}`);
+
+  it("find_courses: a name or nickname to a course code from the catalog, at the student's level", async () => {
+    await seedCatalog(testDb.db);
+    const client = await mcp();
+
+    const { isError, data } = await callTool(client, "find_courses", { query: "calculus 2" });
+    expect(isError).toBe(false);
+    expect(data).toMatchObject({ query: "calculus 2", level: "US", levelSource: "default", confidence: "high", matched: "calculus 2" });
+    const candidates = data!.candidates as Array<Record<string, unknown>>;
+    expect(candidates[0]).toEqual({
+      subject: "MATH",
+      courseNumber: "2212",
+      title: "Calculus of One Variable II",
+      credits: "4",
+      level: "US",
+      description: [
+        "Prerequisite: Math 2201 or Math 2211 with a C or higher.",
+        "Applications and techniques of integration; transcendental functions; sequences and series.",
+      ].join("\n"),
+    });
+    expect(candidates.length).toBeLessThanOrEqual(5);
+    for (const c of candidates) expect(String(c.description ?? "").length).toBeLessThanOrEqual(300);
+
+    // Ambiguous: the 4000 and 6000 twins once every level is searched; the saved campus decides otherwise.
+    const twins = await callTool(client, "find_courses", { query: "software engineering", level: "GS" });
+    expect(twins.data).toMatchObject({ level: "GS", levelSource: "input", confidence: "high" });
+    expect(codes(twins.data)[0]).toBe("CSC 6350");
+    await testDb.db.update(users).set({ levelPreference: "UA" }).where(eq(users.id, alice.id));
+    const perimeter = await callTool(client, "find_courses", { query: "computers and applications" });
+    expect(perimeter.data).toMatchObject({ level: "UA", levelSource: "preference", confidence: "high" });
+    expect(codes(perimeter.data)[0]).toBe("CSC 1010");
+
+    // Nothing at the level nobody asked for (Perimeter teaches no 4000 course): every level is
+    // searched, and the result says so.
+    const everywhere = await callTool(client, "find_courses", { query: "software engineering" });
+    expect(everywhere.data).toMatchObject({
+      level: "all",
+      levelSource: "all levels (nothing matched at the saved campus's level)",
+      confidence: "ambiguous",
+    });
+    expect(codes(everywhere.data)).toEqual(["CSC 4350", "CSC 6350"]);
+    const nothing = await callTool(client, "find_courses", { query: "underwater basket weaving" });
+    expect(nothing.data).toMatchObject({ level: "all", confidence: "none", candidates: [] });
+    expect(gs.requests).toHaveLength(0); // the catalog is in the database, not GoSolar
   });
 
   it("search_sections: compact sections with effective seats, meeting days and delivery", async () => {

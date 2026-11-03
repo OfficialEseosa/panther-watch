@@ -41,6 +41,34 @@ const SUBJECTS_RESPONSE = `{
   ]
 }`;
 
+const CATALOG_RESPONSE = `{
+  "query": "calculus 2",
+  "level": "US",
+  "confidence": "high",
+  "matchedBy": "nickname",
+  "matched": "calculus 2",
+  "courses": [
+    {
+      "subject": "MATH",
+      "courseNumber": "2212",
+      "title": "Calculus of One Variable II",
+      "description": "Prerequisite: Math 2201 or Math 211 with a C or higher.\\nApplications and techniques of integration; transcendental and inverse trigonometric functions; …",
+      "credits": "4",
+      "level": "US",
+      "score": 1
+    },
+    {
+      "subject": "MATH",
+      "courseNumber": "2202",
+      "title": "Calculus for the Life Sciences II",
+      "credits": "4",
+      "level": "US",
+      "score": 0.6
+    },
+    …
+  ]
+}`;
+
 const SEARCH_RESPONSE = `{
   "sections": [
     {
@@ -154,6 +182,7 @@ const MCP_URL = `${BASE}/api/mcp`;
 const MCP_TOOLS: Array<[name: string, scope: string, description: string]> = [
   ["list_terms", "read", "Terms in GoSolar, registrable ones first."],
   ["search_subjects", "read", "Subject codes matching a word (\"psych\" → PSYC)."],
+  ["find_courses", "read", "Course name or nickname to subject and course number from the GSU catalog (\"calculus 2\" → MATH 2212), with a confidence and the catalog description."],
   ["search_sections", "read", "Live sections of a subject or course at one level (the level given, else the student's saved campus, else bachelor's): seats, waitlist, meetings, delivery mode."],
   ["get_section_details", "read", "Grade history, RateMyProfessors rating and syllabus for one section."],
   ["get_course_requirements", "read", "Prerequisites, corequisites, registration restrictions and catalog description of one section."],
@@ -207,6 +236,7 @@ const SECTIONS = [
   { id: "fair-use", title: "Fair use" },
   { id: "terms", title: "List terms" },
   { id: "subjects", title: "Find subjects" },
+  { id: "catalog", title: "Find a course by name" },
   { id: "search", title: "Search sections" },
   { id: "meta", title: "Grades, ratings and syllabus" },
   { id: "requirements", title: "Prerequisites and restrictions" },
@@ -465,6 +495,54 @@ export default function DevelopersPage() {
             <Code label="Response 200">{SUBJECTS_RESPONSE}</Code>
           </Section>
 
+          <Section id="catalog" title="Find a course by name">
+            <Endpoint method="GET" path="/api/courses/catalog?q&level&limit" />
+            <Params
+              rows={[
+                [
+                  "q",
+                  true,
+                  <>
+                    A course name, nickname or code, 2&ndash;120 characters: <code>calculus 2</code>,{" "}
+                    <code>intro to programming</code>, <code>data structures</code>, <code>CSC 1301</code>.
+                  </>,
+                ],
+                [
+                  "level",
+                  false,
+                  <>
+                    <code>US</code> undergraduate (bachelor&rsquo;s), <code>UA</code> courses taught at Perimeter
+                    College (associate), <code>GS</code> graduate, <code>LW</code> law. Leave it out for all levels.
+                  </>,
+                ],
+                ["limit", false, <>Courses to return, 1&ndash;20. Default 5.</>],
+              ]}
+            />
+            <ul>
+              <li>
+                Searches GSU&rsquo;s course catalog (courses, not sections), copied nightly from GoSolar&rsquo;s course
+                catalog for the terms open for registration. Whether a course runs in a term is{" "}
+                <a href="#search">Search sections</a>&rsquo; job.
+              </li>
+              <li>
+                <code>courses</code> are ranked by <code>score</code> (0&ndash;1): a course code in <code>q</code> or a
+                common nickname scores 1, title words up to 0.95, description words lower.{" "}
+                <code>confidence</code> is <code>high</code> when the first course is a clear winner,{" "}
+                <code>ambiguous</code> when several fit (ask the user which one), <code>none</code> when nothing
+                matched. <code>matchedBy</code> says how the first course matched: <code>code</code>,{" "}
+                <code>nickname</code>, <code>title</code> or <code>description</code>.
+              </li>
+              <li>
+                <code>title</code> is the catalog&rsquo;s full title; <code>description</code> is the catalog text
+                (prerequisites first, when there are any). <code>level</code> is PantherWatch&rsquo;s reading of the
+                course number: 5000 and up is graduate, courses Perimeter College owns are associate. Graduate courses
+                are often open to undergraduates too.
+              </li>
+            </ul>
+            <Code label="Request">{`curl "${BASE}/api/courses/catalog?q=calculus%202&level=US"`}</Code>
+            <Code label="Response 200 (trimmed)">{CATALOG_RESPONSE}</Code>
+          </Section>
+
           <Section id="search" title="Search sections">
             <Endpoint method="GET" path="/api/courses/search?term&subject&courseNumber&level" />
             <Params
@@ -637,6 +715,14 @@ export default function DevelopersPage() {
                     </td>
                     <td>
                       <code>public, s-maxage=3600, stale-while-revalidate=86400</code>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <code>/api/courses/catalog</code>
+                    </td>
+                    <td>
+                      <code>public, s-maxage=3600</code>
                     </td>
                   </tr>
                   <tr>

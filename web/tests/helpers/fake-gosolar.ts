@@ -13,6 +13,13 @@
  *   with `setRequirements`, or Banner's "No ... information available." ones. Like the search,
  *   they need both cookies of a declaration of that term; without them they answer
  *   `{success:true, data:null}` (an assumption: live GoSolar was not probed without a session).
+ * - The course catalog ("Browse Course Catalog"): `GET /courseSearch/get_subject` lists the
+ *   subjects of the catalog set with `setCatalog`, and `GET /courseSearchResults/
+ *   courseSearchResults` (comma-separated `txt_subject`) pages through their courses, sorted by
+ *   subject description then course number. It needs both cookies of a `POST /term/search?
+ *   mode=courseSearch` declaration of that term, and, like live Banner (2026-11-02), a session
+ *   keeps its FIRST catalog search: a later call with other subjects gets the first search's
+ *   courses again (only `pageOffset`/`pageMaxSize` take effect).
  *
  *   const gs = await startFakeGoSolar();
  *   gs.setSections("202608", "CSC", "1301", [makeSection({ courseReferenceNumber: "80001" })]);
@@ -22,7 +29,7 @@
 import { randomBytes } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
-import type { CourseData, Faculty, MeetingTime, Subject, Term } from "@/lib/gosolar";
+import type { CatalogCourseData, CourseData, Faculty, MeetingTime, Subject, Term } from "@/lib/gosolar";
 
 export const SSB_PATH = "/StudentRegistrationSsb/ssb";
 export const SESSION_COOKIE = "JSESSIONID";
@@ -85,6 +92,10 @@ export interface FakeGoSolar {
   setRequirements(term: string, crn: string, fragments: RequirementFragments): void;
   /** The next `count` requirement-fragment requests fail as described. */
   failNextRequirements(failure: RequirementFailure, count?: number): void;
+  /** The course catalog of `term` (raw Banner records, see tests/helpers/catalog-fixture.ts). */
+  setCatalog(term: string, courses: CatalogCourseData[]): void;
+  /** The next `count` catalog searches fail as described. */
+  failNextCatalogSearches(failure: SearchFailure, count?: number): void;
   /** Clears configuration, failures and the request log. */
   reset(): void;
   close(): Promise<void>;
@@ -138,8 +149,10 @@ export async function startFakeGoSolar(): Promise<FakeGoSolar> {
   let failures: Array<{ failure: SearchFailure; level?: string }> = [];
   const requirements = new Map<string, RequirementFragments>();
   let requirementFailures: RequirementFailure[] = [];
-  /** JSESSIONID -> { term, affinity cookie value } */
-  const sessions = new Map<string, { term: string; affinity: string }>();
+  const catalogs = new Map<string, CatalogCourseData[]>();
+  let catalogFailures: SearchFailure[] = [];
+  /** JSESSIONID -> { term, affinity cookie value, declaration mode, first catalog search } */
+  const sessions = new Map<string, { term: string; affinity: string; mode: string; catalogSubjects?: string }>();
   const requests: FakeGoSolarRequest[] = [];
 
   function handle(req: IncomingMessage, res: ServerResponse, body: string): void {
@@ -172,8 +185,10 @@ export async function startFakeGoSolar(): Promise<FakeGoSolar> {
       const term = new URLSearchParams(body).get("term") ?? "";
       const sessionId = randomBytes(16).toString("hex").toUpperCase();
       const affinity = `${randomBytes(4).readUInt32BE()}.20480.0000`;
-      sessions.set(sessionId, { term, affinity });
-      send(200, { fwdURL: "/StudentRegistrationSsb/ssb/classSearch/classSearch" }, {
+      const mode = query.mode ?? "";
+      sessions.set(sessionId, { term, affinity, mode });
+      const forward = mode === "courseSearch" ? "courseSearch/courseSearch" : "classSearch/classSearch";
+      send(200, { fwdURL: `/StudentRegistrationSsb/ssb/${forward}` }, {
         "Set-Cookie": [
           `${SESSION_COOKIE}=${sessionId}; Path=/StudentRegistrationSsb; HttpOnly`,
           `${AFFINITY_COOKIE}=${affinity}; path=/; Httponly`,
@@ -264,6 +279,61 @@ export async function startFakeGoSolar(): Promise<FakeGoSolar> {
       return;
     }
 
+    if (req.method === "GET" && path === "/courseSearchResults/courseSearchResults") {
+      const pageOffset = Number(query.pageOffset ?? 0);
+      const pageMaxSize = Number(query.pageMaxSize ?? 10);
+      const failure = catalogFailures.shift();
+      if (failure?.kind === "http") {
+        send(failure.status, { success: false });
+        return;
+      }
+      const session = sessions.get(cookies[SESSION_COOKIE] ?? "");
+      const affinityOk =
+        failure?.kind !== "affinity" &&
+        session !== undefined &&
+        session.mode === "courseSearch" &&
+        cookies[AFFINITY_COOKIE] === session.affinity &&
+        session.term === query.txt_term;
+      if (!affinityOk) {
+        send(200, { success: true, totalCount: 0, data: null, pageOffset, pageMaxSize });
+        return;
+      }
+      // The session's first catalog search sticks (live Banner behaviour).
+      session.catalogSubjects ??= (query.txt_subject ?? "").toUpperCase();
+      const wanted = new Set(session.catalogSubjects.split(",").map((code) => code.trim()).filter(Boolean));
+      const matches = (catalogs.get(session.term) ?? [])
+        .filter((course) => wanted.has((course.subjectCode ?? course.subject ?? "").toUpperCase()))
+        .sort(
+          (a, b) =>
+            (a.subjectDescription ?? "").localeCompare(b.subjectDescription ?? "") ||
+            (a.courseNumber ?? "").localeCompare(b.courseNumber ?? ""),
+        );
+      send(200, {
+        success: true,
+        totalCount: matches.length,
+        data: matches.slice(pageOffset, pageOffset + pageMaxSize),
+        pageOffset,
+        pageMaxSize,
+        coursesFetchedCount: matches.length,
+        pathMode: "courseSearch",
+      });
+      return;
+    }
+
+    if (req.method === "GET" && path === "/courseSearch/get_subject") {
+      const needle = (query.searchTerm ?? "").toLowerCase();
+      const seen = new Map<string, Subject>();
+      for (const course of catalogs.get(query.term ?? "") ?? []) {
+        const code = (course.subjectCode ?? course.subject ?? "").toUpperCase();
+        if (!seen.has(code)) seen.set(code, { code, description: `${code} - ${course.subjectDescription ?? code}` });
+      }
+      const list = [...seen.values()]
+        .sort((a, b) => a.description.localeCompare(b.description))
+        .filter((s) => s.code.toLowerCase().includes(needle) || s.description.toLowerCase().includes(needle));
+      send(200, page(list, query));
+      return;
+    }
+
     if (req.method === "GET" && path === "/classSearch/getTerms") {
       send(200, page(terms, query));
       return;
@@ -310,6 +380,12 @@ export async function startFakeGoSolar(): Promise<FakeGoSolar> {
     failNextRequirements(failure, count = 1) {
       for (let i = 0; i < count; i++) requirementFailures.push(failure);
     },
+    setCatalog(term, courses) {
+      catalogs.set(term, courses);
+    },
+    failNextCatalogSearches(failure, count = 1) {
+      for (let i = 0; i < count; i++) catalogFailures.push(failure);
+    },
     reset() {
       sections.clear();
       subjects.clear();
@@ -317,6 +393,8 @@ export async function startFakeGoSolar(): Promise<FakeGoSolar> {
       failures = [];
       requirements.clear();
       requirementFailures = [];
+      catalogs.clear();
+      catalogFailures = [];
       sessions.clear();
       requests.length = 0;
     },

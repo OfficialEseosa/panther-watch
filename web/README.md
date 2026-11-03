@@ -105,7 +105,8 @@ yet, so these are the gates.
 `src/db/schema/` holds the Drizzle schema, re-exported by `schema/index.ts`:
 
 - `core.ts`: users, terms, watched sections, schedule entries, email log, announcements, job runs.
-- `course-meta.ts`: grade distributions, syllabi and RateMyProfessors data.
+- `course-meta.ts`: grade distributions, syllabi, RateMyProfessors data and the course catalog
+  (`catalog_courses`, with its refresh progress in `catalog_refresh`).
 
 `drizzle/` holds the generated SQL migrations. The one-time cutover of the live database from
 the Hibernate tables is a separate, hand-run procedure in `scripts/prod-migrate/` (see
@@ -141,12 +142,16 @@ Connected apps has a short card linking there plus the same app list.
   Streamable HTTP, stateless (2026-07-28 protocol, with the SDK's fallback for 2025-era
   clients). `withMcpAuth` requires `Authorization: Bearer <access token>`; without a valid one
   it answers 401 with `WWW-Authenticate: Bearer ... resource_metadata="${APP_URL}/.well-known/oauth-protected-resource/api/mcp"`.
-- **Tools** (`src/lib/mcp/tools.ts`): `list_terms`, `search_subjects`, `search_sections`,
+- **Tools** (`src/lib/mcp/tools.ts`): `list_terms`, `search_subjects`, `find_courses`, `search_sections`,
   `get_section_details`, `get_course_requirements`, `get_syllabus_summary`, `list_watches`,
   `list_schedule`, `check_conflicts` (scope `read`);
   `add_watch`, `remove_watch` (`watches:write`); `add_to_schedule`, `remove_from_schedule`
   (`schedule:write`). They call the same library functions as the routes (`addWatch` keeps the
   track-while-open rule; `add_to_schedule` adds even on a clash and reports it).
+  `find_courses` ranks the nightly copy of GoSolar's course catalog (`catalog_courses`, refreshed by
+  `/api/cron/catalog`, `src/lib/course-meta/catalog.ts`) in memory for a name, nickname or code
+  (`src/lib/course-meta/catalog-lookup.ts`); the assistant's prefetch runs the same lookup on a
+  message that names a course without a code, and `GET /api/courses/catalog` serves it publicly.
   `get_syllabus_summary` (`src/lib/course-meta/syllabus-summary.ts`) re-reads the section's
   syllabus PDF on every call (cdn.gsu.edu only, 10 s / 8 MB caps, text via `unpdf`) and reuses
   the Claude Haiku summary stored in `syllabus_summaries` while the text hash is unchanged; new

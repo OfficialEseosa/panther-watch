@@ -36,7 +36,7 @@ export interface GradeStatusDto {
   running: boolean;
 }
 
-export const JOB_NAMES = ["watcher", "cleanup", "syllabi", "grades"] as const;
+export const JOB_NAMES = ["watcher", "cleanup", "syllabi", "catalog", "grades"] as const;
 export type JobName = (typeof JOB_NAMES)[number];
 
 export interface CreateAnnouncementPayload {

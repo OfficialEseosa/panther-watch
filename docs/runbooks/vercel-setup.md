@@ -74,9 +74,9 @@ The on-site assistant needs only `ANTHROPIC_API_KEY` (the `ASSISTANT_*` defaults
 }
 ```
 
-- **The cron entry is a backup trigger for cleanup only.** pg_cron (`supabase-cron.sql`) is the primary trigger for the three scheduled jobs (watch, cleanup, syllabi; grades are not scheduled, see section 4). Cleanup is idempotent, so a second run each day does no harm and keeps expired-term purges going if pg_cron breaks.
+- **The cron entry is a backup trigger for cleanup only.** pg_cron (`supabase-cron.sql`) is the primary trigger for the four scheduled jobs (watch, cleanup, syllabi, catalog; grades are not scheduled, see section 4). Cleanup is idempotent, so a second run each day does no harm and keeps expired-term purges going if pg_cron breaks.
 - Hobby limits: one invocation per day at most. More frequent expressions fail the deploy, and the job fires anywhere within the named hour. `0 12 * * *` fires 12:00–12:59 UTC (08:00–08:59 EDT), well after pg_cron's 08:05 UTC cleanup. The schedule is always UTC (https://vercel.com/docs/cron-jobs, `/manage-cron-jobs`).
-- **Vercel cron sends `GET`**, not POST, to the production deployment, with user agent `vercel-cron/1.0` (https://vercel.com/docs/cron-jobs#how-cron-jobs-work). `app/api/cron/cleanup/route.ts` must therefore export both `GET` and `POST` with the same handler and the same bearer check. The other three cron routes stay POST-only.
+- **Vercel cron sends `GET`**, not POST, to the production deployment, with user agent `vercel-cron/1.0` (https://vercel.com/docs/cron-jobs#how-cron-jobs-work). `app/api/cron/cleanup/route.ts` must therefore export both `GET` and `POST` with the same handler and the same bearer check. The other cron routes stay POST-only.
 - Vercel does not retry failed cron runs, and cron jobs do not follow redirects. Don't put the route behind `proxy.ts` redirects.
 - Do **not** add the watcher here. A `*/3` expression fails Hobby deploys.
 

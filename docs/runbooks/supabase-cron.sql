@@ -10,7 +10,7 @@
 --   2. Stores CRON_SECRET and the app base URL in Supabase Vault.
 --   3. Creates app.trigger_cron(path), which calls net.http_post with
 --      Authorization: Bearer <CRON_SECRET>.
---   4. Schedules the three app jobs plus a history-purge job (all times UTC).
+--   4. Schedules the four app jobs plus a history-purge job (all times UTC).
 --
 -- Why it lives here
 --   Vercel Hobby cron runs at most once per day (docs/audit-2026-10/01-hosting-feasibility.md
@@ -134,6 +134,11 @@ revoke all on function app.trigger_cron(text) from anon, authenticated, service_
 --                                                   automatically; the watcher alone adds
 --                                                   480 rows/day against the 500 MB DB cap)
 --   pantherwatch-cleanup              5 8 * * *     POST /api/cron/cleanup  expired watches/schedules, old email_logs
+--   pantherwatch-catalog              */5 9 * * *   POST /api/cron/catalog  refresh catalog_courses (GoSolar course
+--                                                   catalog). Each call does ~45 s and resumes where the
+--                                                   last one stopped; a full pass of both registrable
+--                                                   terms takes a few calls, the rest only read
+--                                                   catalog_refresh and return.
 --   pantherwatch-syllabi              5 10 * * *    POST /api/cron/syllabi  refresh syllabi table
 --
 -- No grades job. GSU's grade-distribution APEX site (dssapex.gsu.edu, app 140 page 184) now
@@ -153,7 +158,7 @@ begin
   for j in
     select jobid from cron.job
      where jobname in ('pantherwatch-watch', 'pantherwatch-cleanup', 'pantherwatch-grades',
-                       'pantherwatch-syllabi', 'pantherwatch-purge-cron-history')
+                       'pantherwatch-syllabi', 'pantherwatch-catalog', 'pantherwatch-purge-cron-history')
   loop
     perform cron.unschedule(j.jobid);
   end loop;
@@ -163,6 +168,7 @@ $$;
 select cron.schedule('pantherwatch-watch',   '*/3 * * * *', $$select app.trigger_cron('/api/cron/watch')$$);
 select cron.schedule('pantherwatch-cleanup', '5 8 * * *',   $$select app.trigger_cron('/api/cron/cleanup')$$);
 select cron.schedule('pantherwatch-syllabi', '5 10 * * *',  $$select app.trigger_cron('/api/cron/syllabi')$$);
+select cron.schedule('pantherwatch-catalog', '*/5 9 * * *', $$select app.trigger_cron('/api/cron/catalog')$$);
 select cron.schedule('pantherwatch-purge-cron-history', '15 7 * * *',
   $$delete from cron.job_run_details where end_time < now() - interval '7 days'$$);
 

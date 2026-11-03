@@ -1,4 +1,4 @@
-// Course metadata: grade distributions (GSU APEX), RateMyProfessors ratings, syllabi.
+// Course metadata: grade distributions (GSU APEX), RateMyProfessors ratings, syllabi, the course catalog.
 export type { CourseMetaDb, DbOptions } from "./db";
 export { CourseMetaHttpError, type FetchLike } from "./http";
 export { foldLastName, foldNamePart, parseName, professorKey, sameProfessor, type ParsedName } from "./names";
@@ -46,3 +46,19 @@ export {
   type RmpTeacher,
 } from "./rmp";
 export { getSyllabus, ingestSyllabiForTerm, syllabusUrl, type SyllabiIngestResult } from "./syllabi";
+export {
+  CATALOG_LEVELS,
+  catalogRefreshState,
+  refreshCatalog,
+  type CatalogLevel,
+  type CatalogTermResult,
+  type RefreshCatalogOptions,
+  type RefreshCatalogResult,
+} from "./catalog";
+export {
+  findCourses,
+  type CatalogCandidate,
+  type CatalogConfidence,
+  type FindCoursesOptions,
+  type FindCoursesResult,
+} from "./catalog-lookup";

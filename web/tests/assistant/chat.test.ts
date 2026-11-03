@@ -173,7 +173,7 @@ describe("a turn", () => {
     // Cache: frozen system prompt + last tool marked, automatic caching for the conversation.
     expect(body.system).toEqual([{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }]);
     expect(body.cache_control).toEqual({ type: "ephemeral" });
-    expect(body.tools).toHaveLength(14);
+    expect(body.tools).toHaveLength(15);
     expect(body.tools.at(-1).cache_control).toEqual({ type: "ephemeral" });
     expect(body.tools.slice(0, -1).every((t: { cache_control?: unknown }) => !t.cache_control)).toBe(true);
     for (const tool of body.tools) {

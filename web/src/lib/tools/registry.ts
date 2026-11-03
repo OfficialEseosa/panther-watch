@@ -13,16 +13,16 @@ import {
   getTerms,
   gosolarOptions,
   isUpstreamError,
-  type TermInfo,
   searchSections,
   searchSubjects,
   subjectSchema,
   termCodeSchema,
 } from "@/lib/courses";
-import { getSyllabus } from "@/lib/course-meta";
+import { CATALOG_LEVELS, findCourses, getSyllabus, type CatalogLevel, type FindCoursesResult } from "@/lib/course-meta";
+import { defaultTermCode, inProgressTermCode, termStarted } from "@/lib/courses/term-picks";
 import { hasStoredSummary, summarizeSyllabus } from "@/lib/course-meta/syllabus-summary";
 import { env } from "@/lib/env";
-import { instructorOf, nyDateParts, termLabel, termName } from "@/lib/format";
+import { instructorOf, termLabel, termName } from "@/lib/format";
 import { findSectionsByCrn, type CourseData, type CourseGroup } from "@/lib/gosolar";
 import { compactMeta, compactRequirements, compactSection } from "@/lib/mcp/format";
 import { toolLimiter } from "@/lib/oauth/rate-limit";
@@ -236,23 +236,38 @@ export async function courseOfSaved(userId: string, term: string, crn: string): 
   return saved ? { subject: saved.subject, courseNumber: saved.courseNumber } : null;
 }
 
-/**
- * The term the course search form preselects (CourseSearchForm: the newest term open for
- * registration, else the newest term), so the assistant defaults to what the site does.
- */
-export const defaultTermCode = (terms: readonly TermInfo[]): string | undefined =>
-  [...terms].sort((a, b) => b.code.localeCompare(a.code)).find((t) => !t.viewOnly)?.code ??
-  [...terms].sort((a, b) => b.code.localeCompare(a.code))[0]?.code;
+export { defaultTermCode, inProgressTermCode };
 
-/** Term codes are YYYYMM of the start month: started once that month begins (GSU's local date). */
-function termStarted(code: string, now: Date = new Date()): boolean {
-  const today = nyDateParts(now);
-  return today.year * 100 + today.month >= Number(code);
+/** Catalog descriptions handed to the model are cut here (the start has the prerequisites and the gist). */
+const CATALOG_DESCRIPTION_CHARS = 300;
+
+const FALLBACK_REASON: Record<LevelSource, string> = {
+  input: "the level asked for",
+  preference: "the saved campus's level",
+  default: "the default level",
+};
+
+/** find_courses' output. `level` null: every level was searched because nothing matched at `levelSource`'s. */
+function catalogResult(query: string, found: FindCoursesResult, level: CatalogLevel | null, levelSource: LevelSource) {
+  return {
+    query,
+    level: level ?? "all",
+    levelSource: level ? levelSource : `all levels (nothing matched at ${FALLBACK_REASON[levelSource]})`,
+    confidence: found.confidence,
+    ...(found.matched ? { matched: found.matched } : {}),
+    candidates: found.candidates.map((c) => ({
+      subject: c.subject,
+      courseNumber: c.courseNumber,
+      title: c.title,
+      credits: c.credits,
+      level: c.level,
+      description:
+        c.description && c.description.length > CATALOG_DESCRIPTION_CHARS
+          ? `${c.description.slice(0, CATALOG_DESCRIPTION_CHARS - 1).trimEnd()}…`
+          : c.description,
+    })),
+  };
 }
-
-/** The newest term that has started: the semester under way. */
-export const inProgressTermCode = (terms: readonly TermInfo[], now: Date = new Date()): string | undefined =>
-  terms.map((t) => t.code).filter((code) => termStarted(code, now)).sort((a, b) => b.localeCompare(a))[0];
 
 const describeConflict = (conflict: Conflict) => ({
   crns: conflict.crns,
@@ -303,6 +318,47 @@ export const TOOLS: readonly ToolDefinition[] = [
     annotations: { readOnlyHint: true, openWorldHint: true },
     scope: "read",
     handler: async (_auth, { term, query }) => text({ subjects: await searchSubjects({ term, query }) }),
+  }),
+
+  defineTool({
+    name: "find_courses",
+    title: "Find a course by name",
+    description:
+      "Maps a course name or nickname to its GSU subject and course number, from PantherWatch's copy of the " +
+      "GoSolar course catalog (\"calculus 2\" -> MATH 2212 Calculus of One Variable II, \"intro to programming\" -> " +
+      "CSC 1301, \"data structures\" -> CSC 2720). Use it whenever the student names a course without a code, " +
+      "before search_sections; never map a name to a code from memory. `confidence: \"high\"`: the first candidate " +
+      "is the course, so use it and say which code and title you took it to mean. `\"ambiguous\"`: ask the student " +
+      "which of the top candidates they mean (or pick one if the conversation already makes it clear). " +
+      "`\"none\"`: nothing matched; ask for the course code, or use search_subjects. Each candidate has the catalog " +
+      "title, credits, level and the start of the catalog description (prerequisites, what it covers). It lists " +
+      "catalog courses, not sections: whether a course runs in a term is search_sections' job.",
+    inputSchema: z.object({
+      query: z.string().trim().min(2).max(120).describe('The course as the student wrote it, e.g. "calculus 2" or "intro to programming".'),
+      level: z
+        .enum(CATALOG_LEVELS)
+        .optional()
+        .describe(
+          "US = undergraduate (bachelor's), UA = courses taught at Perimeter College (associate), GS = graduate, " +
+            "LW = law. Omit it to use the student's saved campus (undergraduate when none is saved); pass it when " +
+            "the student says which level they want.",
+        ),
+    }),
+    annotations: { readOnlyHint: true, openWorldHint: false },
+    scope: "read",
+    handler: async ({ userId }, { query, level: requested }) => {
+      const saved = requested ? null : await getLevelPreference(userId);
+      const level: CatalogLevel = requested ?? saved ?? DEFAULT_LEVEL;
+      const levelSource: LevelSource = requested ? "input" : saved ? "preference" : "default";
+      let found = await findCourses(query, { level });
+      let searchedLevel: CatalogLevel | null = level;
+      // Nothing at the level nobody asked for (a graduate-only course for a bachelor's default): every level.
+      if (found.candidates.length === 0 && levelSource !== "input") {
+        found = await findCourses(query);
+        searchedLevel = null;
+      }
+      return text(catalogResult(query, found, searchedLevel, levelSource));
+    },
   }),
 
   defineTool({

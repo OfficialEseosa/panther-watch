@@ -38,12 +38,14 @@ export interface ToolTiming {
 export type PrefetchStatus =
   /** ASSISTANT_PREFETCH=off. */
   | "off"
-  /** The message names no course (nor a CRN PantherWatch can place). */
+  /** The message names no course (nor a CRN PantherWatch can place, nor a course name the catalog matches). */
   | "none"
   /** No term to search (empty term list) or the term list failed. */
   | "no_term"
   /** The message names a term that isn't in the term list (or several terms): nothing searched. */
   | "term_unknown"
+  /** No course code; the catalog lookup was ambiguous, so its candidates went in and nothing was searched. */
+  | "ambiguous"
   /** Every search finished in time and at least one is in the request. */
   | "used"
   /** Some searches made it into the request; others failed or ran out of time. */
@@ -65,6 +67,8 @@ export interface PrefetchOutcome {
   /** Searches run, and how many of them went into the request. */
   searches: number;
   included: number;
+  /** The catalog lookup of a message without a course code (null: not looked up). */
+  catalog: "high" | "ambiguous" | "none" | null;
 }
 
 export const NO_PREFETCH = (status: "off" | "none"): PrefetchOutcome => ({
@@ -74,6 +78,7 @@ export const NO_PREFETCH = (status: "off" | "none"): PrefetchOutcome => ({
   crns: 0,
   searches: 0,
   included: 0,
+  catalog: null,
 });
 
 /** `timing` of the SSE `done` event (the chat UI may ignore it). */

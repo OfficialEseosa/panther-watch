@@ -1,6 +1,7 @@
 /**
  * Course metadata that PantherWatch scrapes from public GSU / third-party sources: grade
- * distributions (GSU APEX), syllabus PDFs (GSU syllabi CDN) and RateMyProfessors lookups.
+ * distributions (GSU APEX), syllabus PDFs (GSU syllabi CDN), RateMyProfessors lookups and the
+ * GoSolar course catalog.
  * Unlike `core`, these tables are new (the Spring backend kept this data in memory or on
  * local disk), so they use clean types: timestamptz everywhere, DB-level defaults.
  *
@@ -138,9 +139,64 @@ export const syllabusSummaries = pgTable(
   (table) => [check("syllabus_summaries_status_check", sql`${table.status} IN ('ok', 'unavailable')`)],
 );
 
+/**
+ * GSU's course catalog (not sections): one row per subject + course number, from GoSolar's
+ * "Browse Course Catalog" search (src/lib/course-meta/catalog.ts), refreshed nightly for the
+ * registrable terms. It lets the assistant map a course name ("calculus 2") to a code
+ * (MATH 2212) without guessing (src/lib/course-meta/catalog-lookup.ts).
+ *
+ * - `title` is the catalog's full title (the first line of Banner's description), e.g.
+ *   "Calculus of One Variable II"; Banner's own `courseTitle` is abbreviated ("CALCULUS OF ONE
+ *   VARIABLE II", "PRINCIPLES OF COMPUTER SCI I") and is only the fallback.
+ * - `level` is derived, not Banner's: Banner gives a course a SET of levels (most 6000-9000
+ *   courses are open to US as well as GS) and no single "home" level. LW for the LAW subject,
+ *   GS for course numbers 5000 and up, UA for courses owned by Perimeter College (college
+ *   code PC), else US. A code is unique within a subject, so level is not part of the key.
+ * - `first_seen_term` / `last_seen_term`: the oldest and newest refreshed term that listed it.
+ */
+export const catalogCourses = pgTable(
+  "catalog_courses",
+  {
+    subject: text("subject").notNull(),
+    courseNumber: text("course_number").notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    /** "3", "1-6" (Banner "TO"), "3 or 4" (Banner "OR"); null when Banner gives none. */
+    credits: text("credits"),
+    level: text("level"),
+    source: text("source").notNull().default("gosolar"),
+    firstSeenTerm: char("first_seen_term", { length: 6 }).notNull(),
+    lastSeenTerm: char("last_seen_term", { length: 6 }).notNull(),
+    updatedAt: timestamptz("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.subject, table.courseNumber] }),
+    check("catalog_courses_level_check", sql`${table.level} IN ('US', 'UA', 'GS', 'LW')`),
+  ],
+);
+
+/**
+ * Progress of the catalog refresh, one row per term, so a run cut short by the function time
+ * limit resumes where it stopped. Subjects are processed in code order; `cursor` is the last
+ * subject stored in the current pass (null: the pass starts from the first subject).
+ * `pass_finished_at` is set when a pass reaches the last subject; the next pass starts once it
+ * is older than the job's re-run interval (a day).
+ */
+export const catalogRefresh = pgTable("catalog_refresh", {
+  term: char("term", { length: 6 }).primaryKey(),
+  cursor: text("cursor"),
+  passStartedAt: timestamptz("pass_started_at"),
+  passFinishedAt: timestamptz("pass_finished_at"),
+  /** Courses stored so far in the current (or last finished) pass. */
+  coursesSeen: integer("courses_seen").notNull().default(0),
+  updatedAt: timestamptz("updated_at").notNull().defaultNow(),
+});
+
 export type GradeTerm = typeof gradeTerms.$inferSelect;
 export type SectionGrade = typeof sectionGrades.$inferSelect;
 export type NewSectionGrade = typeof sectionGrades.$inferInsert;
 export type Syllabus = typeof syllabi.$inferSelect;
 export type RmpCacheEntry = typeof rmpCache.$inferSelect;
 export type SyllabusSummaryRow = typeof syllabusSummaries.$inferSelect;
+export type CatalogCourseRow = typeof catalogCourses.$inferSelect;
+export type CatalogRefreshRow = typeof catalogRefresh.$inferSelect;

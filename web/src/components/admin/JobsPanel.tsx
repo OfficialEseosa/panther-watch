@@ -17,6 +17,7 @@ const JOB_LABEL: Record<JobName, string> = {
   watcher: "Watcher",
   cleanup: "Cleanup",
   syllabi: "Syllabi",
+  catalog: "Catalog",
   grades: "Grades",
 };
 

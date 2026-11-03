@@ -125,6 +125,7 @@ function term(input: Record<string, unknown>): string {
 const LABELS: Record<string, (input: Record<string, unknown>) => string> = {
   list_terms: () => "Checking which terms are open",
   search_subjects: (i) => (clean(i.query) ? `Looking up subjects matching "${clean(i.query)}"` : "Looking up subject codes"),
+  find_courses: (i) => (clean(i.query, 30) ? `Looking up '${clean(i.query, 30)}' in the catalog` : "Looking up a course in the catalog"),
   search_sections: (i) => `Searching ${[course(i) || "sections", term(i) && `in ${term(i)}`].filter(Boolean).join(" ")}`,
   get_section_details: (i) =>
     `Getting grades and ratings for ${[course(i), crnPart(i) && `(${crnPart(i)})`].filter(Boolean).join(" ") || "a section"}`,

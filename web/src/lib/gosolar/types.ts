@@ -142,3 +142,51 @@ export interface SearchParams {
   pageOffset?: number;
   pageMaxSize?: number;
 }
+
+/**
+ * One course of Banner's "Browse Course Catalog" search (`GET /courseSearchResults/
+ * courseSearchResults`), the catalog entry rather than a section. Only the fields PantherWatch
+ * reads; live GoSolar sends more (lecture/lab/billing hours, department, termStart/termEnd...).
+ * Verified live 2026-11-02 (Spring 2027).
+ */
+export interface CatalogCourseData {
+  subject: string | null;
+  subjectCode?: string | null;
+  subjectDescription?: string | null;
+  courseNumber: string | null;
+  /** Abbreviated upper-case title, e.g. "PRINCIPLES OF COMPUTER SCI I". */
+  courseTitle: string | null;
+  /**
+   * The catalog text. Its first line is the full title ("Principles of Computer Science I."),
+   * then usually "Prerequisite: ..." and the description proper.
+   */
+  courseDescription: string | null;
+  collegeCode?: string | null;
+  college?: string | null;
+  creditHourLow: number | null;
+  creditHourHigh: number | null;
+  /** "TO" (a range) or "OR" (either value); null for a fixed credit value. */
+  creditHourIndicator: string | null;
+  termEffective?: string | null;
+}
+
+/** Raw `GET /courseSearchResults/courseSearchResults` body. */
+export interface CatalogSearchResponse {
+  success: boolean;
+  totalCount: number;
+  data: CatalogCourseData[] | null;
+  pageOffset: number;
+  pageMaxSize: number;
+}
+
+/** A catalog search response after the affinity check: `data` is always an array. */
+export interface CatalogSearchResult extends CatalogSearchResponse {
+  data: CatalogCourseData[];
+}
+
+export interface CatalogSearchParams {
+  /** Subject codes, searched together (Banner takes a comma-separated `txt_subject`). */
+  subjects: string[];
+  pageOffset?: number;
+  pageMaxSize?: number;
+}

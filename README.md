@@ -116,26 +116,29 @@ GoSolar's own. Nothing is scraped ahead of time.
 GoSolar does not have. Grade history comes from GSU's published grade-distribution reports: 13 terms
 (Summer 2022 to Summer 2026) are committed in the repo, and an admin uploads each new term's export
 because the source site blocks automated downloads. The syllabus index is copied daily from GSU's
-public syllabus repository on cdn.gsu.edu. RateMyProfessors lookups are cached for a day, and a
+public syllabus repository on cdn.gsu.edu. The course catalog (every course's title and
+description, so the assistant can turn "calculus 2" into MATH 2212 without guessing) is copied
+nightly from GoSolar's course catalog search. RateMyProfessors lookups are cached for a day, and a
 professor is matched only when both last and first name agree, because a namesake's rating is worse
 than none.
 
 **Background work.** Vercel's free plan runs scheduled jobs at most once a day, which is too slow
 for seat alerts. Instead, Supabase's `pg_cron` calls a protected route every three minutes. That
 route groups all tracked sections by course, searches GoSolar once per course, and sends emails
-through Resend. Daily jobs refresh the syllabus index and clear out finished terms.
+through Resend. Daily jobs refresh the syllabus index and the course catalog, and clear out
+finished terms.
 
 **The assistant.** The chat sends your message to the server, which calls the Anthropic API. Claude
-answers by calling PantherWatch's own tools (search sections, read requirements, summarize a
-syllabus, track a section), and those tools run on the server as you. Syllabus summaries are cached
-by the text of the syllabus and checked against the current PDF on every request, so a changed
-syllabus gets a fresh summary. The conversation stays in your browser tab; the server keeps only
+answers by calling PantherWatch's own tools (find a course by name, search sections, read
+requirements, summarize a syllabus, track a section), and those tools run on the server as you.
+Syllabus summaries are cached by the text of the syllabus and checked against the current PDF on
+every request, so a changed syllabus gets a fresh summary. The conversation stays in your browser tab; the server keeps only
 daily usage counts.
 
 **Connected assistants.** Outside apps reach the same tools through an MCP server at `/api/mcp`.
 PantherWatch is its own OAuth 2.1 authorization server: the app sends you to a consent page, you
 approve the permissions, and the app gets a short-lived token that works only for your account.
-Thirteen tools are shared between the connector and the on-site chat; the chat adds one more to save
+Fourteen tools are shared between the connector and the on-site chat; the chat adds one more to save
 your campus preference.
 
 ### How seat alerts decide to email
