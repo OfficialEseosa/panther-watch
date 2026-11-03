@@ -27,6 +27,11 @@ export interface ToolTiming {
   error: boolean;
   /** Ran before the first model request (src/lib/assistant/prefetch.ts), not called by the model. */
   prefetch: boolean;
+  /**
+   * The model asked for a search the prefetch had already run (or for list_terms after one):
+   * answered without GoSolar and without a second "Searching..." line in the UI.
+   */
+  dedupe?: boolean;
   gosolar: GoSolarStats;
 }
 
@@ -37,6 +42,8 @@ export type PrefetchStatus =
   | "none"
   /** No term to search (empty term list) or the term list failed. */
   | "no_term"
+  /** The message names a term that isn't in the term list (or several terms): nothing searched. */
+  | "term_unknown"
   /** Every search finished in time and at least one is in the request. */
   | "used"
   /** Some searches made it into the request; others failed or ran out of time. */
@@ -76,7 +83,10 @@ export interface DoneTiming {
   firstText: number | null;
   /** Each model request's duration, in order. */
   modelRequests: number[];
-  /** Prefetch searches ("prefetch:search_sections"), then the model's tool calls as they finished. */
+  /**
+   * Prefetch searches ("prefetch:search_sections"), then the model's tool calls as they finished
+   * ("dedupe:search_sections" when the prefetch answered it).
+   */
   tools: Array<{ name: string; ms: number }>;
 }
 
@@ -134,7 +144,14 @@ export function logTurn(fields: { outcome: string; model: string; timing: TurnTi
       totalMs: timing.total,
       firstTextMs: timing.firstText,
       modelRequests: timing.models,
-      tools: timing.toolCalls.map(({ name, ms, error, prefetch, gosolar }) => ({ name, ms, error, prefetch, gosolar })),
+      tools: timing.toolCalls.map(({ name, ms, error, prefetch, dedupe, gosolar }) => ({
+        name,
+        ms,
+        error,
+        prefetch,
+        ...(dedupe ? { dedupe } : {}),
+        gosolar,
+      })),
       prefetch: timing.prefetch,
       gosolar: sumGoSolar(timing.toolCalls),
     }),

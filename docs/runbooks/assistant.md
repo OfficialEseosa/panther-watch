@@ -83,6 +83,18 @@ Measured locally on Haiku on 2026-11-02 (medians of 3 new chats each; first text
 
 Every level made the same tool calls for the same path (search, then section details and syllabi for a professor comparison; search, then requirements) and quoted the same seats, grades and ratings. `medium` and `high` spent enough output on thinking that a long answer (a professor comparison, the requirements answer) ran into the then 2048-token `max_tokens` and was cut off; `max_tokens` is now 4096 (at most about $0.001 more per request on Haiku), which the measured comparisons fit inside. Per-request thinking tokens are in the `assistant.turn` log (`modelRequests[].thinking`). Raise effort only if answers get worse (missed tool calls, wrong ranking); expect slower first words and more cut-off answers.
 
+## Prefetch
+
+When a message names a course ("Which CSC 4350 sections are open?"), the chat runs `search_sections` for it before the first model request (`src/lib/assistant/prefetch.ts`; `ASSISTANT_PREFETCH=off` turns it off) and adds the result to the student's message as a second text block, with a note saying which term and level it searched and why and listing the terms. The term is the one the message names ("spring 2027", "sp27", "next semester", "last fall"), else the term students are registering for now; a named term that isn't in GoSolar's list means no prefetch. The level is the one the message names ("Perimeter", "Dunwoody", "grad", "bachelor's"), else the saved campus, else bachelor's. If the model still calls `search_sections` with the same term, course and level (or `list_terms`), the chat answers it from the prefetch: no GoSolar request, no second "Searching…" line, and `dedupe: true` on that tool in the `assistant.turn` log.
+
+Where the result goes was measured locally on Haiku at effort `low` on 2026-11-02 ("Which CSC 4350 sections are open?" and "Is MATH 2212 open next semester?", new chat each time; medians):
+
+| Result handed over as | Model searched again | First text | Total |
+|---|---|---|---|
+| A second text block in the student's message (current) | 0 of 32 | 3.3 s | 4.7 s |
+| A mid-conversation system message after it | 1 of 48 | 3.4 s | 4.9 s |
+| A made-up `search_sections` call and result | 5 of 16 (it called `list_terms`) | 3.7 s | 5.4 s |
+
 ## Raising or lowering caps
 
 Set `ASSISTANT_USER_DAILY_MESSAGES`, `ASSISTANT_GLOBAL_DAILY_MESSAGES` or `ASSISTANT_GLOBAL_DAILY_USD` in Vercel and redeploy. Blank means the default. The new values apply to the new deployment right away; today's counters stay, so lowering a cap below today's count refuses further messages at once. Setting a cap to `0` refuses everyone, but users then see a "daily limit" message; to switch the feature off, delete the API key instead.

@@ -91,7 +91,7 @@ export interface ToolDefinition<S extends AnyObjectSchema = AnyObjectSchema> {
 const defineTool = <S extends AnyObjectSchema>(tool: ToolDefinition<S>): ToolDefinition => tool as unknown as ToolDefinition;
 
 /** Section lists are capped so one whole-subject search cannot flood the model's context. */
-const DEFAULT_SECTION_LIMIT = 40;
+export const DEFAULT_SECTION_LIMIT = 40;
 const MAX_SECTION_LIMIT = 150;
 /** Live seat checks for conflicts never hold a tool call for long. */
 const LIVE_TIMEOUT_MS = 10_000;
@@ -251,8 +251,8 @@ function termStarted(code: string, now: Date = new Date()): boolean {
 }
 
 /** The newest term that has started: the semester under way. */
-const inProgressTermCode = (terms: readonly TermInfo[]): string | undefined =>
-  terms.map((t) => t.code).filter((code) => termStarted(code)).sort((a, b) => b.localeCompare(a))[0];
+export const inProgressTermCode = (terms: readonly TermInfo[], now: Date = new Date()): string | undefined =>
+  terms.map((t) => t.code).filter((code) => termStarted(code, now)).sort((a, b) => b.localeCompare(a))[0];
 
 const describeConflict = (conflict: Conflict) => ({
   crns: conflict.crns,

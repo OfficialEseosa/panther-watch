@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { SCOPES } from "@/lib/oauth/scopes";
 import type { ToolAuth } from "@/lib/tools/registry";
 import { anthropicClient, assistantConfig } from "./config";
-import { prefetch } from "./prefetch";
+import { injectPrefetch, prefetch, prefetchedAnswer, type PrefetchResult } from "./prefetch";
 import { addUsage, costMicroUsd, ZERO_USAGE, type AssistantEffort, type AssistantModel, type TokenUsage } from "./pricing";
 import { contextNote, SYSTEM_PROMPT } from "./prompt";
 import {
@@ -31,7 +31,7 @@ import { apiTools, toolLabel, toolResultText } from "./tools";
  *
  * Latency: when the latest message names courses, src/lib/assistant/prefetch.ts searches them
  * before the first model request, so "Which CSC 4350 sections are open?" takes one model request
- * instead of three. Every turn logs one `assistant.turn` timing line (src/lib/assistant/timing.ts).
+ * instead of three; a search_sections (or list_terms) call that repeats it is answered from it. Every turn logs one `assistant.turn` timing line (src/lib/assistant/timing.ts).
  */
 
 export const MAX_TOOL_ROUNDS = 6;
@@ -191,7 +191,7 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
     total: elapsed(started),
     firstText: trace.firstText,
     modelRequests: trace.models.map((m) => m.ms),
-    tools: trace.tools.map((t) => ({ name: t.prefetch ? `prefetch:${t.name}` : t.name, ms: t.ms })),
+    tools: trace.tools.map((t) => ({ name: t.prefetch ? `prefetch:${t.name}` : t.dedupe ? `dedupe:${t.name}` : t.name, ms: t.ms })),
     models: trace.models,
     toolCalls: trace.tools,
     prefetch: trace.prefetch,
@@ -246,13 +246,13 @@ async function turn(
     });
 
   // The courses the latest message names, searched before the model asks for them.
+  let fetched: PrefetchResult | null = null;
   if (config.prefetch) {
     const latest = messages.findLast((m) => m.role === "user")?.content ?? "";
-    const fetched = await prefetch({ auth, text: latest, signal, emit });
+    fetched = await prefetch({ auth, text: latest, signal, emit });
     trace.prefetch = fetched.outcome;
     trace.tools.push(...fetched.tools);
-    // After the latest user message (the last message here), so the cached prefix before it is untouched.
-    if (fetched.message) convo.push(fetched.message);
+    injectPrefetch(convo, fetched);
   } else {
     trace.prefetch = NO_PREFETCH("off");
   }
@@ -319,15 +319,31 @@ async function turn(
     if (message.stop_reason !== "tool_use" || toolUses.length === 0 || lastRound) return result("done");
 
     toolRounds++;
+    // A search the prefetch already ran (the model sometimes asks again; production logs showed the
+    // same search_sections call twice) is answered from it, and list_terms after a prefetch from the
+    // in-process term list; neither hits GoSolar nor shows a second line in the UI.
+    const prefetched = fetched?.searches.length ? fetched : null;
+    const repeated = (call: Anthropic.Beta.BetaToolUseBlock) =>
+      prefetched !== null && (call.name === "list_terms" || prefetchedAnswer(prefetched, call.name, call.input) !== null);
     for (const call of toolUses) {
+      if (repeated(call)) continue;
       emit({ event: "tool", data: { id: call.id, name: call.name, status: "running", label: toolLabel(call.name, call.input) } });
     }
     // Parallel calls run concurrently; every result goes back in ONE user message.
     const results = await Promise.all(
       toolUses.map(async (call): Promise<Anthropic.Beta.BetaToolResultBlockParam> => {
+        const known = prefetched && prefetchedAnswer(prefetched, call.name, call.input);
+        if (known) {
+          trace.tools.push({ name: call.name, ms: 0, error: false, prefetch: false, dedupe: true, gosolar: { requests: 0, sessions: 0, ms: 0 } });
+          return { type: "tool_result", tool_use_id: call.id, content: known };
+        }
         const { output, timing } = await timedCallTool(auth, call.name, call.input);
-        trace.tools.push(timing);
         const failed = output.isError === true;
+        if (repeated(call)) {
+          trace.tools.push({ ...timing, dedupe: true });
+          return { type: "tool_result", tool_use_id: call.id, content: toolResultText(output), ...(failed ? { is_error: true } : {}) };
+        }
+        trace.tools.push(timing);
         emit({
           event: "tool",
           data: { id: call.id, name: call.name, status: failed ? "error" : "done", label: toolLabel(call.name, call.input) },
