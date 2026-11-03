@@ -34,5 +34,5 @@ export {
   type SearchSubjectsInput,
 } from "./search";
 export { termClosedReason, type TermClosedReason } from "./term-guard";
-export { currentTerms, getTermStatus, type TermInfo, type TermStatus } from "./terms";
+export { currentTerms, getTermStatus, resetTermsMemoForTests, type TermInfo, type TermStatus } from "./terms";
 export * from "./validation";

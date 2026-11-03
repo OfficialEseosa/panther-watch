@@ -14,6 +14,8 @@ export interface AssistantConfig {
   userDailyMessages: number;
   globalDailyMessages: number;
   globalDailyUsd: number;
+  /** Search the courses a message names before the first model request (src/lib/assistant/prefetch.ts). */
+  prefetch: boolean;
   /** Custom fetch for the Anthropic client (tests: a scripted fake). */
   fetch?: typeof fetch;
 }
@@ -38,6 +40,7 @@ export function assistantConfig(): AssistantConfig {
     userDailyMessages: env.ASSISTANT_USER_DAILY_MESSAGES,
     globalDailyMessages: env.ASSISTANT_GLOBAL_DAILY_MESSAGES,
     globalDailyUsd: env.ASSISTANT_GLOBAL_DAILY_USD,
+    prefetch: env.ASSISTANT_PREFETCH === "on",
     ...override,
   };
 }

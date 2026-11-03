@@ -1,12 +1,22 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
-import type { CallToolResult } from "@modelcontextprotocol/server";
 import { SCOPES } from "@/lib/oauth/scopes";
-import { callTool, type ToolAuth } from "@/lib/tools/registry";
+import type { ToolAuth } from "@/lib/tools/registry";
 import { anthropicClient, assistantConfig } from "./config";
+import { prefetch } from "./prefetch";
 import { addUsage, costMicroUsd, ZERO_USAGE, type AssistantModel, type TokenUsage } from "./pricing";
 import { contextNote, SYSTEM_PROMPT } from "./prompt";
-import { apiTools, toolLabel } from "./tools";
+import {
+  elapsed,
+  logTurn,
+  NO_PREFETCH,
+  timedCallTool,
+  type ModelTiming,
+  type PrefetchOutcome,
+  type ToolTiming,
+  type TurnTiming,
+} from "./timing";
+import { apiTools, toolLabel, toolResultText } from "./tools";
 
 /**
  * One assistant turn: the agentic loop between Claude and the shared PantherWatch tools, run as
@@ -18,12 +28,14 @@ import { apiTools, toolLabel } from "./tools";
  * round forbids tools, so the turn always ends in an answer), tool results capped in size, and
  * prompt caching (tools + system prompt are a byte-stable prefix; automatic caching covers the
  * growing conversation, which tool rounds re-read).
+ *
+ * Latency: when the latest message names courses, src/lib/assistant/prefetch.ts searches them
+ * before the first model request, so "Which CSC 4350 sections are open?" takes one model request
+ * instead of three. Every turn logs one `assistant.turn` timing line (src/lib/assistant/timing.ts).
  */
 
 export const MAX_TOOL_ROUNDS = 6;
 const MAX_TOKENS = 2048;
-/** Longest tool result handed to the model (characters); longer ones are cut with a note. */
-const MAX_TOOL_RESULT_CHARS = 40_000;
 /** Sonnet and Opus decline some requests for policy reasons; the server-side fallback retries those. */
 const FALLBACK_BETA = "server-side-fallback-2026-07-01";
 
@@ -47,6 +59,7 @@ export interface TurnResult {
   costMicro: number;
   /** Model requests made (including the one that failed, if any). */
   requests: number;
+  timing: TurnTiming;
 }
 
 export interface TurnInput {
@@ -140,15 +153,6 @@ function echoable(content: Anthropic.Beta.BetaContentBlock[]): Anthropic.Beta.Be
   return content.filter((block, index) => (index > boundary ? true : block.type === "text"));
 }
 
-function toolResultText(result: CallToolResult): string {
-  const text = result.content
-    .map((part) => (part.type === "text" ? part.text : ""))
-    .filter(Boolean)
-    .join("\n");
-  if (text.length <= MAX_TOOL_RESULT_CHARS) return text || "(no output)";
-  return `${text.slice(0, MAX_TOOL_RESULT_CHARS)}\n[Result cut short: too long. Narrow the search (a course number, openOnly, or a smaller limit).]`;
-}
-
 function classify(error: unknown, signal: AbortSignal): Exclude<ErrorCode, "budget" | "refusal"> | "aborted" {
   if (error instanceof Anthropic.APIUserAbortError || signal.aborted) return "aborted";
   if (error instanceof Anthropic.RateLimitError) return "rate";
@@ -157,7 +161,51 @@ function classify(error: unknown, signal: AbortSignal): Exclude<ErrorCode, "budg
   return "internal";
 }
 
-export async function runTurn({ userId, userName, messages, signal, emit, now = new Date() }: TurnInput): Promise<TurnResult> {
+/** False until this function instance has run a turn: its first turn is "cold" in the timing log. */
+let warm = false;
+
+interface Trace {
+  firstText: number | null;
+  models: ModelTiming[];
+  tools: ToolTiming[];
+  prefetch: PrefetchOutcome;
+}
+
+/** One turn, timed: the result carries `timing`, and one `assistant.turn` line is logged however it ends. */
+export async function runTurn(input: TurnInput): Promise<TurnResult> {
+  const cold = !warm;
+  warm = true;
+  const started = performance.now();
+  const trace: Trace = { firstText: null, models: [], tools: [], prefetch: NO_PREFETCH("none") };
+  const timing = (): TurnTiming => ({
+    cold,
+    total: elapsed(started),
+    firstText: trace.firstText,
+    modelRequests: trace.models.map((m) => m.ms),
+    tools: trace.tools.map((t) => ({ name: t.prefetch ? `prefetch:${t.name}` : t.name, ms: t.ms })),
+    models: trace.models,
+    toolCalls: trace.tools,
+    prefetch: trace.prefetch,
+  });
+  const emit = (event: ChatEvent) => {
+    if (event.event === "text" && trace.firstText === null) trace.firstText = elapsed(started);
+    input.emit(event);
+  };
+  let outcome = "thrown";
+  try {
+    const result = await turn({ ...input, emit }, trace, (r) => ({ ...r, timing: timing() }));
+    outcome = result.outcome;
+    return result;
+  } finally {
+    logTurn({ outcome, model: assistantConfig().model, timing: timing() });
+  }
+}
+
+async function turn(
+  { userId, userName, messages, signal, emit, now = new Date() }: TurnInput,
+  trace: Trace,
+  finish: (result: Omit<TurnResult, "timing">) => TurnResult,
+): Promise<TurnResult> {
   const config = assistantConfig();
   const model = config.model;
   const anthropic = anthropicClient(config);
@@ -179,18 +227,32 @@ export async function runTurn({ userId, userName, messages, signal, emit, now = 
   let requests = 0;
   let toolRounds = 0;
   let wroteText = false;
-  const result = (outcome: TurnResult["outcome"], errorCode?: ErrorCode): TurnResult => ({
-    outcome,
-    ...(errorCode ? { errorCode } : {}),
-    usage,
-    costMicro,
-    requests,
-  });
+  const result = (outcome: TurnResult["outcome"], errorCode?: ErrorCode): TurnResult =>
+    finish({
+      outcome,
+      ...(errorCode ? { errorCode } : {}),
+      usage,
+      costMicro,
+      requests,
+    });
+
+  // The courses the latest message names, searched before the model asks for them.
+  if (config.prefetch) {
+    const latest = messages.findLast((m) => m.role === "user")?.content ?? "";
+    const fetched = await prefetch({ auth, text: latest, signal, emit });
+    trace.prefetch = fetched.outcome;
+    trace.tools.push(...fetched.tools);
+    // After the latest user message (the last message here), so the cached prefix before it is untouched.
+    if (fetched.message) convo.push(fetched.message);
+  } else {
+    trace.prefetch = NO_PREFETCH("off");
+  }
 
   while (true) {
     if (signal.aborted) return result("aborted");
     const lastRound = toolRounds >= MAX_TOOL_ROUNDS;
     requests++;
+    const requestStarted = performance.now();
     const stream = anthropic.beta.messages.stream(
       { ...base, messages: convo, ...(lastRound ? { tool_choice: { type: "none" as const } } : {}) },
       { signal },
@@ -210,6 +272,7 @@ export async function runTurn({ userId, userName, messages, signal, emit, now = 
       const partial = accountFor(stream.currentMessage?.usage, stream.currentMessage?.model ?? model);
       usage = addUsage(usage, partial.usage);
       costMicro += partial.cost;
+      trace.models.push({ ms: elapsed(requestStarted), ...partial.usage, stop: "error" });
       const code = classify(error, signal);
       if (code === "aborted") return result("aborted");
       if (code === "internal") {
@@ -230,6 +293,7 @@ export async function runTurn({ userId, userName, messages, signal, emit, now = 
     const spent = accountFor(message.usage, message.model ?? model);
     usage = addUsage(usage, spent.usage);
     costMicro += spent.cost;
+    trace.models.push({ ms: elapsed(requestStarted), ...spent.usage, stop: message.stop_reason ?? null });
 
     if (message.stop_reason === "refusal") {
       emit({ event: "error", data: { code: "refusal", message: ERROR_MESSAGES.refusal } });
@@ -252,7 +316,8 @@ export async function runTurn({ userId, userName, messages, signal, emit, now = 
     // Parallel calls run concurrently; every result goes back in ONE user message.
     const results = await Promise.all(
       toolUses.map(async (call): Promise<Anthropic.Beta.BetaToolResultBlockParam> => {
-        const output = await callTool(auth, call.name, call.input);
+        const { output, timing } = await timedCallTool(auth, call.name, call.input);
+        trace.tools.push(timing);
         const failed = output.isError === true;
         emit({
           event: "tool",

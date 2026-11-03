@@ -95,15 +95,19 @@ const savedLevel = async () =>
   (await testDb.db.select({ level: users.levelPreference }).from(users).where(eq(users.id, alice.id)))[0]?.level;
 
 describe("search_sections level resolution: input > saved campus > bachelor's", () => {
-  it("default: searches bachelor's and counts the same course at Perimeter (one extra count search)", async () => {
+  it("default: searches bachelor's and counts the same course at Perimeter (one extra count search, run alongside)", async () => {
     const data = await search({ subject: "ENGL", courseNumber: "1101" });
     expect(data).toMatchObject({ level: "US", levelName: "Bachelor's level", levelSource: "default", alsoAtAssociateLevel: 3, total: 2 });
     expect(data).not.toHaveProperty("alsoAtGraduateLevel");
     expect(data.sections.map((s) => s.crn)).toEqual(["81001", "81002"]);
-    expect(searches()).toEqual([
-      { level: "US", course: "ENGL 1101", pageMaxSize: "500" },
-      { level: "UA", course: "ENGL 1101", pageMaxSize: "1" },
-    ]);
+    // Two GoSolar sessions in parallel, so the arrival order isn't fixed.
+    expect(searches()).toHaveLength(2);
+    expect(searches()).toEqual(
+      expect.arrayContaining([
+        { level: "US", course: "ENGL 1101", pageMaxSize: "500" },
+        { level: "UA", course: "ENGL 1101", pageMaxSize: "1" },
+      ]),
+    );
   });
 
   it("default: alsoAtAssociateLevel is 0 when Perimeter doesn't offer the course", async () => {
@@ -154,7 +158,7 @@ describe("search_sections level resolution: input > saved campus > bachelor's", 
     } finally {
       warn.mockRestore();
     }
-    expect(searches().map((s) => s.level)).toEqual(["US", "UA"]);
+    expect(searches().map((s) => s.level).sort()).toEqual(["UA", "US"]);
   });
 });
 

@@ -15,7 +15,7 @@ import { easternDay, resetAssistantLimitsForTests } from "@/lib/assistant/budget
 import { MAX_TOOL_ROUNDS } from "@/lib/assistant/chat";
 import { assistantEnabled, setAssistantConfigForTests } from "@/lib/assistant/config";
 import { SYSTEM_PROMPT } from "@/lib/assistant/prompt";
-import { setGoSolarOptionsForTests } from "@/lib/courses";
+import { resetTermsMemoForTests, setGoSolarOptionsForTests } from "@/lib/courses";
 import { resetRateLimits } from "@/lib/oauth/rate-limit";
 import { createTestDb, seedUser, truncateAll, type TestDatabase } from "../helpers/db";
 import { fakeAnthropic, parseSse, type FakeAnthropic } from "../helpers/fake-anthropic";
@@ -57,7 +57,9 @@ beforeEach(async () => {
   claude.reset();
   resetRateLimits();
   resetAssistantLimitsForTests();
-  setAssistantConfigForTests({ apiKey: DUMMY_KEY, fetch: claude.fetch });
+  resetTermsMemoForTests(); // a test below changes the terms table
+  // The model calls every tool itself in these tests; prefetch.test.ts covers the course prefetch.
+  setAssistantConfigForTests({ apiKey: DUMMY_KEY, fetch: claude.fetch, prefetch: false });
   await testDb.db.insert(terms).values([
     { code: OPEN, description: "Spring Semester 2027", viewOnly: false },
     { code: "202608", description: "Fall Semester 2026 (View Only)", viewOnly: true },
@@ -154,6 +156,7 @@ describe("a turn", () => {
     expect(events.at(-1)!.data).toEqual({
       usage: { input: 1200, output: 20, cacheRead: 3000, cacheWrite: 0 },
       remaining: { today: 39 },
+      timing: { total: expect.any(Number), firstText: expect.any(Number), modelRequests: [expect.any(Number)], tools: [] },
     });
 
     expect(claude.requests).toHaveLength(1);
@@ -240,7 +243,7 @@ describe("tools", () => {
     // No level from the model and none saved: the tool searches bachelor's level (US), not every level,
     // then counts the same course at the associate level once.
     const searches = gs.requests.filter((r) => r.path === "/searchResults/searchResults");
-    expect(searches.map((r) => `${r.query.txt_level}:${r.query.pageMaxSize}`)).toEqual(["US:500", "UA:1"]);
+    expect(searches.map((r) => `${r.query.txt_level}:${r.query.pageMaxSize}`).sort()).toEqual(["UA:1", "US:500"]);
 
     expect(claude.requests).toHaveLength(2);
     const second = claude.requests[1].body.messages;

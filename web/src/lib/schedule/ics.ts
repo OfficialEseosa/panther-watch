@@ -95,7 +95,7 @@ export function generateIcs(sections: readonly IcsSection[], options: IcsOptions
       lines.push("BEGIN:VEVENT");
       lines.push(`UID:${section.courseReferenceNumber ?? "section"}-${section.term ?? "term"}-${index}@pantherwatch.app`);
       lines.push(`DTSTAMP:${stamp}`);
-      lines.push(`SUMMARY:${escapeText(`${section.courseTitle ? titleCase(section.courseTitle) : "Class"} - ${section.subject ?? ""} ${section.courseNumber ?? ""}`.trim())}`);
+      lines.push(`SUMMARY:${escapeText(summary(section))}`);
       lines.push(`DESCRIPTION:${escapeText(describe(section))}`);
       lines.push(`LOCATION:${escapeText(location)}`);
       if (color) lines.push(`COLOR:${color}`);
@@ -115,6 +115,13 @@ export function generateIcs(sections: readonly IcsSection[], options: IcsOptions
 
   lines.push("END:VCALENDAR");
   return lines.map(foldLine).join("\r\n") + "\r\n";
+}
+
+/** "CSC 4360 Advanced Algorithms": code first, as on the week grid; "Class" when both are missing. */
+function summary(section: CourseData): string {
+  const code = [section.subject, section.courseNumber].filter(Boolean).join(" ");
+  const title = section.courseTitle?.trim() ? titleCase(section.courseTitle.trim()) : "";
+  return [code, title].filter(Boolean).join(" ") || "Class";
 }
 
 function describe(section: CourseData): string {

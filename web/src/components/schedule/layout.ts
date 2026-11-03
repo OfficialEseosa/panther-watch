@@ -11,6 +11,8 @@ export interface ResolvedCourse {
   crn: string;
   /** "CSC 2720" */
   code: string;
+  /** Display title ("Advanced Algorithms"); empty or absent when GoSolar and the entry have none. */
+  title?: string;
   section: CourseData;
   colorIndex: number;
 }

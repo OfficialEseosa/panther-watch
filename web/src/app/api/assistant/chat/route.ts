@@ -4,6 +4,7 @@ import { guardOrigin } from "@/lib/account/route";
 import { acquireTurn, releaseMessage, recordUsage, reserveMessage } from "@/lib/assistant/budget";
 import { ERROR_MESSAGES, runTurn, type ClientMessage } from "@/lib/assistant/chat";
 import { assistantEnabled } from "@/lib/assistant/config";
+import { doneTiming } from "@/lib/assistant/timing";
 import { getCurrentUser } from "@/lib/auth/session";
 
 // The model call plus up to six tool rounds; each model request times out well inside this.
@@ -63,7 +64,8 @@ async function readBody(request: Request): Promise<{ messages: ClientMessage[] }
  *
  *   event: text   data: { delta }                                   streamed answer text
  *   event: tool   data: { id, name, status, label }                  status running | done | error
- *   event: done   data: { usage: { input, output, cacheRead, cacheWrite }, remaining: { today } }
+ *   event: done   data: { usage: { input, output, cacheRead, cacheWrite }, remaining: { today },
+ *                         timing: { total, firstText, modelRequests: [ms], tools: [{ name, ms }] } }
  *   event: error  data: { code, message }                            budget | rate | upstream | refusal | internal; the stream ends
  *
  * Before any stream: 503 { code: "disabled" } without ANTHROPIC_API_KEY, 401 signed out, 403
@@ -140,6 +142,7 @@ export async function POST(request: Request): Promise<Response> {
             cacheWrite: result.usage.cacheWrite,
           },
           remaining: { today: remainingToday },
+          timing: doneTiming(result.timing),
         });
       }
     } catch (error) {

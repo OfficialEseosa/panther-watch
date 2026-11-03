@@ -5,8 +5,9 @@ import { SEED, addToSchedule, animationsDone, expect, freshUser, hydrated, login
 /**
  * /schedule-builder, laid out like the original page: the week grid above 768 px, the agenda
  * list at 768 px and below (CSS switches them; there is no view toggle). Seeded meeting times
- * (e2e/fake-gosolar-server.ts): CSC 1301 80001 Mon/Wed 9:00-9:50, MATH 2211 80010 Tue/Thu
- * 10:00-10:50, and CSC 1302 80003 Mon/Wed 9:30-10:20, which overlaps CSC 1301.
+ * (e2e/fake-gosolar-server.ts): CSC 1301 80001 Mon/Wed 9:00-9:50 (80002 11:00 AM-12:15 PM),
+ * MATH 2211 80010 Tue/Thu 10:00-10:50, and CSC 1302 80003 Mon/Wed 9:30-10:20, which overlaps
+ * CSC 1301.
  */
 
 const { term, csc1301, csc1302, math2211 } = SEED;
@@ -38,11 +39,15 @@ test("week grid, class dialog color and remove with Undo", async ({ page }, test
   await expect(week.getByRole("button")).toHaveCount(4);
   for (const name of ["Monday", "Wednesday"]) {
     await expect(day(name).getByRole("button")).toHaveCount(1);
-    await expect(day(name).getByRole("button")).toHaveAccessibleName(new RegExp(`^CSC 1301 · 001\\s*9:00 AM - 9:50 AM.*, ${name}$`));
+    await expect(day(name).getByRole("button")).toHaveAccessibleName(
+      new RegExp(`^CSC 1301 · 001\\s*${csc1301.title}\\s*9:00 AM - 9:50 AM.*, ${name}$`),
+    );
   }
   for (const name of ["Tuesday", "Thursday"]) {
     await expect(day(name).getByRole("button")).toHaveCount(1);
-    await expect(day(name).getByRole("button")).toHaveAccessibleName(new RegExp(`^MATH 2211 · 001\\s*10:00 AM - 10:50 AM.*, ${name}$`));
+    await expect(day(name).getByRole("button")).toHaveAccessibleName(
+      new RegExp(`^MATH 2211 · 001\\s*${math2211.title}\\s*10:00 AM - 10:50 AM.*, ${name}$`),
+    );
   }
   await expect(day("Friday").getByRole("button")).toHaveCount(0);
   await expect(page.getByText(/\bconflicts?\b/)).toHaveCount(0);
@@ -137,7 +142,45 @@ test("adding an overlapping section warns, outlines the conflict, and exports .i
   expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(3);
   expect(ics).toContain("BYDAY=MO,WE");
   expect(ics).toContain("BYDAY=TU,TH");
+  // Event titles lead with the code, like the grid: "CSC 1302 Principles of Computer Science II".
+  expect(ics).toContain(`SUMMARY:CSC 1302 ${csc1302.title}\r\n`);
+  expect(ics).toContain(`SUMMARY:MATH 2211 ${math2211.title}\r\n`);
   await expect(toast(page, "Calendar file downloaded")).toBeVisible();
+});
+
+test("week grid blocks show the course title; short blocks keep it in the name and tooltip", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === "mobile", "The week grid is hidden on phones; the agenda test covers them.");
+  await login(page.request, freshUser("schedule-titles"));
+  // 80002 meets Mon/Wed 11:00 AM-12:15 PM (75 minutes: room for the title); 80010 Tue/Thu 10:00-10:50 (too short).
+  await addToSchedule(page.request, { crn: csc1301.closed, ...csc1301 });
+  await addToSchedule(page.request, { crn: math2211.open, ...math2211 });
+  await page.goto("/schedule-builder");
+  const week = page.getByRole("region", { name: "Spring 2027 week" });
+  await expect(week.getByRole("button")).toHaveCount(4);
+
+  // Long block: code, then the visible title line, then the time.
+  const long = week.getByRole("group", { name: "Monday" }).getByRole("button");
+  await expect(long).toHaveAccessibleName(new RegExp(`^CSC 1301 · 002\\s*${csc1301.title}\\s*11:00 AM - 12:15 PM.*, Monday$`));
+  const longTitle = long.getByText(csc1301.title, { exact: true });
+  await expect(longTitle).toBeVisible();
+  await expect(longTitle).toHaveAttribute("data-lines", "1");
+  // One line (ellipsized when narrow): no taller than the time line below it.
+  const [titleBox, timeBox] = await Promise.all([longTitle.boundingBox(), long.getByText("11:00 AM - 12:15 PM").boundingBox()]);
+  expect(titleBox!.height).toBeLessThanOrEqual(timeBox!.height);
+  await expect(long).toHaveAttribute("title", new RegExp(`^CSC 1301 ${csc1301.title}\\b`));
+
+  // Short block (50 minutes): no title line on screen, but the name and the hover tooltip carry it.
+  const short = week.getByRole("group", { name: "Tuesday" }).getByRole("button");
+  await expect(short).toHaveAccessibleName(new RegExp(`^MATH 2211 · 001\\s*${math2211.title}\\s*10:00 AM - 10:50 AM.*, Tuesday$`));
+  await expect(short).toHaveAttribute("title", new RegExp(`^MATH 2211 ${math2211.title}\\b`));
+  await expect(short.locator("[data-lines]")).toHaveCount(0);
+  await expect(short.getByText(math2211.title, { exact: true })).toHaveClass(/\bsr-only\b/);
+
+  // The class dialog's header carries the title too.
+  await (await hydrated(long)).click();
+  const dialog = page.getByRole("dialog", { name: "CSC 1301 · 002" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText(csc1301.title, { exact: true })).toBeVisible();
 });
 
 test("a phone-width screen shows the agenda list instead of the grid", async ({ page }) => {

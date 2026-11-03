@@ -309,6 +309,6 @@ describe("ics", () => {
     );
     for (const line of ics.split("\r\n")) expect(new TextEncoder().encode(line).length).toBeLessThanOrEqual(75);
     // Unfolding restores the summary.
-    expect(ics.replace(/\r\n /g, "")).toContain("SUMMARY:Special Topics\\; Data\\, Ethics and Society in an Increasingly Long Course Title - CSC 1301");
+    expect(ics.replace(/\r\n /g, "")).toContain("SUMMARY:CSC 1301 Special Topics\\; Data\\, Ethics and Society in an Increasingly Long Course Title");
   });
 });

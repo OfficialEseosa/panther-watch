@@ -1,5 +1,6 @@
 import "server-only";
 import type Anthropic from "@anthropic-ai/sdk";
+import type { CallToolResult } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { termLabel } from "@/lib/format";
 import { TOOLS, type ToolDefinition } from "@/lib/tools/registry";
@@ -83,6 +84,19 @@ export function apiTools(): Anthropic.Beta.BetaTool[] {
     cached = tools;
   }
   return cached;
+}
+
+/** Longest tool result handed to the model (characters); longer ones are cut with a note. */
+const MAX_TOOL_RESULT_CHARS = 40_000;
+
+/** A tool result's text as the model gets it (cut at MAX_TOOL_RESULT_CHARS, with a note). */
+export function toolResultText(result: CallToolResult): string {
+  const text = result.content
+    .map((part) => (part.type === "text" ? part.text : ""))
+    .filter(Boolean)
+    .join("\n");
+  if (text.length <= MAX_TOOL_RESULT_CHARS) return text || "(no output)";
+  return `${text.slice(0, MAX_TOOL_RESULT_CHARS)}\n[Result cut short: too long. Narrow the search (a course number, openOnly, or a smaller limit).]`;
 }
 
 // ------------------------------------------------------------------ labels

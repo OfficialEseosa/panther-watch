@@ -22,6 +22,7 @@ import { useSectionResolver } from "./useSectionResolver";
 import { WeekGrid } from "./WeekGrid";
 import styles from "./SchedulePlanner.module.css";
 import { courseCode, sectionKey } from "@/lib/format";
+import { displayTitle } from "@/components/courses/format";
 
 export type TermOption = { code: string; label: string; viewOnly: boolean };
 
@@ -138,7 +139,14 @@ export function SchedulePlanner({
     for (const entry of entries) {
       const resolution = resolutions.get(entry.crn);
       if (resolution?.status === "ok" && resolution.section) {
-        out.push({ crn: entry.crn, code: courseCode(entry.subject, entry.courseNumber), section: resolution.section, colorIndex: entry.colorIndex });
+        out.push({
+          crn: entry.crn,
+          code: courseCode(entry.subject, entry.courseNumber),
+          // The live section already fetched for meeting times; the saved entry's title as a fallback.
+          title: displayTitle(resolution.section.courseTitle || entry.courseTitle),
+          section: resolution.section,
+          colorIndex: entry.colorIndex,
+        });
       }
     }
     return out;
@@ -344,7 +352,7 @@ export function SchedulePlanner({
   const exportIcs = () => {
     const sections = resolved
       .filter((c) => meetingsOf(c.section).length > 0)
-      .map((c) => ({ ...c.section, color: c.colorIndex }));
+      .map((c) => ({ ...c.section, courseTitle: c.title || c.section.courseTitle, color: c.colorIndex }));
     if (sections.length === 0) return;
     const ics = generateIcs(sections, { calendarName: `PantherWatch · ${termLabel}` });
     const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));

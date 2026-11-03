@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { Agent, fetch as undiciFetch, type Dispatcher } from "undici";
 import { GoSolarError } from "./errors";
 
@@ -51,9 +52,72 @@ export interface ResolvedOptions {
   timeoutMs: number;
 }
 
+/**
+ * GoSolar request counts and time for whatever runs inside `measureGoSolar` (e.g. one assistant
+ * tool call). AsyncLocalStorage, so concurrent work in other contexts is never mixed in; outside
+ * a measurement nothing is recorded. `ms` is the sum of request durations (headers through the
+ * body being read), so concurrent requests can add up to more than the wall time.
+ */
+export interface GoSolarStats {
+  requests: number;
+  /** Term declarations (`POST /term/search`): one per GoSolar session. */
+  sessions: number;
+  ms: number;
+}
+
+const statsStore = new AsyncLocalStorage<GoSolarStats>();
+
+/** Runs `work`, counting its GoSolar requests into `gosolar` (readable while it runs, too). */
+export async function measureGoSolar<T>(
+  work: () => Promise<T>,
+  gosolar: GoSolarStats = { requests: 0, sessions: 0, ms: 0 },
+): Promise<{ value: T; gosolar: GoSolarStats }> {
+  const value = await statsStore.run(gosolar, work);
+  return { value, gosolar };
+}
+
+/** Wraps a FetchLike so requests (and reading their bodies) count toward the active measurement. */
+function measured(fetchImpl: FetchLike): FetchLike {
+  return async (url, init) => {
+    const stats = statsStore.getStore();
+    if (!stats) return fetchImpl(url, init);
+    const started = performance.now();
+    stats.requests++;
+    if (url.endsWith("/term/search")) stats.sessions++;
+    const settle = () => {
+      stats.ms += performance.now() - started;
+    };
+    let response: GoSolarResponse;
+    try {
+      response = await fetchImpl(url, init);
+    } catch (error) {
+      settle();
+      throw error;
+    }
+    let done = false;
+    const finish = <T>(read: () => Promise<T>) => async (): Promise<T> => {
+      try {
+        return await read();
+      } finally {
+        if (!done) {
+          done = true;
+          settle();
+        }
+      }
+    };
+    return {
+      ok: response.ok,
+      status: response.status,
+      headers: response.headers,
+      json: finish(() => response.json()),
+      text: finish(() => response.text()),
+    };
+  };
+}
+
 export function resolveOptions(options: GoSolarOptions = {}): ResolvedOptions {
   return {
-    fetchImpl: options.fetchImpl ?? undiciFetch,
+    fetchImpl: measured(options.fetchImpl ?? undiciFetch),
     agentFactory: options.agentFactory ?? createSessionAgent,
     baseUrl: options.baseUrl ?? GOSOLAR_BASE_URL,
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,

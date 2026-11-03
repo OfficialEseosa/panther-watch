@@ -10,7 +10,7 @@ import {
 import { decodeEntities } from "@/lib/email/escape";
 import { compareSections, keyOf } from "@/lib/format";
 import { gosolarOptions } from "./gosolar-options";
-import { currentTerms, type TermInfo } from "./terms";
+import { currentTerms, currentTermsMemo, type TermInfo } from "./terms";
 import {
   blankToUndefined,
   courseNumberSchema,
@@ -150,10 +150,11 @@ export async function searchCourseList(
 
 /**
  * GoSolar's terms from the `terms` cache: registrable terms first (newest first), then
- * view-only ones, still flagged so the UI can show them read-only.
+ * view-only ones, still flagged so the UI can show them read-only. `memo`: the in-process copy
+ * (currentTermsMemo), for the on-site assistant's per-turn reads.
  */
-export async function getTerms(): Promise<TermInfo[]> {
-  const list = await currentTerms();
+export async function getTerms({ memo = false }: { memo?: boolean } = {}): Promise<TermInfo[]> {
+  const list = await (memo ? currentTermsMemo() : currentTerms());
   return [...list.filter((t) => !t.viewOnly), ...list.filter((t) => t.viewOnly)];
 }
 

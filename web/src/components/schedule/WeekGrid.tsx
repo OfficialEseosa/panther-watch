@@ -25,10 +25,19 @@ const HOUR_HEIGHT = 64;
 const FRESH_STATIC_MS = 2000;
 const FRESH_SAFETY_MS = 1000;
 
-/** Tooltip for a lane-split block: "CSC 2720 · 003, Monday 10:00 AM - 11:15 AM, Langdale 405, conflicts with MATH 2211". */
+/** Blocks shorter than this show code and time only; the title stays in the name and tooltip. */
+const TITLE_MIN_MINUTES = 60;
+/** Blocks at least this long give the title two lines. */
+const TITLE_TWO_LINE_MINUTES = 90;
+
+/**
+ * Tooltip for a lane-split block: "CSC 2720 · 003 Data Structures, Monday 10:00 AM - 11:15 AM,
+ * Langdale 405, conflicts with MATH 2211".
+ */
 function blockTitle(block: PositionedBlock, time: string): string {
   const seq = block.course.section.sequenceNumber;
-  const parts = [`${block.code}${seq ? ` · ${seq}` : ""}`, `${DAY_LABELS[block.day].long} ${time}`];
+  const title = block.course.title;
+  const parts = [`${block.code}${seq ? ` · ${seq}` : ""}${title ? ` ${title}` : ""}`, `${DAY_LABELS[block.day].long} ${time}`];
   if (block.location) parts.push(block.location);
   if (block.conflictsWith.length) parts.push(`conflicts with ${block.conflictsWith.join(" and ")}`);
   return parts.join(", ");
@@ -100,6 +109,9 @@ export function WeekGrid({ label, days, range, week, freshCrns, onFreshDone, onO
                 const height = ((block.end - block.start) / totalMinutes) * 100;
                 const width = 100 / Math.max(1, block.laneCount);
                 const single = block.laneCount === 1;
+                const title = block.course.title;
+                const minutes = block.end - block.start;
+                const titleShown = minutes >= TITLE_MIN_MINUTES;
                 return (
                   <button
                     key={block.id}
@@ -108,7 +120,11 @@ export function WeekGrid({ label, days, range, week, freshCrns, onFreshDone, onO
                     data-block=""
                     data-conflict={conflict || undefined}
                     data-fresh={freshCrns.has(block.crn) || undefined}
-                    title={single ? `${block.code}${block.location ? ` · ${block.location}` : ""}` : blockTitle(block, time)}
+                    title={
+                      single
+                        ? [`${block.code}${title ? ` ${title}` : ""}`, block.location].filter(Boolean).join(" · ")
+                        : blockTitle(block, time)
+                    }
                     onClick={() => onOpen(block.crn)}
                     onAnimationEnd={(event) => {
                       if (event.animationName.includes("fresh-ring")) onFreshDone(block.crn);
@@ -126,6 +142,14 @@ export function WeekGrid({ label, days, range, week, freshCrns, onFreshDone, onO
                       {block.code}
                       {seq ? <span className="sr-only"> · {seq}</span> : null}
                     </span>
+                    {title ? (
+                      <span
+                        className={titleShown ? styles.classTitle : "sr-only"}
+                        data-lines={titleShown ? (minutes >= TITLE_TWO_LINE_MINUTES ? 2 : 1) : undefined}
+                      >
+                        {title}
+                      </span>
+                    ) : null}
                     <span className={styles.classTime}>{time}</span>
                     {block.location ? (
                       <span className={single ? styles.classLocation : "sr-only"}>{block.location}</span>

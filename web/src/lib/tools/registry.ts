@@ -230,7 +230,7 @@ async function liveSections(
 }
 
 /** Subject and course number of a CRN on the user's schedule or tracked list (GoSolar can't look a CRN up alone). */
-async function courseOfSaved(userId: string, term: string, crn: string): Promise<{ subject: string; courseNumber: string } | null> {
+export async function courseOfSaved(userId: string, term: string, crn: string): Promise<{ subject: string; courseNumber: string } | null> {
   const [schedule, watches] = await Promise.all([listSchedule(userId), listWatches(userId)]);
   const saved = [...(schedule[term] ?? []), ...watches.filter((w) => w.term === term)].find((e) => e.crn === crn);
   return saved ? { subject: saved.subject, courseNumber: saved.courseNumber } : null;
@@ -240,7 +240,7 @@ async function courseOfSaved(userId: string, term: string, crn: string): Promise
  * The term the course search form preselects (CourseSearchForm: the newest term open for
  * registration, else the newest term), so the assistant defaults to what the site does.
  */
-const defaultTermCode = (terms: readonly TermInfo[]): string | undefined =>
+export const defaultTermCode = (terms: readonly TermInfo[]): string | undefined =>
   [...terms].sort((a, b) => b.code.localeCompare(a.code)).find((t) => !t.viewOnly)?.code ??
   [...terms].sort((a, b) => b.code.localeCompare(a.code))[0]?.code;
 
@@ -277,7 +277,7 @@ export const TOOLS: readonly ToolDefinition[] = [
     annotations: { readOnlyHint: true, openWorldHint: true },
     scope: "read",
     handler: async () => {
-      const terms = await getTerms();
+      const terms = await getTerms({ memo: true });
       const fallback = defaultTermCode(terms);
       const inProgress = inProgressTermCode(terms);
       return text({
@@ -342,17 +342,18 @@ export const TOOLS: readonly ToolDefinition[] = [
       const saved = requested ? null : await getLevelPreference(userId);
       const level: LevelPreference = requested ?? saved ?? DEFAULT_LEVEL;
       const levelSource: LevelSource = requested ? "input" : saved ? "preference" : "default";
+      // Only when nobody chose the level: does the same search find Perimeter (or graduate) sections?
+      // The Perimeter count runs alongside the search (its own GoSolar session); the graduate one
+      // only when the search found nothing.
+      const search = { term, subject, courseNumber };
+      const associateCount = levelSource === "default" ? countAtLevel(search, "UA") : null;
+      // (countAtLevel never rejects, so a failed search leaves no unhandled rejection behind.)
       const all = (await searchSections({ term, subject, courseNumber, level })).map(compactSection);
       const matching = openOnly ? all.filter((s) => s.open) : all;
 
-      // Only when nobody chose the level: does the same search find Perimeter (or graduate) sections?
       const elsewhere: { alsoAtAssociateLevel?: number; alsoAtGraduateLevel?: number } = {};
       if (levelSource === "default") {
-        const search = { term, subject, courseNumber };
-        const [associate, graduate] = await Promise.all([
-          countAtLevel(search, "UA"),
-          all.length === 0 ? countAtLevel(search, "GS") : null,
-        ]);
+        const [associate, graduate] = await Promise.all([associateCount, all.length === 0 ? countAtLevel(search, "GS") : null]);
         if (associate !== null) elsewhere.alsoAtAssociateLevel = associate;
         if (graduate !== null) elsewhere.alsoAtGraduateLevel = graduate;
       }

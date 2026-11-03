@@ -168,6 +168,29 @@
   text-overflow: ellipsis;
 }
 
+/* Course title under the code, in the time's small text: one line with an ellipsis, two lines on
+   blocks of 90 minutes or more (WeekGrid sets data-lines; blocks under an hour leave it out).
+   It doesn't shrink, so an overfull block clips the room, not half a line of title. */
+.classTitle {
+  font-size: 0.68rem;
+  color: inherit;
+  font-weight: 600;
+  line-height: 1.25;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.classTitle[data-lines="2"] {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
 .classTime {
   font-size: 0.68rem;
   color: inherit;

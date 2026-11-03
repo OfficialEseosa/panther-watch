@@ -195,9 +195,10 @@ describe("tools", () => {
     const { data } = await callTool(await mcp(), "search_sections", { term: OPEN, subject: "csc", courseNumber: "1301" });
     expect(data).toMatchObject({ level: "US", levelName: "Bachelor's level", levelSource: "default", total: 3, returned: 3, truncated: false });
     // No level given and none saved: bachelor's (US), never GoSolar's every-level default that mixes in Perimeter
-    // College sections, plus one count of the same course at the associate level (this fake has no levels: 3).
+    // College sections, plus one count of the same course at the associate level (this fake has no levels: 3),
+    // run alongside the search (so in either order).
     const searches = gs.requests.filter((r) => r.path === "/searchResults/searchResults");
-    expect(searches.map((r) => `${r.query.txt_level}:${r.query.pageMaxSize}`)).toEqual(["US:500", "UA:1"]);
+    expect(searches.map((r) => `${r.query.txt_level}:${r.query.pageMaxSize}`).sort()).toEqual(["UA:1", "US:500"]);
     expect(data!.alsoAtAssociateLevel).toBe(3);
     expect(data!.resultsUrl).toMatch(/[?&]level=US$/);
     const sections = data!.sections as Array<Record<string, unknown>>;

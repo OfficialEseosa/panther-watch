@@ -51,6 +51,11 @@ const schema = z.object({
   ASSISTANT_GLOBAL_DAILY_MESSAGES: blankAsUndefined(z.coerce.number().int().min(0).default(800)),
   /** Assistant spend cap for the whole site per day, in US dollars (computed from token usage). */
   ASSISTANT_GLOBAL_DAILY_USD: blankAsUndefined(z.coerce.number().min(0).default(3)),
+  /**
+   * "off" turns off the assistant's course prefetch (src/lib/assistant/prefetch.ts): the GoSolar
+   * searches run before the first model request for courses the student's message names.
+   */
+  ASSISTANT_PREFETCH: blankAsUndefined(z.enum(["on", "off"]).default("on")),
   ADMIN_EMAILS: z
     .string()
     .optional()

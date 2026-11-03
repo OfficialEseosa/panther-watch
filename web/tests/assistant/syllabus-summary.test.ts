@@ -376,6 +376,8 @@ describe("get_syllabus_summary over MCP", () => {
 
 describe("get_syllabus_summary in the on-site chat", () => {
   it("runs as a tool (running/done events with its label); the summary's cost is site-wide spend, not the user's", async () => {
+    // The model calls every tool itself here (prefetch.test.ts covers the course prefetch).
+    setAssistantConfigForTests({ apiKey: "sk-ant-test-dummy-key", fetch: claude.fetch, prefetch: false });
     claude.reply({
       tools: [{ id: "toolu_s", name: "get_syllabus_summary", input: { term: OPEN, crn: CRN, subject: "CSC", courseNumber: "4350" } }],
       usage: { input: 1000, output: 50 },
