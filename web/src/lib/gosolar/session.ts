@@ -11,6 +11,7 @@ import {
   type ResolvedOptions,
 } from "./http";
 import type {
+  CourseData,
   CatalogSearchParams,
   CatalogSearchResponse,
   CatalogSearchResult,
@@ -75,6 +76,54 @@ export class GoSolarSession implements AsyncDisposable {
       throw new GoSolarAffinityError(url, cookieNames(this.cookies));
     }
     return { ...body, data: (body.data ?? []).map(decodeStrings) };
+  }
+
+  /**
+   * One page of a class (section) search for several courses at once, using Banner's
+   * `txt_subjectcoursecombo` ("CSC4350,ASTR1010,CHEM1212L"). Verified live 2026-11-22 on term
+   * 202701: 31 courses in one search returned exactly the 502 sections the 31 one-course
+   * searches returned (same CRNs per course, nothing extra; CHEM1212 and CHEM1212L stay apart),
+   * and paging on the same session works.
+   *
+   * Like the catalog search, Banner keeps a session's FIRST class search: a second search with
+   * other courses on the same session answers with the first one's sections again (verified the
+   * same day). Only `pageOffset` may change between calls, so: one course list per session.
+   *
+   * `keep` runs on the raw rows BEFORE entity decoding, so only kept rows pay for it (a busy
+   * term's page is ~3 MB of JSON, and callers usually want a few dozen of its sections).
+   * `totalCount` is GoSolar's count of all matches, kept or not.
+   */
+  async searchCombo(
+    courses: ReadonlyArray<{ subject: string; courseNumber: string }>,
+    { pageOffset = 0, pageMaxSize = 500, keep }: ComboPageOptions = {},
+  ): Promise<ComboPage> {
+    const query: [string, string][] = [
+      ["txt_subjectcoursecombo", courses.map((c) => `${c.subject}${c.courseNumber}`.toUpperCase()).join(",")],
+      ["txt_term", this.term],
+      ["pageOffset", String(pageOffset)],
+      ["pageMaxSize", String(pageMaxSize)],
+      ["sortColumn", "subjectDescription"],
+      ["sortDirection", "asc"],
+    ];
+    const url = buildUrl(this.options.baseUrl, "/searchResults/searchResults", query);
+    const body = (await getJson(url, this.options, {
+      headers: { Cookie: this.cookies },
+      dispatcher: this.agent,
+    })) as SearchResponse | null;
+
+    if (!body) throw new GoSolarError("GoSolar search returned an empty body", 200, url);
+    if (body.success !== true) {
+      throw new GoSolarError("GoSolar search returned success:false", 200, url);
+    }
+    if (body.data === null) {
+      throw new GoSolarAffinityError(url, cookieNames(this.cookies));
+    }
+    const rows = body.data ?? [];
+    return {
+      totalCount: Number(body.totalCount) || 0,
+      rowsOnPage: rows.length,
+      data: (keep ? rows.filter(keep) : rows).map(decodeStrings),
+    };
   }
 
   /**
@@ -145,6 +194,23 @@ export class GoSolarSession implements AsyncDisposable {
   [Symbol.asyncDispose](): Promise<void> {
     return this.close();
   }
+}
+
+export interface ComboPageOptions {
+  pageOffset?: number;
+  pageMaxSize?: number;
+  /** Rows to keep, tested on the raw (still entity-encoded) row. All rows when omitted. */
+  keep?: (raw: CourseData) => boolean;
+}
+
+/** One page of `searchCombo`. */
+export interface ComboPage {
+  /** GoSolar's count of every matching section across all pages. */
+  totalCount: number;
+  /** Rows GoSolar sent on this page, before `keep`; page with `pageOffset += rowsOnPage`. */
+  rowsOnPage: number;
+  /** The kept rows, decoded. */
+  data: CourseData[];
 }
 
 export interface SessionMode {

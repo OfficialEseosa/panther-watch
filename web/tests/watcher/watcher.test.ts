@@ -147,7 +147,22 @@ describe("runWatcher (PGlite + fake GoSolar + memory email)", () => {
     expect((await row(watch.id)).notifiedAt).toBeNull();
   });
 
-  it("a failed group search changes nothing for that group and the other groups still run", async () => {
+  it("searches all of a term's courses in one GoSolar search", async () => {
+    const user = await seedUser(testDb.db);
+    await seedWatchedSection(testDb.db, user.id, { crn: "80001" });
+    await seedWatchedSection(testDb.db, user.id, { crn: "80002", subject: "MATH", courseNumber: "2211" });
+    await seedWatchedSection(testDb.db, user.id, { crn: "80003", subject: "ENGL", courseNumber: "1101" });
+    setCsc1301(makeSection({ courseReferenceNumber: "80001" }));
+    gs.setSections("202608", "MATH", "2211", [makeSection({ courseReferenceNumber: "80002", subject: "MATH", courseNumber: "2211" })]);
+    gs.setSections("202608", "ENGL", "1101", [makeSection({ courseReferenceNumber: "80003", subject: "ENGL", courseNumber: "1101" })]);
+
+    const summary = await run(at(0));
+    expect(summary).toMatchObject({ groups: 3, sectionsChecked: 3, emailsSent: 3, errors: [] });
+    expect(searches()).toBe(1);
+    expect(gs.requests.filter((r) => r.path === "/term/search")).toHaveLength(1);
+  });
+
+  it("a failed combined search changes nothing for its groups, and the next run recovers", async () => {
     const user = await seedUser(testDb.db);
     const csc = await seedWatchedSection(testDb.db, user.id, { crn: "80001" });
     const math = await seedWatchedSection(testDb.db, user.id, { crn: "80002", subject: "MATH", courseNumber: "2211" });
@@ -156,17 +171,21 @@ describe("runWatcher (PGlite + fake GoSolar + memory email)", () => {
     gs.failNextSearches({ kind: "http", status: 503 });
 
     const summary = await run(at(0));
-    expect(summary.groups).toBe(2);
-    expect(summary.emailsSent).toBe(1);
-    expect(summary.errors).toHaveLength(1);
-    expect(summary.errors[0]).toMatch(/^search (CSC 1301|MATH 2211) \(202608\): .*503/);
+    expect(summary).toMatchObject({ groups: 2, emailsSent: 0, sectionsChecked: 0, sectionsMissing: 0 });
+    // One error per group of the failed search, and nothing marked closed or missing.
+    expect([...summary.errors].sort()).toEqual([
+      expect.stringMatching(/^search CSC 1301 \(202608\): .*503/),
+      expect.stringMatching(/^search MATH 2211 \(202608\): .*503/),
+    ]);
+    expect(await row(csc.id)).toMatchObject({ notifiedAt: null, missingRuns: 0 });
+    expect(await row(math.id)).toMatchObject({ notifiedAt: null, missingRuns: 0 });
+    const [failed] = await recentRuns("watcher", 1);
+    expect(failed).toMatchObject({ ok: false, summary: { emailsSent: 0 } });
 
-    const failedCsc = summary.errors[0].includes("CSC 1301");
-    expect((await row(csc.id)).notifiedAt).toEqual(failedCsc ? null : at(0));
-    expect((await row(math.id)).notifiedAt).toEqual(failedCsc ? at(0) : null);
-
-    const [last] = await recentRuns("watcher", 1);
-    expect(last).toMatchObject({ ok: false, summary: { emailsSent: 1 } });
+    const next = await run(at(3));
+    expect(next).toMatchObject({ emailsSent: 2, errors: [] });
+    expect((await row(csc.id)).notifiedAt).toEqual(at(3));
+    expect((await row(math.id)).notifiedAt).toEqual(at(3));
   });
 
   it("an affinity failure (data:null) is also unknown, not closed", async () => {

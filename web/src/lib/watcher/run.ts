@@ -114,9 +114,9 @@ interface GroupContext {
 
 /**
  * One seat-watcher pass. Takes the `job_runs` lock (returns `{ skipped: "locked" }` if another
- * pass is active), searches GoSolar once per (term, subject, course number) group with up to
- * `concurrency` searches in flight, and applies `decide()` to every watch of a group as soon
- * as its search returns. Every state change is its own short conditional UPDATE, so a crash
+ * pass is active), looks every watched section of a term up in one batched GoSolar search
+ * (findSectionsByCrn: up to COURSES_PER_SEARCH courses per session, `concurrency` sessions in
+ * flight), then applies `decide()` to every watch of each (term, subject, course number) group. Every state change is its own short conditional UPDATE, so a crash
  * mid-run keeps what was done and overlapping runs cannot double-send. See state.ts.
  */
 export async function runWatcher(options: RunWatcherOptions = {}): Promise<RunWatcherResult> {
@@ -194,16 +194,23 @@ export async function runWatcher(options: RunWatcherOptions = {}): Promise<RunWa
       throttle: createThrottle(options.sendSpacingMs ?? DEFAULT_SEND_SPACING_MS),
     };
 
-    let next = 0;
-    const worker = async () => {
-      while (next < groups.length) {
-        if (performance.now() - startedAt >= deadlineMs) return;
-        await processGroup(groups[next++], ctx);
-      }
-    };
+    // One combined GoSolar lookup per term (findSectionsByCrn batches the courses, up to
+    // COURSES_PER_SEARCH per session), then every group of that term is decided from it. A
+    // term not started before the deadline carries all its groups over to the next run.
     const concurrency = Math.max(1, Math.min(options.concurrency ?? DEFAULT_CONCURRENCY, groups.length));
-    await Promise.all(Array.from({ length: concurrency }, worker));
-    summary.carriedOver = groups.length - next;
+    let started = 0;
+    for (const termGroups of byTerm(groups)) {
+      if (performance.now() - startedAt >= deadlineMs) break;
+      started += termGroups.length;
+      const lookup = await lookUpTerm(termGroups, ctx, concurrency);
+
+      let next = 0;
+      const worker = async () => {
+        while (next < termGroups.length) await processGroup(termGroups[next++], lookup, ctx);
+      };
+      await Promise.all(Array.from({ length: Math.min(concurrency, termGroups.length) }, worker));
+    }
+    summary.carriedOver = groups.length - started;
   } catch (error) {
     addError(`fatal: ${errorMessage(error)}`);
     summary.durationMs = Math.round(performance.now() - startedAt);
@@ -216,25 +223,54 @@ export async function runWatcher(options: RunWatcherOptions = {}): Promise<RunWa
   return { jobRunId: run.id, ...summary };
 }
 
-async function processGroup(group: Group, ctx: GroupContext): Promise<void> {
-  const label = `${group.subject} ${group.courseNumber} (${group.term})`;
-  const crns = [...new Set(group.rows.map((row) => row.crn))];
-  let searchFailed = false;
+interface TermLookup {
+  sections: Map<string, CourseData>;
+  /** groupKey of every group whose combined search failed. */
+  failed: Set<string>;
+}
+
+const groupKey = (term: string, subject: string, courseNumber: string) => `${term}|${subject}|${courseNumber}`;
+
+/** Groups split by term, keeping their (shuffled) order. */
+function byTerm(groups: Group[]): Group[][] {
+  const terms = new Map<string, Group[]>();
+  for (const group of groups) {
+    const list = terms.get(group.term) ?? [];
+    list.push(group);
+    terms.set(group.term, list);
+  }
+  return [...terms.values()];
+}
+
+/** Every watched CRN of one term's groups, in as few GoSolar sessions as findSectionsByCrn allows. */
+async function lookUpTerm(groups: Group[], ctx: GroupContext, concurrency: number): Promise<TermLookup> {
+  const term = groups[0].term;
+  const failed = new Set<string>();
   const sections = await findSectionsByCrn(
-    group.term,
-    [{ subject: group.subject, courseNumber: group.courseNumber, crns }],
+    term,
+    groups.map((g) => ({ subject: g.subject, courseNumber: g.courseNumber, crns: [...new Set(g.rows.map((r) => r.crn))] })),
     {
       ...defaultJobsGoSolarOptions(),
       ...ctx.options.gosolar,
-      concurrency: 1,
-      onError: (_group, error) => {
-        searchFailed = true;
-        ctx.addError(`search ${label}: ${errorMessage(error)}`);
+      concurrency,
+      onError: (group, error) => {
+        failed.add(groupKey(term, group.subject, group.courseNumber));
+        ctx.addError(`search ${group.subject} ${group.courseNumber} (${term}): ${errorMessage(error)}`);
       },
     },
   );
+  return { sections, failed };
+}
+
+async function processGroup(group: Group, lookup: TermLookup, ctx: GroupContext): Promise<void> {
+  const label = `${group.subject} ${group.courseNumber} (${group.term})`;
+  const crns = [...new Set(group.rows.map((row) => row.crn))];
   // Unknown is not closed: a failed search leaves every watch in the group untouched.
-  if (searchFailed) return;
+  if (lookup.failed.has(groupKey(group.term, group.subject, group.courseNumber))) return;
+  const sections = new Map(crns.flatMap((crn) => {
+    const section = lookup.sections.get(crn);
+    return section ? [[crn, section] as const] : [];
+  }));
   ctx.summary.sectionsChecked += crns.filter((crn) => sections.has(crn)).length;
 
   try {

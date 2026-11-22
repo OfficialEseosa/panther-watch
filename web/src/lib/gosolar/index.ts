@@ -10,5 +10,11 @@ export {
   type GoSolarOptions,
   type GoSolarStats,
 } from "./http";
-export { createGoSolarSession, GoSolarSession, type SessionMode } from "./session";
+export {
+  createGoSolarSession,
+  GoSolarSession,
+  type ComboPage,
+  type ComboPageOptions,
+  type SessionMode,
+} from "./session";
 export type * from "./types";
