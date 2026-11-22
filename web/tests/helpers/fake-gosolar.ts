@@ -6,7 +6,9 @@
  *   remembers which term that session declared.
  * - `GET /searchResults/searchResults` requires BOTH cookies from one declaration. Without
  *   them it answers `{success:true, data:null}`, exactly like a search that landed on a node
- *   that never saw the declaration.
+ *   that never saw the declaration. It filters by `txt_subject` + `txt_courseNumber`, or by
+ *   `txt_subjectcoursecombo` ("CSC1301,MATH2211", several courses at once), and like live
+ *   Banner a session keeps its FIRST class search (later calls only page through it).
  * - `GET /classSearch/getTerms` and `GET /classSearch/get_subject` serve configured lists.
  * - `POST /searchResults/getSectionPrerequisites`, `getCorequisites`, `getRestrictions` and
  *   `getCourseDescription` (form `term=&courseReferenceNumber=`) serve the HTML fragments set
@@ -152,7 +154,10 @@ export async function startFakeGoSolar(): Promise<FakeGoSolar> {
   const catalogs = new Map<string, CatalogCourseData[]>();
   let catalogFailures: SearchFailure[] = [];
   /** JSESSIONID -> { term, affinity cookie value, declaration mode, first catalog search } */
-  const sessions = new Map<string, { term: string; affinity: string; mode: string; catalogSubjects?: string }>();
+  const sessions = new Map<
+    string,
+    { term: string; affinity: string; mode: string; catalogSubjects?: string; classSearch?: string }
+  >();
   const requests: FakeGoSolarRequest[] = [];
 
   function handle(req: IncomingMessage, res: ServerResponse, body: string): void {
@@ -219,12 +224,27 @@ export async function startFakeGoSolar(): Promise<FakeGoSolar> {
       }
 
       const term = query.txt_term ?? "";
-      const subject = (query.txt_subject ?? "").toUpperCase();
-      const courseNumber = (query.txt_courseNumber ?? "").trim();
-      const level = (query.txt_level ?? "").trim();
+      // Like live Banner (2026-11-22), a session keeps its FIRST class search: a later call
+      // with other courses gets the first search's sections again (only paging takes effect).
+      session!.classSearch ??= JSON.stringify([
+        query.txt_subjectcoursecombo ?? "",
+        query.txt_subject ?? "",
+        query.txt_courseNumber ?? "",
+        query.txt_level ?? "",
+      ]);
+      const [combo, rawSubject, rawCourseNumber, rawLevel] = JSON.parse(session!.classSearch) as string[];
+      const level = rawLevel.trim();
+      // `txt_subjectcoursecombo` ("CSC1301,MATH2211"): exactly those courses, any level.
+      const combos = new Set(combo.toUpperCase().split(",").map((c) => c.trim()).filter(Boolean));
+      const subject = rawSubject.toUpperCase();
+      const courseNumber = rawCourseNumber.trim();
       const matches = [...sections.entries()]
         .filter(([key]) => {
           const [base, keyLevel] = key.split(LEVEL_MARK);
+          if (combos.size > 0) {
+            const [keyTerm, keySubject, keyCourse] = base.split("|");
+            return keyTerm === term && combos.has(`${keySubject}${keyCourse}`);
+          }
           const course = courseNumber
             ? base === sectionKey(term, subject, courseNumber)
             : base.startsWith(`${term}|${subject}|`);

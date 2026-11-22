@@ -1,5 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
-import { findSectionsByCrn, getSubjects, getTerms, isViewOnlyTerm, searchCourses } from "../client";
+import {
+  COURSES_PER_SEARCH,
+  MAX_COMBO_RESULTS,
+  findSectionsByCrn,
+  getSubjects,
+  getTerms,
+  isViewOnlyTerm,
+  searchCourses,
+} from "../client";
 import { GoSolarAffinityError, GoSolarError } from "../errors";
 import { GOSOLAR_BASE_URL, type FetchLike } from "../http";
 import type { CourseData } from "../types";
@@ -112,15 +120,23 @@ describe("getTerms / getSubjects", () => {
 });
 
 describe("findSectionsByCrn", () => {
-  it("searches each group and maps only the requested CRNs", async () => {
+  const sec = (subject: string, courseNumber: string, crn: string, extra: Partial<CourseData> = {}) => ({
+    subject,
+    courseNumber,
+    courseReferenceNumber: crn,
+    ...extra,
+  });
+  const comboBody = (data: Partial<CourseData>[] | null, totalCount = data?.length ?? 0) =>
+    response({ body: { success: true, totalCount, data, pageOffset: 0, pageMaxSize: 500 } });
+
+  it("searches every group in one session with txt_subjectcoursecombo and keeps only requested sections", async () => {
     const { fetchImpl, calls } = fakeFetch(
       DECLARE_OK(),
-      searchBody([
-        { courseReferenceNumber: "10001", seatsAvailable: 3 },
-        { courseReferenceNumber: "10002", seatsAvailable: 0 },
+      comboBody([
+        sec("CSC", "1301", "10001", { seatsAvailable: 3 }),
+        sec("CSC", "1301", "10002", { seatsAvailable: 0 }),
+        sec("MATH", "2211", "20001", { seatsAvailable: 1 }),
       ]),
-      DECLARE_OK(),
-      searchBody([{ courseReferenceNumber: "20001", seatsAvailable: 1 }]),
     );
 
     const sections = await findSectionsByCrn(
@@ -129,37 +145,133 @@ describe("findSectionsByCrn", () => {
         { subject: "CSC", courseNumber: "1301", crns: ["10001"] },
         { subject: "MATH", courseNumber: "2211", crns: ["20001", "29999"] },
       ],
-      { fetchImpl, concurrency: 1 },
+      { fetchImpl },
     );
 
     expect([...sections.keys()].sort()).toEqual(["10001", "20001"]);
     expect(sections.get("10001")?.seatsAvailable).toBe(3);
-    expect(calls).toHaveLength(4);
+    expect(calls).toHaveLength(2);
+    expect(query(calls[1].url)).toEqual([
+      ["txt_subjectcoursecombo", "CSC1301,MATH2211"],
+      ["txt_term", "202608"],
+      ["pageOffset", "0"],
+      ["pageMaxSize", "500"],
+      ["sortColumn", "subjectDescription"],
+      ["sortDirection", "asc"],
+    ]);
+    expect(calls[1].init.dispatcher).toBe(calls[0].init.dispatcher);
   });
 
-  it("reports failed groups through onError and keeps the others", async () => {
+  it("matches subject and course number too, not just the CRN", async () => {
+    const { fetchImpl } = fakeFetch(DECLARE_OK(), comboBody([sec("CHEM", "1212L", "30001"), sec("CHEM", "1212", "30002")]));
+    const sections = await findSectionsByCrn(
+      "202608",
+      // 30001 belongs to CHEM 1212L, so it must not be returned for a CHEM 1212 group.
+      [{ subject: "CHEM", courseNumber: "1212", crns: ["30001", "30002"] }],
+      { fetchImpl },
+    );
+    expect([...sections.keys()]).toEqual(["30002"]);
+  });
+
+  it("decodes HTML entities in kept sections only", async () => {
     const { fetchImpl } = fakeFetch(
       DECLARE_OK(),
-      searchBody(null),
-      DECLARE_OK(),
-      searchBody([{ courseReferenceNumber: "20001" }]),
+      comboBody([
+        sec("ARTH", "1700", "1", { courseTitle: "Art &amp; Society" }),
+        sec("ARTH", "1700", "2", { courseTitle: "Skipped &amp; Raw" }),
+      ]),
     );
+    const sections = await findSectionsByCrn("202608", [{ subject: "ARTH", courseNumber: "1700", crns: ["1"] }], { fetchImpl });
+    expect(sections.get("1")?.courseTitle).toBe("Art & Society");
+  });
+
+  it("pages a combined search on the same session until totalCount", async () => {
+    const rows = (from: number, n: number) => Array.from({ length: n }, (_, i) => sec("ENGL", "1101", String(from + i)));
+    const { fetchImpl, calls } = fakeFetch(DECLARE_OK(), comboBody(rows(0, 500), 700), comboBody(rows(500, 200), 700));
+    const sections = await findSectionsByCrn("202608", [{ subject: "ENGL", courseNumber: "1101", crns: ["3", "650"] }], { fetchImpl });
+    expect([...sections.keys()].sort()).toEqual(["3", "650"]);
+    expect(calls).toHaveLength(3);
+    expect(new URL(calls[2].url).searchParams.get("pageOffset")).toBe("500");
+    expect(calls[2].init.dispatcher).toBe(calls[0].init.dispatcher);
+  });
+
+  it("splits a batch into one session per batchSize courses", async () => {
+    const groups = Array.from({ length: 5 }, (_, i) => ({ subject: "CSC", courseNumber: String(1000 + i), crns: [String(i)] }));
+    const combos: string[] = [];
+    const fetchImpl: FetchLike = async (url) => {
+      if (url.endsWith("/term/search")) return DECLARE_OK();
+      combos.push(new URL(url).searchParams.get("txt_subjectcoursecombo") ?? "");
+      return comboBody([]);
+    };
+    await findSectionsByCrn("202608", groups, { fetchImpl, batchSize: 2, concurrency: 1 });
+    expect(combos).toEqual(["CSC1000,CSC1001", "CSC1002,CSC1003", "CSC1004"]);
+  });
+
+  it("defaults to COURSES_PER_SEARCH courses per session", async () => {
+    const groups = Array.from({ length: COURSES_PER_SEARCH + 1 }, (_, i) => ({
+      subject: "CSC",
+      courseNumber: String(1000 + i),
+      crns: [String(i)],
+    }));
+    let sessions = 0;
+    const fetchImpl: FetchLike = async (url) => {
+      if (url.endsWith("/term/search")) {
+        sessions++;
+        return DECLARE_OK();
+      }
+      return comboBody([]);
+    };
+    await findSectionsByCrn("202608", groups, { fetchImpl });
+    expect(sessions).toBe(2);
+  });
+
+  it("splits a combined search that matches too many sections in half and retries", async () => {
+    const combos: string[] = [];
+    const fetchImpl: FetchLike = async (url) => {
+      if (url.endsWith("/term/search")) return DECLARE_OK();
+      const combo = new URL(url).searchParams.get("txt_subjectcoursecombo") ?? "";
+      combos.push(combo);
+      if (combo.includes(",")) return comboBody([], MAX_COMBO_RESULTS + 1);
+      return comboBody([sec("CSC", combo.slice(3), combo.slice(3))]);
+    };
+    const sections = await findSectionsByCrn(
+      "202608",
+      [
+        { subject: "CSC", courseNumber: "1301", crns: ["1301"] },
+        { subject: "CSC", courseNumber: "1302", crns: ["1302"] },
+      ],
+      { fetchImpl },
+    );
+    expect(combos).toEqual(["CSC1301,CSC1302", "CSC1301", "CSC1302"]);
+    expect([...sections.keys()].sort()).toEqual(["1301", "1302"]);
+  });
+
+  it("reports every group of a failed combined search through onError and keeps other batches", async () => {
+    const fetchImpl: FetchLike = async (url) => {
+      if (url.endsWith("/term/search")) return DECLARE_OK();
+      const combo = new URL(url).searchParams.get("txt_subjectcoursecombo") ?? "";
+      return combo.startsWith("CSC") ? comboBody(null) : comboBody([sec("MATH", "2211", "20001")]);
+    };
     const failures: string[] = [];
 
     const sections = await findSectionsByCrn(
       "202608",
       [
         { subject: "CSC", courseNumber: "1301", crns: ["10001"] },
+        { subject: "CSC", courseNumber: "1302", crns: ["10002"] },
         { subject: "MATH", courseNumber: "2211", crns: ["20001"] },
       ],
-      { fetchImpl, concurrency: 1, onError: (group) => failures.push(group.subject) },
+      { fetchImpl, batchSize: 2, concurrency: 1, onError: (group, error) => {
+        expect(error).toBeInstanceOf(GoSolarAffinityError);
+        failures.push(`${group.subject} ${group.courseNumber}`);
+      } },
     );
 
-    expect(failures).toEqual(["CSC"]);
+    expect(failures).toEqual(["CSC 1301", "CSC 1302"]);
     expect([...sections.keys()]).toEqual(["20001"]);
   });
 
-  it("limits concurrency", async () => {
+  it("limits concurrency across batches", async () => {
     let inFlight = 0;
     let peak = 0;
     const groups = Array.from({ length: 10 }, (_, i) => ({
@@ -172,12 +284,19 @@ describe("findSectionsByCrn", () => {
       peak = Math.max(peak, inFlight);
       await new Promise((resolve) => setTimeout(resolve, 5));
       inFlight--;
-      return url.endsWith("/term/search") ? DECLARE_OK() : searchBody([]);
+      return url.endsWith("/term/search") ? DECLARE_OK() : comboBody([]);
     };
 
-    await findSectionsByCrn("202608", groups, { fetchImpl, concurrency: 3 });
+    await findSectionsByCrn("202608", groups, { fetchImpl, concurrency: 3, batchSize: 1 });
     expect(peak).toBeLessThanOrEqual(3);
     expect(peak).toBeGreaterThan(1);
+  });
+
+  it("skips groups with no CRNs and makes no request when none are left", async () => {
+    const { fetchImpl, calls } = fakeFetch();
+    const sections = await findSectionsByCrn("202608", [{ subject: "CSC", courseNumber: "1301", crns: [] }], { fetchImpl });
+    expect(sections.size).toBe(0);
+    expect(calls).toHaveLength(0);
   });
 });
 
@@ -246,7 +365,10 @@ describe("hardening", () => {
   it("clamps a non-finite or silly concurrency instead of hanging or flooding", async () => {
     const groups = [{ subject: "CSC", courseNumber: "1301", crns: ["1"] }];
     for (const concurrency of [Number.NaN, Number.POSITIVE_INFINITY, -3, 0.2]) {
-      const { fetchImpl } = fakeFetch(DECLARE_OK(), page(1, ["1"]));
+      const { fetchImpl } = fakeFetch(
+        DECLARE_OK(),
+        response({ body: { success: true, totalCount: 1, data: [{ subject: "CSC", courseNumber: "1301", courseReferenceNumber: "1" }] } }),
+      );
       const sections = await findSectionsByCrn("202608", groups, { fetchImpl, concurrency });
       expect([...sections.keys()]).toEqual(["1"]);
     }
@@ -254,7 +376,12 @@ describe("hardening", () => {
 
   it("keeps going when onError itself throws", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
-    const { fetchImpl } = fakeFetch(DECLARE_OK(), searchBody(null), DECLARE_OK(), page(1, ["2"]));
+    const { fetchImpl } = fakeFetch(
+      DECLARE_OK(),
+      searchBody(null),
+      DECLARE_OK(),
+      response({ body: { success: true, totalCount: 1, data: [{ subject: "MATH", courseNumber: "2211", courseReferenceNumber: "2" }] } }),
+    );
     const sections = await findSectionsByCrn(
       "202608",
       [
@@ -264,6 +391,7 @@ describe("hardening", () => {
       {
         fetchImpl,
         concurrency: 1,
+        batchSize: 1,
         onError: () => {
           throw new Error("callback bug");
         },

@@ -111,11 +111,24 @@ export interface CourseGroup {
 const DEFAULT_CONCURRENCY = 4;
 const MAX_CONCURRENCY = 16;
 
+/**
+ * Courses per combined search, i.e. per GoSolar session. A course adds ~11 characters to the
+ * URL, so 40 keeps it near 600 (31 courses, 545 characters, verified live 2026-11-22).
+ */
+export const COURSES_PER_SEARCH = 40;
+/** A combined search matching more sections than this is split in half and retried. */
+export const MAX_COMBO_RESULTS = 3000;
+/** GoSolar serves 500-row pages (verified live); 31 courses = 502 sections = 2 pages. */
+const COMBO_PAGE_SIZE = 500;
+
 export interface FindSectionsOptions extends GoSolarOptions {
-  /** Max searches in flight at once (each on its own session). Default 4, clamped to 1..16. */
+  /** Max combined searches in flight at once (each on its own session). Default 4, clamped to 1..16. */
   concurrency?: number;
+  /** Courses per combined search. Default COURSES_PER_SEARCH, clamped to 1..COURSES_PER_SEARCH. */
+  batchSize?: number;
   /**
-   * Called when a group's search fails; its CRNs are then absent from the result. GoSolar
+   * Called once per group whose search failed; its CRNs are then absent from the result. A
+   * combined search covers several groups, so one failure reports every group in it. GoSolar
    * cannot look up a CRN directly, so callers must treat "absent" as "unknown", never as
    * "closed". Defaults to logging.
    */
@@ -123,43 +136,113 @@ export interface FindSectionsOptions extends GoSolarOptions {
 }
 
 /**
- * Resolves CRNs to sections by searching each subject+courseNumber group (GoSolar ignores
- * CRN filters) and keeping the requested CRNs. Shared by the seat watcher and tracked classes.
+ * Resolves CRNs to sections (GoSolar ignores CRN filters) and keeps only the requested ones.
+ * Shared by the seat watcher, tracked classes and the assistant.
+ *
+ * Groups are searched together, up to `batchSize` courses per GoSolar session, with Banner's
+ * `txt_subjectcoursecombo` (see GoSolarSession.searchCombo). Before 2026-11-22 every group had
+ * its own session (a fresh TLS connection, a term declaration and a search); at 31 tracked
+ * courses that was 31 sessions per watcher run, every 3 minutes, and it used up the Vercel
+ * Hobby Active CPU allowance. A section is kept only when its subject, course number AND CRN
+ * match a requested group, exactly what the one-course searches returned.
  */
 export async function findSectionsByCrn(
   term: string,
   groups: CourseGroup[],
-  { concurrency, onError = logGroupError, ...options }: FindSectionsOptions = {},
+  { concurrency, batchSize, onError = logGroupError, ...options }: FindSectionsOptions = {},
 ): Promise<Map<string, CourseData>> {
   const sections = new Map<string, CourseData>();
-  const limit =
-    concurrency !== undefined && Number.isFinite(concurrency)
-      ? Math.min(MAX_CONCURRENCY, Math.max(1, Math.floor(concurrency)))
-      : DEFAULT_CONCURRENCY;
+  const limit = clampInt(concurrency, 1, MAX_CONCURRENCY, DEFAULT_CONCURRENCY);
+  const size = clampInt(batchSize, 1, COURSES_PER_SEARCH, COURSES_PER_SEARCH);
 
-  await forEachLimited(groups, limit, async (group) => {
-    if (group.crns.length === 0) return;
+  const report = (group: CourseGroup, error: unknown) => {
+    // A throwing callback must not abort the remaining groups.
     try {
-      const result = await searchCourses(
-        { term, subject: group.subject, courseNumber: group.courseNumber },
-        options,
-      );
-      const wanted = new Set(group.crns);
-      for (const course of result.data) {
-        const crn = course.courseReferenceNumber;
-        if (crn && wanted.has(crn)) sections.set(crn, course);
-      }
+      onError(group, error);
+    } catch (callbackError) {
+      console.error("findSectionsByCrn onError callback threw", callbackError);
+    }
+  };
+
+  const searchBatch = async (batch: CourseGroup[]): Promise<void> => {
+    try {
+      for (const [crn, section] of await comboSearch(term, batch, options)) sections.set(crn, section);
     } catch (error) {
-      // A throwing callback must not abort the remaining groups.
-      try {
-        onError(group, error);
-      } catch (callbackError) {
-        console.error("findSectionsByCrn onError callback threw", callbackError);
+      if (error instanceof ComboTooLargeError && batch.length > 1) {
+        const middle = Math.ceil(batch.length / 2);
+        await searchBatch(batch.slice(0, middle));
+        await searchBatch(batch.slice(middle));
+        return;
+      }
+      for (const group of batch) report(group, error);
+    }
+  };
+
+  const batches = chunk(
+    groups.filter((group) => group.crns.length > 0),
+    size,
+  );
+  await forEachLimited(batches, limit, searchBatch);
+  return sections;
+}
+
+/** Thrown before paging a combined search that matched more than MAX_COMBO_RESULTS sections. */
+class ComboTooLargeError extends Error {
+  constructor(readonly totalCount: number) {
+    super(`combined search matched ${totalCount} sections (limit ${MAX_COMBO_RESULTS})`);
+    this.name = "ComboTooLargeError";
+  }
+}
+
+const sectionKey = (subject: string | null | undefined, courseNumber: string | null | undefined, crn: string) =>
+  `${(subject ?? "").trim().toUpperCase()}|${(courseNumber ?? "").trim().toUpperCase()}|${crn}`;
+
+/** One session, every course of `batch` in one combined search, paged to the end. */
+async function comboSearch(
+  term: string,
+  batch: CourseGroup[],
+  options: GoSolarOptions,
+): Promise<Map<string, CourseData>> {
+  const wanted = new Set(batch.flatMap((g) => g.crns.map((crn) => sectionKey(g.subject, g.courseNumber, crn))));
+  const keep = (raw: CourseData) =>
+    !!raw.courseReferenceNumber && wanted.has(sectionKey(raw.subject, raw.courseNumber, raw.courseReferenceNumber));
+  const courses = [
+    ...new Map(batch.map((g) => [sectionKey(g.subject, g.courseNumber, ""), g])).values(),
+  ];
+
+  const found = new Map<string, CourseData>();
+  const session = await createGoSolarSession(term, options);
+  try {
+    let offset = 0;
+    for (;;) {
+      const page = await session.searchCombo(courses, { pageOffset: offset, pageMaxSize: COMBO_PAGE_SIZE, keep });
+      if (offset === 0 && page.totalCount > MAX_COMBO_RESULTS && courses.length > 1) {
+        throw new ComboTooLargeError(page.totalCount);
+      }
+      for (const section of page.data) found.set(section.courseReferenceNumber!, section);
+      offset += page.rowsOnPage;
+      if (offset >= page.totalCount) break;
+      if (page.rowsOnPage === 0 || offset >= MAX_COMBO_RESULTS) {
+        console.warn(
+          `GoSolar combined search ${term} (${courses.length} courses): read ${offset} of ${page.totalCount} sections`,
+        );
+        break;
       }
     }
-  });
+    return found;
+  } finally {
+    await session.close();
+  }
+}
 
-  return sections;
+function chunk<T>(items: readonly T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+function clampInt(value: number | undefined, min: number, max: number, fallback: number): number {
+  return value !== undefined && Number.isFinite(value) ? Math.min(max, Math.max(min, Math.floor(value))) : fallback;
 }
 
 function logGroupError(group: CourseGroup, error: unknown): void {
